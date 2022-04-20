@@ -36,6 +36,12 @@ node {
 
 }
 
+tasks.yarnSetup {
+    doFirst {
+        args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
+    }
+}
+
 /*
   Wrappers around Yarn Tasks.
  */
