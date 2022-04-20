@@ -34,8 +34,8 @@ export GRADLE_OPTS
 echo Building datahub.
 
 # We just compile the metadata service and frontend for now
-./gradlew :metadata-service:war:build --debug
+./gradlew :metadata-service:war:build
 
-./gradlew :datahub-frontend:build --debug -x yarnTest -x yarnLint
+./gradlew :datahub-frontend:build -x yarnTest -x yarnLint
 
 # todo as part of setting up the container builds, copy artifacts
