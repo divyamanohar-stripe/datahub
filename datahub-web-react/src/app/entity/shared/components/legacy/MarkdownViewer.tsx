@@ -76,7 +76,6 @@ const MarkdownView = styled(MDEditor.Markdown)`
 export type Props = {
     source: string;
     limit?: number;
-    isCompact?: boolean;
     editable?: boolean;
     onEditClicked?: () => void;
 };
