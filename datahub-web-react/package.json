@@ -150,5 +150,10 @@
     "resolutions": {
         "@ant-design/colors": "6.0.0",
         "refractor": "3.3.1"
+    },
+    "jest": {
+        "transformIgnorePatterns": [
+            "node_modules/(?!@ngrx|(?!deck.gl)|ng-dynamic)"
+        ]
     }
 }
