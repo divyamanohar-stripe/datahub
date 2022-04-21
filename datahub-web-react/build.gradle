@@ -49,7 +49,7 @@ task yarnInstall(type: YarnTask) {
   doFirst {
     args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
   }
-  args = ['install']
+  args = ['install', "--no-lockfile"]
 }
 
 task yarnGenerate(type: YarnTask, dependsOn: yarnInstall) {
