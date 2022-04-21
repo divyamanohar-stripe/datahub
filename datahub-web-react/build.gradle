@@ -46,6 +46,9 @@ tasks.yarnSetup {
   Wrappers around Yarn Tasks.
  */
 task yarnInstall(type: YarnTask) {
+  doFirst {
+    args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
+  }
   args = ['install']
 }
 
