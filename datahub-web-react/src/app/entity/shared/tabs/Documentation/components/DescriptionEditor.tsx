@@ -112,9 +112,9 @@ export const DescriptionEditor = ({ onComplete }: { onComplete?: () => void }) =
         } else if (onComplete) onComplete();
     };
 
-    function onCancel() {
+    const onCancel = () => {
         setCancelModalVisible(false);
-    }
+    };
 
     const onDiscard = () => {
         delete editedDescriptions[urn];

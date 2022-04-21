@@ -52,8 +52,10 @@ export default function SchemaTable({
     const hasUsageStats = useMemo(() => (usageStats?.aggregations?.fields?.length || 0) > 0, [usageStats]);
 
     const [tagHoveredIndex, setTagHoveredIndex] = useState<string | undefined>(undefined);
-    const [selectedFkFieldPath, setSelectedFkFieldPath] =
-        useState<null | { fieldPath: string; constraint?: ForeignKeyConstraint | null }>(null);
+    const [selectedFkFieldPath, setSelectedFkFieldPath] = useState<null | {
+        fieldPath: string;
+        constraint?: ForeignKeyConstraint | null;
+    }>(null);
 
     const descriptionRender = useDescriptionRenderer(editableSchemaMetadata);
     const usageStatsRenderer = useUsageStatsRenderer(usageStats);

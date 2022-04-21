@@ -7,9 +7,9 @@ import UpdateDescriptionModal from './DescriptionModal';
 import analytics, { EventType, EntityActionType } from '../../../../analytics';
 import { EntityType } from '../../../../../types.generated';
 
-const DescriptionText = styled(MarkdownViewer)`
-    ${(props) => (props.isCompact ? 'max-width: 377px;' : '')};
-`;
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const DescriptionText = styled(MarkdownViewer)`\n    ${(props) => (props.isCompact ? 'max-width: 377px;' : '')};\n`;
 
 const AddNewDescription = styled(Tag)`
     cursor: pointer;
@@ -59,6 +59,8 @@ export default function UpdatableDescription({
             {updatedDescription || originalDescription ? (
                 <>
                     <DescriptionText
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore
                         isCompact={isCompact}
                         source={updatedDescription || originalDescription || ''}
                         editable
