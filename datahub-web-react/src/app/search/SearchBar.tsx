@@ -254,6 +254,8 @@ export const SearchBar = ({
                 style={autoCompleteStyle}
                 options={options}
                 filterOption={false}
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 onSelect={(value: string, option) => {
                     // If the autocomplete option type is NOT an entity, then render as a normal search query.
                     if (
@@ -272,6 +274,8 @@ export const SearchBar = ({
                 onSearch={(value: string) => onQueryChange(value)}
                 defaultValue={initialQuery || undefined}
                 value={selected}
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 onChange={(v) => setSelected(filterSearchQuery(v))}
                 dropdownStyle={{
                     maxHeight: 1000,

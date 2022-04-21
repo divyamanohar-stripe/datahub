@@ -57,7 +57,12 @@ export default function MLFeatureTableHeader({ mlFeatureTable: { platform, descr
                         </HeaderInfoItem>
                     ) : null}
                 </Row>
-                <MarkdownViewer isCompact={isCompact} source={description || ''} />
+                <MarkdownViewer
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
+                    isCompact={isCompact}
+                    source={description || ''}
+                />
                 <AvatarsGroup owners={ownership?.owners} entityRegistry={entityRegistry} />
             </Space>
         </>
