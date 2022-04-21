@@ -51,19 +51,10 @@ task generateGraphQLSchema(type: Exec) {
   commandLine './generateGraphQLSchema.sh'
 }
 
-tasks.yarnSetup {
-    doFirst {
-        args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
-    }
-}
-
 /*
   Wrappers around Yarn Tasks.
  */
 task yarnInstall(type: YarnTask) {
-  doFirst {
-      args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
-  }
   logger.info('CI = "{}"', System.env.CI)
   if (System.env.CI != null && System.env.CI == "true") {
     args = ['install','--frozen-lockfile']

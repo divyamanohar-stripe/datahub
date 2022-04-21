@@ -37,6 +37,8 @@ node {
 }
 
 tasks.yarnSetup {
+    // Stripe: We override the registry as the default upstream registries are blocked by egress config due to security
+    // concerns
     doFirst {
         args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
     }
@@ -46,6 +48,7 @@ tasks.yarnSetup {
   Wrappers around Yarn Tasks.
  */
 task yarnInstall(type: YarnTask) {
+  // Stripe: Override registry
   doFirst {
     args.addAll(['--registry', 'https://artifactory-content.stripe.build/artifactory/api/npm/npm'])
   }

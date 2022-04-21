@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
         libsasl2-dev \
         libsasl2-modules \
         ldap-utils \
-    && python -m pip install --upgrade pip wheel setuptools==57.4.0
+    && python -m pip install --upgrade pip wheel setuptools==57.5.0
 
 
 FROM openjdk:8 as prod-build
