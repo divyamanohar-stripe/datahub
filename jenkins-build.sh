@@ -36,6 +36,8 @@ echo Building datahub.
 # We just compile the metadata service and frontend for now
 ./gradlew :metadata-service:war:build
 
-./gradlew :datahub-frontend:build
+# TODO: reenable tests 
+./gradlew :datahub-frontend:dist -x test -x yarnTest -x yarnLint
 
+cp datahub-frontend/build/distributions/datahub-frontend.zip /build/datahub-frontend.zip
 # todo as part of setting up the container builds, copy artifacts
