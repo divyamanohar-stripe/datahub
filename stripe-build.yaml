@@ -3,6 +3,15 @@ jenkins_jobs:
     henson_tarball:
       docker:
         dockerfile: Dockerfile
+    container_images:
+      - artifact_name: datahub-image
+        docker:
+          dockerfile: Dockerfile.deploy
+          post_build: true
+        push:
+          enabled: true
+          repo: stripe/stripe-private-oss-forks/datahub
+          responsible_team: schema-and-query
     network:
       http_proxy_verbose: true
       http_proxy_report_only: true
