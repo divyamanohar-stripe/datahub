@@ -32,7 +32,6 @@ MANIFEST
 
 # Added by mp-maker
 **/build
-/config
 */i18n
 /out
 
