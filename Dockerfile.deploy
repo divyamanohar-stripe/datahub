@@ -1,0 +1,32 @@
+FROM containers.global.prod.stripe.io/stripe/build/ubuntu-20.04:latest
+
+# Since we set post_build: true in stripe-build.yaml, this Dockerfile
+# ends up running in the /build/ folder (which is where the Jenkins
+# build copies the DataHub tarballs). We use the generated
+# artifacts to build our container image.
+
+RUN mkdir -p /datahub
+COPY datahub-frontend.zip /datahub
+RUN cd /datahub && unzip datahub-frontend.zip && rm datahub-frontend.zip
+
+# create logs dir and update perms to allow the DataHub process to be able to write
+# to it (runs as a different user)
+RUN mkdir -p /datahub/datahub-frontend/logs
+RUN mkdir -p /datahub/datahub-gms/logs
+RUN chmod 777 /datahub/datahub-frontend/logs
+RUN chmod 777 /datahub/datahub-gms/logs
+
+# Set up things for metadata service
+RUN mkdir -p /datahub/datahub-gms/resources
+RUN mkdir -p /datahub/datahub-gms/scripts
+RUN mkdir -p /datahub/datahub-gms/bin
+
+COPY entity-registry.yml /datahub/datahub-gms/resources/entity-registry.yml
+COPY war.war /datahub/datahub-gms/bin/war.war
+COPY jetty.xml /datahub/datahub-gms/scripts/jetty.xml
+COPY stripe-start.sh /datahub/datahub-gms/scripts/stripe-start.sh
+COPY jetty-runner.jar /datahub/datahub-gms/bin/jetty-runner.jar
+COPY jetty-util.jar /datahub/datahub-gms/bin/jetty-util.jar
+COPY jetty-jmx.jar /datahub/datahub-gms/bin/jetty-jmx.jar
+
+WORKDIR /datahub

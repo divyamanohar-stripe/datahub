@@ -1,0 +1,29 @@
+# This Dockerfile is meant to build and create the DataHub containers for Stripe
+# local development as building locally is cumbersome as the repo requires jdk 1.8
+
+FROM ubuntu:focal AS base
+
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    rm -rf /var/lib/apt/lists/*
+RUN add-apt-repository ppa:openjdk-r/ppa && apt-get update && apt-get install -y openjdk-8-jdk-headless zip curl && update-java-alternatives -s java-1.8.0-openjdk-amd64
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+ENV PATH $JAVA_HOME/bin:$PATH
+RUN export JAVA_HOME
+
+RUN mkdir /build
+COPY . /datahub-src
+WORKDIR /datahub-src
+RUN ./gradlew :metadata-service:war:build -x test \
+  && cp metadata-service/war/build/libs/war.war /build/war.war
+
+RUN ./gradlew :datahub-frontend:dist -x test -x yarnTest -x yarnLint \
+  && cp datahub-frontend/build/distributions/datahub-frontend.zip /build/datahub-frontend.zip
+
+# Copy artifacts in format / location expected by `Dockerfile.deploy`
+COPY metadata-models/src/main/resources/entity-registry.yml /build/entity-registry.yml
+COPY docker/datahub-gms/jetty.xml /build/jetty.xml
+COPY docker/datahub-gms/stripe-start.sh /build/stripe-start.sh
+RUN curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190813/jetty-runner-9.4.20.v20190813.jar --output /build/jetty-runner.jar
+RUN curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-util/9.4.20.v20190813/jetty-util-9.4.20.v20190813.jar --output /build/jetty-util.jar
+RUN curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-jmx/9.4.20.v20190813/jetty-jmx-9.4.20.v20190813.jar --output /build/jetty-jmx.jar

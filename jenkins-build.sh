@@ -47,4 +47,4 @@ cp datahub-frontend/build/distributions/datahub-frontend.zip /build/datahub-fron
 cp metadata-service/war/build/libs/war.war /build/war.war
 cp metadata-models/src/main/resources/entity-registry.yml /build/entity-registry.yml
 cp docker/datahub-gms/jetty.xml /build/jetty.xml
-# TODO copy a metadata startup script!
+cp docker/datahub-gms/stripe-start.sh /build/stripe-start.sh
