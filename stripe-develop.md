@@ -20,3 +20,29 @@ $ ./gradlew :datahub-web-react:yarnInstall
 
 At the moment, we only build the generalized metadata service (gms) and frontend service as those are the two services we plan
 to deploy. 
+
+## Run Stripe builds locally in Docker
+While making changes to DataHub there's a couple of options available to test your changes.
+* Use the process described in the upstream project - [Local Development](https://datahubproject.io/docs/developers)
+* Run using the Stripe scripts - This is useful if you're tweaking the deploy scripts / configs and want to confirm things work. Couple of options here: 
+  * Make your changes, push to GHE. Once the build is successful, you will find your image in our [container repo](https://amp.qa.corp.stripe.com/containers/northwest/stripe-qa/stripe-private-oss-forks/datahub).
+    Pull this image down locally and give it a tag using the following commands:
+    ```bash
+    $ sc docker pull containers.global.qa.stripe.io/stripe-qa/stripe-private-oss-forks/datahub@sha256:3b5b50dbae40e04cc4c74deff5ed9cff7f0775e58fb389fa93332d2368e9d2cc
+    $ docker images | grep containers.global.qa.stripe.io
+      containers.global.qa.stripe.io/stripe-qa/stripe-private-oss-forks/datahub   sc-docker-pull   5494360d4482   35 minutes ago   1.39GB
+    $ docker tag 5494360d4482 stripe/datahub:cibuild
+    ```
+    Now you can update the datahub-frontend and datahub-gms images in `stripe-docker-compose.yml` with the image: `stripe/datahub:cibuild`
+  * Make your changes, build your image locally:
+    ```bash
+    $ ./docker-compose-build.sh
+    ...
+    ```
+  In both these cases, when you've got your Docker image pulled / built, you can run DataHub using:
+  ```bash
+  $ docker compose -p datahub -f stripe-docker-compose.yml up -d
+  ```
+Note:
+* You need to have your Docker daemon running
+* In the `docker-compose-build.sh`, we use [Space Commander](https://confluence.corp.stripe.com/display/CLOUDMGMT/Space+Commander) to pull the Stripe Ubuntu image
