@@ -1,0 +1,295 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+[Service Networking Internal] Default schema and config value generation rules
+for `envoy-config-srv` sidecar in Shared MSP. Config values are computed from
+deploy-time context of the current workload and covers:
+- commandline arguments
+- sidecar.json configuration
+- (TODO) sidecar image versioning
+
+Service owners may override default values by calling the `networking_config`.
+"""
+
+load("config/kubernetes/networking/internal/common.sky", "POD_NETWORKING_BASEDIR")
+load(
+    "config/kubernetes/networking/internal/config/override.sky",
+    "NOT_PROVIDED",
+    "match",
+    "populate_config",
+    "when",
+    "merge_configs",
+)
+
+LDS_PORT = 10092
+CDS_PORT = 10097
+DEBUG_PORT = 10093
+XDS_DEBUG_BASEDIR = "/pay/tmp/envoy-xds/pods"  # go/jira/SN-852
+UNPRIVILEGED_ENVOY_PORT = 1643
+ENVOY_LOGS_DIR = "%s/envoy" % POD_NETWORKING_BASEDIR
+ENVOY_EGRESS_SOCKETS_DIR = "/var/run/envoy/egress"
+ENVOY_OUTBOUND_UNIX_SOCKETS_DIR = "/var/run/envoy/outbound"
+ENVOY_RUNTIME_DIR = "/run/stripe/envoy"
+ENVOY_SYSTEM_FLAGS_PATH = "%s/envoy_file_system_flags" % ENVOY_RUNTIME_DIR
+ENVOY_CONFIG_SRV_RUNTIME_DIR = "/run/stripe/envoy-config-srv"
+ENVOY_CONFIG_SRV_PERSISTENT_DRAIN_FILE = "%s/draining" % ENVOY_CONFIG_SRV_RUNTIME_DIR
+
+
+def _default_sidecar_version(target):
+    """
+    Specifies the version to use for envoy-config-srv-image.
+    The version should be a sha256 digest for a particular image that we want to use.
+    The digest can be found in the container images artifact section of a CI build (for a particular git commit).
+
+    Note that all master branch commits will be pushed to the stripe/traffic/ path, while non-master branch commits will be pushed to the stripe-qa/traffic/ path.
+    This means that if we want to test a digest from a test branch, we will specify it here, then hardcode the stripe-qa/traffic/ path in _envoy_config_srv_image(...).
+    """
+    # Prod sha256 digest
+    #
+    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LKMZPEejTiieEd
+    # Git Commit: 5ee34fa64c6ffd9d696043cbb9489b24920d6bc1
+    # Summary   : Add access log sampling support using a Lua filter (#2218)
+    prod_digest = "db0af06ff1ea8518f5faa2ba80b2a1e56e42219438454bea4efe6c951dcf1228"
+
+    # QA sha256 digest
+    #
+    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LXnfO4kSWlBacc
+    # Git Commit: f76348cbd61a421b22eeeb6f19ff09a2cbdd8e9d
+    # Summary   : add modify_only flag to inbound http listeners (#2477)
+    qa_digest   = "4925923db8a588b1c48e5c7eb6adf4029db6d23cff7dd75c74862d4aacf0603e"
+
+    return {
+        "version": match(
+            target,
+            prod_digest,
+            when(env = "qa", value = qa_digest),
+        ),
+    }
+
+def _default_sidecar_cli_args(target):
+    """
+    Args:
+        target: deploy-time properties about the current workload. Used to match
+            against config generation rules to synthesize the correct values for
+            the workload.
+
+    Returns:
+        A dictionary used to configure the commandline options passed to per-pod
+        `envoy-config-srv`.
+    """
+    return {
+        "mproxy_tier": "non-bapi",
+        "egress_proxy_tier": "",
+        "enable_inbound_websockets": False,
+        "cluster_watch_addr": _designated_envoy_control_srv_addr(target.availability_tier, target.env),
+    }
+
+def _default_sidecar_config(target):
+    """
+    Args:
+        target: deploy-time properties about the current workload. Used to match
+            against config generation rules to synthesize the correct values for
+            the workload.
+
+    Returns:
+        A dictionary specifying the default sidecar.json configuration for per-pod
+        `envoy-config-srv`. The config values are computed from deploy-time context
+        of the current workload.
+
+        Where possible, these defaults are skycfg equivalents to those in
+        go/kube-tools/blob/master/envoy-config-srv-config/envoy-config-srv-overrides.yaml
+    """
+    return merge_configs(
+        {
+            "http2_options": http2_options(
+                max_concurrent_streams = 128,
+                max_stream_window_size = 1048576,
+                max_connection_window_size = 134217728,
+            ),
+            "cluster_healthcheck_opts": cluster_healthcheck_opts(
+                initial_jitter = "3s",
+                interval_jitter = "0.5s",
+                enable_server_side_hc = True,
+                use_sn_internal_hc = True,
+            ),
+            "uds_rds_service_allowlist": ["*"],
+            "eds_listener_address": match(
+                target,
+                "",
+                when(role = "envoycontrol", env = "qa", value = "0.0.0.0:8086"),
+            ),
+            # TODO(xyu): This should be set by the user in `networking_config`
+            # TODO(xyu): Enabling tracing touches both envoy-config-srv and the
+            # envoy bootstrap config. Implement this when we modify the
+            # envoy-sidecar skycfg to adopt MSP SN configurability
+            # For reference, tracing for host-based services is defined in
+            # https://git.corp.stripe.com/stripe-internal/kube-tools/blob/master/envoy-config-srv-config/envoy-config-srv-overrides.yaml
+            "enable_tracing": False,
+            # TODO(mattkipps): clusterfe-srv should set this value in `networking_config` when it is migrated to Shared MSP
+            "enable_clusterfe_listener": False,
+            "use_exact_load_balancer": True,
+            "use_envoy_admin_healthcheck": True,
+            # XXX(xyu): `file_system_flags` is consumed by the envoy-config-srv
+            # `use_envoy_admin_healthcheck: True` feature to make the transition
+            # to/from fail-all-incoming-healthchecks sticky across restarts of
+            # envoy
+            # - when a host check fails, poke envoy admin-interface to fail
+            #   incoming-healthchecks.
+            # - it is safe for this FS state to be pod-local
+            "envoy_file_system_flags": ENVOY_SYSTEM_FLAGS_PATH,
+            "enable_mproxy_listener_modify_only_drain_type": True,
+            "enable_listener_modify_only_drain_type": True,
+            "nlb_health_check": match(
+                target,
+                None,
+                when(role = "kproxy", env = "qa", value = {"address": "0.0.0.0", "port": 10090}),
+                when(role = "papertrail", env = "qa", value = {"address": "0.0.0.0", "port": 10090}),
+            ),
+            "enable_global_ratelimiter": False,
+            "local_rate_limit": None,
+            "rollout_watcher": {
+                "enable_rollout_watcher": match(
+                    target,
+                    True,
+                    when(env = "preprod", value = False),
+                ),
+                "config_srv_addr": match(
+                    target,
+                    "configsrvbox.northwest.prod.stripe.io:10101",
+                    when(env = "qa", value = "configsrvbox.northwest.qa.stripe.io:10101"),
+                ),
+                "config_srv_key": "config/stripe-internal/kube-tools/envoy-config-srv-rollout/rollout_config",
+            },
+            "envoy_setup": "NETWORK_ISOLATED_ENVOY",
+            "enable_local_reachability": True,
+            "enable_http1_trailers": True,
+            # TODO(mattkipps): Shared MSP services should be a good candidate for service filtering.
+            "enable_service_filtering": False,
+            "persistent_drain_file": ENVOY_CONFIG_SRV_PERSISTENT_DRAIN_FILE,
+            # NOTE: this feature should be disabled when envoy is running in a "frontend" context.
+            # If Stripe supports Shared MSP frontends in the future, exclude them here.
+            "enhanced_envoy_error_responses": match(
+                target,
+                False,
+                when(env = "qa", value = True),
+            ),
+            "remove_consul_health_source": True,
+            "enable_tls_v1_3": True,
+            "access_log_filter": access_log_filter(
+                enabled = True,
+                success_sample_percent = 10,
+                error_sample_percent = 100,
+            ),
+        },
+        # FIXME(jakewang): we use `merge_configs()` to ensure the configuration option `enable_inbound_listener_modify_only_drain_type`
+        # is not introduced when the associated binary has not been updated to support it.
+        match(
+          target,
+          {},
+          when(env = "qa", value = {"enable_inbound_listener_modify_only_drain_type": True}),
+        ),
+    )
+
+def http2_options(
+        max_concurrent_streams,
+        max_stream_window_size,
+        max_connection_window_size):
+    return {
+        "max_concurrent_streams": max_concurrent_streams,
+        "max_stream_window_size": max_stream_window_size,
+        "max_connection_window_size": max_connection_window_size,
+    }
+
+def cluster_healthcheck_opts(
+        initial_jitter,
+        interval_jitter,
+        enable_server_side_hc,
+        use_sn_internal_hc):
+    return {
+        "initial_jitter": initial_jitter,
+        "interval_jitter": interval_jitter,
+        "enable_server_side_hc": enable_server_side_hc,
+        "use_sn_internal_hc": use_sn_internal_hc,
+    }
+
+# Used by config/kubernetes/networking/public/config.sky
+def local_rate_limit(
+        max_capacity,
+        tokens_per_interval,
+        fill_interval_duration):
+    if (type(max_capacity) != "int" or
+        type(tokens_per_interval) != "int" or
+        type(fill_interval_duration) != "string"):
+        fail("Unexpected argument type. See definition in https://git.corp.stripe.com/stripe-internal/kube-tools/blob/master/envoy-config-srv/proto/config/config.proto#L288")
+
+    return {
+        "max_capacity": max_capacity,
+        "tokens_per_interval": tokens_per_interval,
+        "fill_interval_duration": fill_interval_duration,
+    }
+
+def access_log_filter(
+        enabled,
+        success_sample_percent,
+        error_sample_percent):
+    return {
+        "enabled": enabled,
+        "success_sample_percent": success_sample_percent,
+        "error_sample_percent": error_sample_percent,
+    }
+
+def generate_sidecar_version(target, user_overrides):
+    cfg = _default_sidecar_version(target)
+    return populate_config(cfg, user_overrides, "_update_envoy_config_srv_version")
+
+def generate_sidecar_cli_args(target, user_overrides):
+    cfg = _default_sidecar_cli_args(target)
+    return populate_config(cfg, user_overrides, "_update_envoy_config_srv_cli_args")
+
+def generate_sidecar_config(target, user_overrides):
+    cfg = _default_sidecar_config(target)
+    return populate_config(cfg, user_overrides, "_update_envoy_config_srv_config")
+
+def apply_user_config_ratchets(config_target, user_overrides):
+    _enable_global_rate_limit_ratchet(config_target, user_overrides.enable_global_ratelimit.kwargs.enable)
+
+def _enable_global_rate_limit_ratchet(config_target, user_provided_value):
+    if ((user_provided_value == NOT_PROVIDED) and
+        match(
+            config_target,
+            False,
+            when(role = "load", value = True),
+            when(role = "monsterworkersbox", value = True),
+            when(role = "loadrunnerbox", value = True),
+        )):
+        prose = [
+            "Your workload (%s) has a pre-existing network customization to " % config_target,
+            "enable the global rate limiter. Previously, enabling this required ",
+            "involving the Service Networking Team. We are pleased to share ",
+            "that this is now self-serve in Shared MSP!\n\n",
+            "- To turn this on, please add this to your service skycfg:\n",
+        ]
+        prose.append("""
+  load("config/kubernetes/networking/public/config.sky", "networking_config")
+
+  def main(ctx):
+      return deployment(
+          ctx,
+          networking_config(enable_global_ratelimit = True),   # <-- add this line
+          shared_msp = True,
+          ...
+      )
+        """)
+        fail("".join(prose))
+
+# Returns the addr in the format of <consul_domain_name>:<port> for envoy-config-srv to use
+# as the --cluster-watch-addr command line argument. This flag determines which envoy-control-srv
+# that envoy-config-srv will try to talk to for snapshot data.
+def _designated_envoy_control_srv_addr(tier, env):
+    if tier in ["A100", "A110", "A120", "A130", "A140", "A150"]:
+        return "envoy-control-srv-a100.service.consul:8083"
+    elif tier in ["A200"]:
+        return "envoy-control-srv-a200.service.consul:8083"
+    elif tier in ["A300", "A400"]:
+        return "envoy-control-srv-a300.service.consul:8083"
+
+    fail("Unexpected availability tier %s. Unable to determine corresponding envoy-control-srv host set" % tier)

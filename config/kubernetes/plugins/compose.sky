@@ -1,0 +1,88 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+A function for combining multiple plugins into one.
+
+The end result is a single plugin that behaves though each component plugin
+had been specified individually. In fact, when an entrypoint is evaluating
+plugins, it first composes all of the plugins that were provided to it, then
+applies that single plugin.
+
+Composing plugins makes it easy to build high-level abstractions from simple
+pieces.
+"""
+
+def compose_plugins(*plugins):
+    """
+    Creates a new plugin that combines the behavior of all the passed in plugins.
+
+    Args:
+        *plugins: Zero or more plugins to combine into a single plugin.
+
+    Returns:
+        A new plugin that will apply all of the behavior of all the plugins provided.
+    """
+    return struct(
+        update_deployment = _update_deployment,
+        update_cronjob = _update_cronjob,
+        update_daemonset = _update_daemonset,
+        update_job = _update_job,
+        update_statefulset = _update_statefulset,
+        update_pod = _update_pod,
+        update_containers = _update_containers,
+        is_compose = True,
+        plugins = _flatten_plugins(plugins),
+    )
+
+def _update_deployment(ctx, arguments, deployment_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_deployment"):
+            plugin.update_deployment(ctx, plugin, deployment_def)
+
+def _update_cronjob(ctx, arguments, cronjob_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_cronjob"):
+            plugin.update_cronjob(ctx, plugin, cronjob_def)
+
+def _update_daemonset(ctx, arguments, daemonset_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_daemonset"):
+            plugin.update_daemonset(ctx, plugin, daemonset_def)
+
+def _update_job(ctx, arguments, job_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_job"):
+            plugin.update_job(ctx, plugin, job_def)
+
+def _update_statefulset(ctx, arguments, statefulset_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_statefulset"):
+            plugin.update_statefulset(ctx, plugin, statefulset_def)
+
+def _update_pod(ctx, arguments, pod_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_pod"):
+            plugin.update_pod(ctx, plugin, pod_def)
+
+def _update_containers(ctx, arguments, container_def):
+    for plugin in arguments.plugins:
+        if hasattr(plugin, "update_containers"):
+            plugin.update_containers(ctx, plugin, container_def)
+
+        if hasattr(plugin, "update_container") and _should_apply_to_container(plugin, container_def):
+            plugin.update_container(ctx, plugin, container_def)
+
+def _should_apply_to_container(plugin, container):
+    # TODO we might be able to replace this behavior with a conditional
+    # wrapper around container plugins
+    return (getattr(plugin, "container_name", None) == None and container.get("is_main_container", False)) or container["name"] == getattr(plugin, "container_name", None)
+
+def _flatten_plugins(plugins):
+    new_plugins = []
+
+    for plugin in plugins:
+        if hasattr(plugin, "is_compose"):
+            new_plugins.extend(plugin.plugins)
+        else:
+            new_plugins.append(plugin)
+
+    return new_plugins

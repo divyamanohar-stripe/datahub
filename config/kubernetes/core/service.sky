@@ -1,0 +1,73 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions for building Kubernetes `Service` resources, which allow backends to
+be registered as routable endpoints.
+"""
+
+load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/helpers/msp_shard.sky", "MSP_SHARD_ANNOTATION", "MSP_CLUSTER_ANNOTATION")
+load("config/kubernetes/helpers/tags.sky", "service_selectors")
+
+_core = proto.package("k8s.io.api.core.v1")
+_meta = proto.package("k8s.io.apimachinery.pkg.apis.meta.v1")
+
+def service(*, name, namespace, ports, shard = None, selector = None):
+    """
+    Register pods as backend endpoints for a routable network service.
+
+    Args:
+        name: The name of the service. This will be a stable identifier used
+          by clients to connect to the service's endpoints, so pick a name
+          that won't change often.
+        namespace: Which Kubernetes namespace to register the service in. This
+          must match that of the `Deployment` or `StatefulSet` that creates the
+          service's endpoint pods.
+        ports: A list of `ServicePort` that pods of this service listen on.
+        selector: If this parameter is set, pods will be selected using the
+          given label key/value pairs. By default, pods are selected by the
+          `stripe.io/service-name` label.
+
+    Returns:
+        A [Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#service-v1-core) protobuf message.
+    """
+    if selector == None:
+        selector = {
+            "stripe.io/service-name": name,
+        }
+    service = _core.Service(
+        metadata = _meta.ObjectMeta(
+            name = name,
+            namespace = namespace,
+            annotations = {},
+        ),
+        spec = _core.ServiceSpec(
+            type = "ClusterIP",
+            clusterIP = "None",
+            ports = ports,
+            selector = selector,
+            publishNotReadyAddresses = True,
+        ),
+    )
+
+    if shard:
+        service.metadata.annotations[MSP_CLUSTER_ANNOTATION] = shard
+        service.metadata.annotations[MSP_SHARD_ANNOTATION] = shard
+
+    return service
+
+def service_port(port, *, name = None):
+    """
+
+    Args:
+        port: A port the service's pods are listening on.
+        name: An optional name for this port. Recommended when a service listens
+          on multiple ports, for example if it provides both a public API and an
+          internal admin UI.
+
+    Returns:
+        A [ServicePort](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#serviceport-v1-core) protobuf message.
+    """
+    return _core.ServicePort(
+        name = name,
+        port = port,
+    )

@@ -1,0 +1,34 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+# Append the namespace and name of your cron to this list, along with the justification comment,
+# if your job does not hold financial data (directly or indirectly) and should not
+# fall under SOX controls.
+# See https://confluence.corp.stripe.com/display/ORCH/Runbook%3A+Remove+Cron+from+SOX+control for details.
+#
+# [required] "name" must match your Cron name.
+# [required] "namespace" must match the "K8s Namespace" (host_type) in which the Cron is created.
+#
+# This is an example cron definition:
+#     {
+#         "name": "<cronjob-name>",
+#         "namespace": "<host_type|k8s namespace>",
+#     },
+#
+#
+_CRONS = [
+    {
+        # "test-cron-sox-control-false" cron does not exist. Only used for testing.
+        "name": "test-cron-sox-control-false",
+        "namespace": "test-system",
+    },
+    {
+        # "sox-ticket-assigner-cron" only observes Jira ticket state, and does not load or mutate any sensitive financial data
+        "name": "sox-ticket-assigner-cron",
+        "namespace": "cpecronbox",
+    },
+]
+
+def cron_in_exceptions(namespace, name):
+    for cron in _CRONS:
+        if cron.get("namespace") == namespace and cron.get("name") == name:
+            return True
+    return False

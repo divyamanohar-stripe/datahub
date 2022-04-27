@@ -1,0 +1,40 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions that apply to generic k8s resources instead of any particular type
+"""
+
+
+def set_shared_msp(resource):
+    """
+    Mark the resource to be run on shared MSP
+
+    Args:
+      resource: a resource definition
+    """
+    resource["shared_msp"] = True
+
+
+def is_shared_msp(ctx, resource):
+    """
+    Condition for running the plugin for deployments to shared MSP
+
+    Args:
+      ctx: a skycfg context
+      resource: a resource definition
+    Returns:
+      True iff the resource has been marked to run on shared MSP
+    """
+    return resource.get("shared_msp", False)
+
+
+def is_dedicated_msp(ctx, resource):
+    """
+    Condition for running the plugin for deployments to dedicated MSP
+
+    Args:
+      ctx: a skycfg context
+      resource: a resource definition
+    Returns:
+      True iff the resource has not been marked to run on shared MSP
+    """
+    return not is_shared_msp(ctx, resource)

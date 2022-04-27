@@ -1,0 +1,212 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Experimental sidecar for Envoy, which exposes a set of network listeners similar
+to those available on normal hosts.
+"""
+
+load(
+    "config/kubernetes/core/container.sky",
+    "container",
+    "resource_requirements",
+)
+load(
+    "config/kubernetes/core/env_var.sky",
+    "container_env_vars",
+    "default_env_vars",
+)
+load(
+    "config/kubernetes/core/volume.sky",
+    "mount_host_volume",
+    "render_volume_mount",
+    "volume_mount",
+)
+load(
+    "config/kubernetes/helpers/context.sky",
+    "get_cluster",
+    "get_env",
+    "get_henson_config",
+)
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/quantities.sky", "megabytes", "millicores")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "pod_plugin")
+
+_core = proto.package("k8s.io.api.core.v1")
+
+# Git commit ID from stripe-internal/gocode for a deployed `envoy-sidecar`.
+_CONTAINER_IMAGE = struct(
+    commit = "4d8580e9bfa3bad8140a1eb2209593f82f0650d7",  # 2020-12-04
+    env = "prod",
+)
+
+_CONTAINER_NAME = "envoy-sidecar"
+
+def outbound_service(
+        *,
+        service_name,
+        namespace,
+        eds_resource_name = None):
+    return struct(
+        service_name = service_name,
+        namespace = namespace,
+        eds_resource_name = eds_resource_name,
+    )
+
+def experimental_envoy_sidecar(
+        *,
+        external_port = None,
+        internal_http_port = None,
+        internal_grpc_port = None,
+        admin_port = None,
+        outbound_services = []):
+    kwargs = dict(
+        external_port = external_port,
+        internal_http_port = internal_http_port,
+        internal_grpc_port = internal_grpc_port,
+        admin_port = admin_port,
+        outbound_services = outbound_services,
+    )
+    return pod_plugin(_envoy_sidecar, envoy_sidecar_kwargs = kwargs)
+
+def _envoy_sidecar(ctx, plugin, pod_def):
+    pod_def["containers"].append({
+        "render": _envoy_container,
+        "name": _CONTAINER_NAME,
+        "envoy_sidecar_kwargs": plugin.envoy_sidecar_kwargs,
+        "volume_mounts": {},
+        "env": {},
+        "env_from_fields": {},
+        "sidecar_service": "envoy-sidecar",
+    })
+
+def _envoy_container(ctx, container_def, pod):
+    kwargs = container_def["envoy_sidecar_kwargs"]
+    config_json = json.marshal(_envoy_sidecar_config(ctx, kwargs))
+
+    return _core.Container(
+        name = container_def["name"],
+        image = image(
+            ctx,
+            name = "stripe/compute/envoy-sidecar",
+            label = "git-" + _CONTAINER_IMAGE.commit,
+            env = _CONTAINER_IMAGE.env,
+        ),
+        command = [
+            "/bin/envoy-sidecar",
+            # TODO(jmillikin): This is the address of the envoy-sidecar's health
+            # check endpoint, which is not currently implemented. Eventually it
+            # will be used for a lifecycle hook to verify that Envoy started up
+            # successfully.
+            "--http-address=localhost:12345",
+            "--external-ip=$(KUBERNETES_POD_IP)",
+            "--envoy-sidecar-config-json=" + config_json,
+        ],
+        env = default_env_vars(ctx) + [
+            _core.EnvVar(
+                name = "KUBERNETES_POD_IP",
+                valueFrom = _core.EnvVarSource(
+                    fieldRef = _core.ObjectFieldSelector(
+                        fieldPath = "status.podIP",
+                    ),
+                ),
+            ),
+        ],
+        volumeMounts = [
+            render_volume_mount(ctx, volume_mount("/etc/ssl/certs/stripe-cas")),
+            render_volume_mount(ctx, volume_mount("/run/stripe/credentials-proxy")),
+        ],
+        resources = resource_requirements(
+            memory = megabytes(1024),
+            cpu = millicores(1000),
+        ),
+        terminationMessagePolicy = "FallbackToLogsOnError",
+    )
+
+def _envoy_sidecar_config(ctx, kwargs):
+    return {
+        # TODO(jmillikin): Ask SvcNet to put EDS behind an NLB endpoint so this
+        # sidecar doesn't introduce a dependency on Consul.
+        "envoy_eds_address": "envoy-control-srv.service.consul:8086",
+        "envoy_eds_authority": "envoycontrol.{}.{}.stripe.io".format(
+            get_cluster(ctx),
+            get_env(ctx),
+        ),
+        # TODO(jmillikin): Ask SvcNet what values they want in here -- the node
+        # ID would probably be the pod name, but what do we use the cluster ID
+        # for in EDS?
+        "envoy_cluster_id": "TODO_KUBE_TESTBED_CLUSTER_ID",
+        "envoy_node_id": "TODO_KUBE_TESTBED_NODE_ID",
+        # TODO(jmillikin): Switch to API and bootstrap version v3 when SvcNet
+        # has finished their rollout.
+        "envoy_api_version": "v2",
+        "envoy_bootstrap_version": "v2",
+        "listeners": _envoy_listeners(ctx, kwargs),
+    }
+
+def _envoy_listeners(ctx, kwargs):
+    listeners = {}
+    env = get_env(ctx)
+
+    # Inbound
+    if kwargs["external_port"]:
+        inbound = {
+            "external_port": kwargs["external_port"],
+        }
+        listeners["inbound"] = inbound
+
+        if kwargs["internal_http_port"]:
+            inbound["internal_http_port"] = kwargs["internal_http_port"]
+        if kwargs["internal_grpc_port"]:
+            inbound["internal_grpc_port"] = kwargs["internal_grpc_port"]
+
+        # TODO(jmillikin): The Henson service config needs some refactoring to
+        # make the inbound client identities not keyed by Consul service name.
+        henson_listeners = get_henson_config(ctx).inbound_config.inbound_listeners
+        inbound["client_subject_alt_names"] = [
+            "{}.global.{}.stripe.io".format(client.host_type, env)
+            for client in henson_listeners[0].allowed_clients
+        ]
+
+    # Envoy admin UI
+    if kwargs["admin_port"]:
+        listeners["envoy_admin"] = {
+            "port": kwargs["admin_port"],
+            "access_log_path": "/dev/null",
+        }
+
+    # Outbound (services)
+    #
+    # Note: This gets included in the config even if there are no outbound
+    # services, so that users get an error message that's more useful than
+    # "connection refused".
+    outbound_services = []
+    for svc in kwargs["outbound_services"]:
+        outbound_service = {
+            "service_name": svc.service_name,
+            "authority": "{}.global.{}.stripe.io".format(svc.namespace, env),
+        }
+        if svc.eds_resource_name:
+            outbound_service["eds_resource_name"] = svc.eds_resource_name
+        outbound_services.append(outbound_service)
+    listeners["http_router"] = {
+        "port": 10080,
+        "services": outbound_services,
+    }
+
+    # Outbound (egress proxy)
+    listeners["dynamic_egress"] = {
+        "port": 10071,
+        "service": {
+            "authority": "dynamicegressproxy.global.{}.stripe.io".format(env),
+            "eds_resource_name": "big-dynamic-egress-proxy",
+        },
+    }
+    listeners["trusted_egress"] = {
+        "port": 10072,
+        "service": {
+            "authority": "trustedegressproxy.global.{}.stripe.io".format(env),
+            "eds_resource_name": "big-trusted-egress-proxy",
+        },
+    }
+
+    return listeners

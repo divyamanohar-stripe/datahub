@@ -1,0 +1,89 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions for creating and configuring Kubernetes [DaemonSet][]s
+
+[daemonset]: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+"""
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/core/pod.sky", "all_containers")
+load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector")
+load("config/kubernetes/plugins/types.sky", "daemonset_plugin")
+
+def daemonset(ctx, *plugins, **kwargs):
+    """
+    Schedule a service to run a single instance per machine.
+
+    A DaemonSet is designed for workloads that need a single pod per node, either across
+    the whole cluster or on a filtered subset of nodes (e.g. by host type).
+
+    In general, we prefer to use a `deployment` even when we expect to run a single
+    instance per node, as it gives more flexibility to rollouts of the service. A DaemonSet
+    is better suited for infrastructure services that support the proper functioning
+    of hosts in the cluster.
+
+    Args:
+        ctx: The Skycfg context from the `main` function.
+        *plugins: One or more plugins to configure the service.
+        **kwargs: Options for the [DaemonSetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#daemonsetspec-v1-apps).
+            A shortcut for the `daemonset_options` plugin.
+
+    Returns:
+        A [DaemonSet](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#daemonset-v1-apps)
+        Kubernetes protobuf message describing the configuration of the service.
+    """
+
+    daemonset = {
+        "render": _render_daemonset,
+        "type": "daemonset",
+        "metadata": {},
+        "kwargs": {},
+    }
+
+    all_plugins = []
+    all_plugins.extend(plugins)
+    all_plugins.append(daemonset_options(**kwargs))
+
+    plugin = compose_plugins(*all_plugins)
+    plugin.update_daemonset(ctx, plugin, daemonset)
+    plugin.update_pod(ctx, plugin, daemonset["pod"])
+
+    for container in all_containers(daemonset["pod"]):
+        plugin.update_containers(ctx, plugin, container)
+
+    return daemonset["render"](ctx, daemonset)
+
+def daemonset_options(**kwargs):
+    """
+    Defines options for a daemonset.
+
+    Args:
+        **kwargs: Options to apply to the daemonset. These map directly to fields on the Kubernetes
+            [DaemonSetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#daemonsetspec-v1-apps).
+
+    Returns:
+        A plugin that applies the options to a daemonset.
+    """
+    return daemonset_plugin(
+        _update_daemonset_options,
+        kwargs = kwargs,
+    )
+
+_apps = proto.package("k8s.io.api.apps.v1")
+_core = proto.package("k8s.io.api.core.v1")
+
+def _update_daemonset_options(ctx, plugin, daemonset_def):
+    daemonset_def["kwargs"].update(plugin.kwargs)
+
+def _render_daemonset(ctx, daemonset_def):
+    daemonset_def["metadata"] = struct(**daemonset_def["metadata"])
+    daemonset = struct(**daemonset_def)
+    pod_template = daemonset.pod["render"](ctx, daemonset.pod)
+
+    return _apps.DaemonSet(
+        metadata = render_metadata(ctx, daemonset.metadata),
+        spec = _apps.DaemonSetSpec(
+            selector = render_selector(ctx, daemonset.metadata),
+            template = pod_template,
+            **daemonset.kwargs
+        ),
+    )
