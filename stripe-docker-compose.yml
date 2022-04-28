@@ -55,7 +55,7 @@ services:
     - EBEAN_DATASOURCE_URL=jdbc:mysql://mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8
     - EBEAN_DATASOURCE_DRIVER=com.mysql.jdbc.Driver
     - KAFKA_BOOTSTRAP_SERVER=broker:29092
-    - KAFKA_SCHEMAREGISTRY_URL=http://schema-registry:8081
+    - KAFKA_SCHEMAREGISTRY_URL=http://schema-registry:8081/contexts/.datahub
     - ELASTICSEARCH_HOST=elasticsearch
     - ELASTICSEARCH_PORT=9200
     - GRAPH_SERVICE_IMPL=elasticsearch
@@ -147,9 +147,9 @@ services:
     - broker
     environment:
     - SCHEMA_REGISTRY_HOST_NAME=schemaregistry
-    - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+    - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=broker:29092
     hostname: schema-registry
-    image: confluentinc/cp-schema-registry:5.4.0
+    image: confluentinc/cp-schema-registry:7.0.1
     ports:
     - 8081:8081
   zookeeper:
