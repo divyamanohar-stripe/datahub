@@ -1,31 +1,32 @@
-import * as React from 'react';
 import { DatabaseFilled, DatabaseOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
-import { Dataset, DatasetProperties, EntityType, OwnershipType, SearchResult } from '../../../types.generated';
-import { Entity, IconStyleType, PreviewType } from '../Entity';
-import { Preview } from './preview/Preview';
-import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
-import { EntityProfile } from '../shared/containers/profile/EntityProfile';
+import * as React from 'react';
 import { GetDatasetQuery, useGetDatasetQuery, useUpdateDatasetMutation } from '../../../graphql/dataset.generated';
-import { GenericEntityProperties } from '../shared/types';
-import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
-import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
-import { SchemaTab } from '../shared/tabs/Dataset/Schema/SchemaTab';
-import QueriesTab from '../shared/tabs/Dataset/Queries/QueriesTab';
-import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
-import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Ownership/SidebarOwnerSection';
-import { SidebarTagsSection } from '../shared/containers/profile/sidebar/SidebarTagsSection';
-import { SidebarStatsSection } from '../shared/containers/profile/sidebar/Dataset/StatsSidebarSection';
-import StatsTab from '../shared/tabs/Dataset/Stats/StatsTab';
-import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
+import { Dataset, DatasetProperties, EntityType, OwnershipType, SearchResult } from '../../../types.generated';
 import { capitalizeFirstLetter } from '../../shared/textUtil';
-import ViewDefinitionTab from '../shared/tabs/Dataset/View/ViewDefinitionTab';
+import { Entity, IconStyleType, PreviewType } from '../Entity';
+import { EntityProfile } from '../shared/containers/profile/EntityProfile';
+import { SidebarStatsSection } from '../shared/containers/profile/sidebar/Dataset/StatsSidebarSection';
 import { SidebarViewDefinitionSection } from '../shared/containers/profile/sidebar/Dataset/View/SidebarViewDefinitionSection';
-import { SidebarRecommendationsSection } from '../shared/containers/profile/sidebar/Recommendations/SidebarRecommendationsSection';
-import { getDataForEntityType } from '../shared/containers/profile/utils';
 import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
+import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Ownership/SidebarOwnerSection';
+import { SidebarRecommendationsSection } from '../shared/containers/profile/sidebar/Recommendations/SidebarRecommendationsSection';
+import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
+import { SidebarTagsSection } from '../shared/containers/profile/sidebar/SidebarTagsSection';
+import { getDataForEntityType } from '../shared/containers/profile/utils';
+import QueriesTab from '../shared/tabs/Dataset/Queries/QueriesTab';
+import { SchemaTab } from '../shared/tabs/Dataset/Schema/SchemaTab';
+import StatsTab from '../shared/tabs/Dataset/Stats/StatsTab';
 import { ValidationsTab } from '../shared/tabs/Dataset/Validations/ValidationsTab';
+import ViewDefinitionTab from '../shared/tabs/Dataset/View/ViewDefinitionTab';
+import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
+import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
+import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
+import { GenericEntityProperties } from '../shared/types';
+import { Preview } from './preview/Preview';
 import { OperationsTab } from './profile/OperationsTab';
+import { TimelinessTab } from './profile/TimelinessTab';
+import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
 
 const SUBTYPES = {
     VIEW: 'view',
@@ -146,6 +147,16 @@ export class DatasetEntity implements Entity<Dataset> {
                         visible: (_, _1) => true,
                         enabled: (_, dataset: GetDatasetQuery) => {
                             return (dataset?.dataset?.assertions?.total || 0) > 0;
+                        },
+                    },
+                },
+                {
+                    name: 'Timeliness',
+                    component: TimelinessTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataset: GetDatasetQuery) => {
+                            return (dataset?.dataset?.writeRuns?.total || 0) > 0;
                         },
                     },
                 },
