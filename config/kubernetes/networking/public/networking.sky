@@ -1,0 +1,223 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load("config/kubernetes/core/container.sky", "init_container")
+load("config/kubernetes/core/lifecycle.sky", "pre_stop", "exec_action", "DEFAULT_NEW_ENDPOINT_PROPAGATION_SECONDS", "generate_infra_sidecar_prestop_command_args")
+load("config/kubernetes/core/probe.sky", "command_probe", "probes")
+load(
+    "config/kubernetes/core/volume.sky",
+    "host_volume",
+    "volume_mount",
+)
+load(
+    "config/kubernetes/helpers/context.sky",
+    "get_env",
+    "get_blue_green_color",
+    "get_cluster",
+)
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/constants.sky", "ENVOY_CONFIG_SRV_SIDECAR_NAME", "ENVOY_MONITOR_SIDECAR_NAME")
+load(
+    "config/kubernetes/networking/public/config.sky",
+    "build_networking_config",
+)
+load(
+    "config/kubernetes/networking/internal/common.sky",
+    "POD_NETWORKING_HOST_VOLUME_PATH",
+    "POD_NETWORKING_BASEDIR",
+)
+
+load(
+    "config/kubernetes/networking/internal/consul.sky",
+    "consul_sidecar",
+    "finalize_consul_service",
+    "TAG_IGNORED_BY_HOST_ENVOY",
+)
+load("config/kubernetes/networking/internal/envoy.sky", "envoy_sidecar")
+load("config/kubernetes/networking/internal/envoy-monitor.sky", "envoy_monitor_sidecar")
+load("config/kubernetes/networking/internal/envoy-config-srv.sky", "envoy_config_srv_sidecar")
+load("config/kubernetes/networking/internal/config/envoy-config-srv-config.sky", "UNPRIVILEGED_ENVOY_PORT")
+load("config/kubernetes/networking/internal/config/override.sky", "target")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/sidecars/envoy_ratelimit.sky", "ratelimit_sidecar")
+
+def networking(ctx, namespace, pod_termination_grace_period_seconds, availability_tier = "A400", host_network = True, register_services = [], config = None):
+    """
+    This plugin is the public API for configuring service-to-service networking for a pod.
+
+    e.g. what services should the pod register?
+    e.g. does the pod use the host network namespace?
+
+    Args:
+        ctx: Deploy-time Henson context
+        namespace: Kubernetes namespace where the target pod is running
+            (On dedicated MSP: this is a host type)
+        availability_tier: The availability tier of the target pod. This is extracted from
+            metadata.annotations.stripe.io/availability-tier of the deployment/statefulset.
+        host_network: Defaults to True (Dedicated MSP).
+            `True`:  pod shares the host networking namespace
+            `False`: pod runs in its own network-isolated networking namespace
+                     with a per-pod service networking stack
+        register_services: list of services for which to perform service registration.
+            e.g. The contents of this list must be constructed using the
+                 `consul_service` primitive
+        config: struct of configuration options, defined in `networking_config` (config/kubernetes/networking/public/config.sky)
+    Returns:
+        A pod plugin that can be used with an entrypoint like `deployment`.
+    """
+    sn_stack_plugins = []
+    use_network_isolation = not host_network
+
+    consul_agent_services = []
+    plugins_for_consul_sidecar = []
+    for srv in register_services:
+        consul_service = srv["service"]
+        port = consul_service["port"]
+        extra_tags = []
+        envoy_port = None # NB(xyu): Setting the port to `None` uses the default envoy port. Should we be more explicit here?
+
+        if use_network_isolation:
+            # For Shared MSP, we require consul services to specify a non-zero port
+            if port == None or port <= 0:
+                fail("Consul service [%s] specifies an invalid port [%s]." % (consul_service["name"], port))
+
+            extra_tags.append(TAG_IGNORED_BY_HOST_ENVOY)
+
+            envoy_port = UNPRIVILEGED_ENVOY_PORT
+
+        # Add blue/green tags automatically.
+        #
+        # In Dedicated MSP, the blue/green plugins reached into the resource
+        # definition for the consul sidecar and added tags to it. In Shared MSP this
+        # doesn't work easily due to plugin ordering issues. Instead, just have the
+        # service networking stack itself (i.e., here) check if we're running in
+        # blue/green mode or not, and attach the appropriate tags if we are.
+        #
+        # TODO: This is a slight change in behavior: before, you in *theory* had to
+        # use the with_blue_green_traffic_shifting() plugin to enable this behavior,
+        # and now we're just doing it implicitly based on the henson context. *But*,
+        # almost all services arranged for this plugin to be called (this was done
+        # for you via the common deployment, etc. entrypoints). So we believe this
+        # is safe.
+        blue_green_color = get_blue_green_color(ctx)
+        if blue_green_color != None:
+            extra_tags.append("color:%s" % blue_green_color)
+
+        consul_agent_services.append(
+            finalize_consul_service(
+                consul_service,
+                envoy_port = envoy_port,
+                extra_tags = extra_tags,
+            ),
+        )
+        plugins_for_consul_sidecar.extend(srv["plugins"])
+
+    config_target = target(
+        role = namespace,  # XXX(xyu): introduce more granular `//namespace/<get_name(ctx)>` ?
+        region = get_cluster(ctx),
+        env = get_env(ctx),
+        availability_tier = availability_tier,
+    )
+
+    if use_network_isolation:
+        # Registered services are fed into xDS sidecar to configure envoy ingress
+        xds_static_consul_config = []
+        for srv in consul_agent_services:
+            copy = {}
+            copy.update(**srv)
+            name = copy.pop("name")
+            copy["service"] = name
+            copy["id"] = name
+            copy.pop("checks")
+            xds_static_consul_config.append(copy)
+
+        if config == None:
+            config = build_networking_config()
+
+        # -----------------------------------------
+        # Containers that are part of the SN stack
+        # -----------------------------------------
+        # TODO(xyu): add interfaces to explicitly declare inbound and outbound
+        # network ACLs, so we can experiment with more granular ACLs than the
+        # ones specified in a henson service config
+
+        envoy_config_srv_prestop_call = generate_infra_sidecar_prestop_command_args(ENVOY_CONFIG_SRV_SIDECAR_NAME, pod_termination_grace_period_seconds=pod_termination_grace_period_seconds) # TODO de-hardcode
+        exec_command = [
+            "/bin/sh",
+            "-c",
+            "/usr/bin/curl -X POST localhost:10093/stripe-healthcheck/fail; "+' '.join(envoy_config_srv_prestop_call)
+        ]
+
+        sn_stack_plugins.extend([
+            _create_pod_networking_dirs(ctx, ENVOY_CONFIG_SRV_SIDECAR_NAME, "envoy", ENVOY_MONITOR_SIDECAR_NAME),
+            envoy_sidecar(ctx, namespace, config_target, config),
+            envoy_config_srv_sidecar(ctx, namespace, xds_static_consul_config, config_target, config),
+            pre_stop(exec_action(*exec_command), container_name = ENVOY_CONFIG_SRV_SIDECAR_NAME),
+            envoy_monitor_sidecar(ctx, namespace),
+        ])
+
+        # NB: This is a bit of an abstraction violation, but safe to do since
+        # we've ratcheted `enable_global_ratelimit` and enforcing that it must
+        # be set by the service owner in order to take effect
+        if config.enable_global_ratelimit.kwargs.enable == True:
+            sn_stack_plugins.extend([
+                ratelimit_sidecar(ctx, "latest", namespace),
+            ])
+
+        plugins_for_consul_sidecar.extend([
+            probes(
+                readiness = None,
+                liveness = None,
+                startup = command_probe(
+                    # NB: Succeed ~immediately to avoid failure due to timeoutSeconds (default: 1s)
+                    # i.e. we exclusively rely on initialDelaySeconds here
+                    ["/usr/bin/true"],
+                    initialDelaySeconds = DEFAULT_NEW_ENDPOINT_PROPAGATION_SECONDS,  # Delay the initial check from running
+                    periodSeconds = 1,  # check interval
+                    failureThreshold = 2,  # kill the container after failureThreshold*periodSeconds if we don't have a passing result
+                ),
+                container_name = "consul-sidecar",
+            ),
+        ])
+
+    return compose_plugins(
+        pod_plugin(
+            _assert_host_network_matches_pod_def,
+            host_network = host_network,
+        ),
+        consul_sidecar(
+            use_proxy = use_network_isolation,
+            use_probes = use_network_isolation,
+            services = consul_agent_services,
+            plugins = plugins_for_consul_sidecar,
+        ),
+        *sn_stack_plugins
+    )
+
+def _assert_host_network_matches_pod_def(ctx, networking_args, pod_def):
+    from_pod = pod_def["host_network"]
+    from_networking = networking_args.host_network
+    if from_pod != from_networking:
+        fail(" ".join([
+            "FATAL: conflicting values for `host_network`: `networking(host_network = %r)`" % from_networking,
+            "conflicts with `host_network = %r` set by some other plugin" % from_pod,
+        ]))
+
+def _create_pod_networking_dirs(ctx, *container_names):
+    subdirs = ["%s/%s" % (POD_NETWORKING_BASEDIR, c) for c in container_names]
+    return compose_plugins(
+        host_volume(
+            POD_NETWORKING_HOST_VOLUME_PATH,
+            type = "Directory",
+            reason = "Each per-pod SN stack has a subpath in this basedir scoped to the pod",
+        ),
+        init_container(
+            name = "create-pod-networking-log-dirs",
+            image = image(
+                ctx,
+                "stripe/build/alpine-3.10.1",
+                label = "latest",
+            ),
+            command = ["mkdir", "-p", "-m", "0755"] + subdirs,
+            plugins = [volume_mount(POD_NETWORKING_HOST_VOLUME_PATH, read_only = False)],
+        ),
+    )

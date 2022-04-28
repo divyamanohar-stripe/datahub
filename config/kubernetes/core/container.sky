@@ -1,0 +1,324 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Plugins for working with containers in pods.
+"""
+
+load("config/kubernetes/core/env_var.sky", "render_env_vars")
+load("config/kubernetes/core/lifecycle.sky", "render_lifecycle")
+load("config/kubernetes/core/volume.sky", "render_volume_mount")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/security.sky", "render_security_context")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin")
+
+_core = proto.package("k8s.io.api.core.v1")
+
+def container(
+        name,
+        image = None,
+        command = None,
+        args = None,
+        is_main_container = False,
+        cpu = None,
+        memory = None,
+        storage = None,
+        sidecar_service = None,
+        plugins = []):
+    """
+    Add an additional container to the pod.
+
+    If you create the pod for your service or job with `stripe_pod` or a repo-specific variant like `pay_server_pod`
+    or `gocode_pod`, that will create the main container, which in most cases is the only one you need.
+
+    If your service does need secondary containers to be scheduled alongside the main one, this plugin will let you
+    define those.
+
+    Args:
+        name: A name given to the container. This name will be visible in Amp. This name can be used to apply other
+            plugins to the container using the `container_name` parameter.
+        image: The container image from ECR to use for the container. Passing a simple string like "stripe/gocode" will
+            use the Git revision being deployed as the tag to fetch from that ECR repo. To get a specific revision of
+            an image, regardless of what is being deployed, use the `image` helper to generate a full ECR URI.
+        command: An array of the command and any arguments to run in this container. Prefer this to the `args` parameter.
+        args: An array of arguments to pass to the container image's entrypoint command. It's generally preferred to be
+            explicit about the command to run by using `command`, but for some third-party containers, it might be better
+            to defer to the image by using `args`.
+        is_main_container: Determines if the container will be made the main container of the pod. The main container is
+            always the first container in the resulting pod, and any container plugins apply to it unless specifically
+            told otherwise. A pod cannot have two main containers. Defaults to False.
+        cpu: The amount of CPU the main container needs, provided using `cores` or `millicores`. The container will be
+            guaranteed this amount of CPU, and will be throttled if it exceeds this amount.
+        memory: The amount of memory the main container needs, provided using `gigabytes` or `megabytes`. The container
+            will be guaranteed this amount of memory, and will be OOMKilled if it exceeds this amount.
+        storage: The amount of ephemeral storage the container needs, provided using `gigabytes` or `megabytes`. The
+            container will be guaranteed this amount of disk space, which may affect where the pod can be scheduled.
+        sidecar_service: The name of the sidecar service that deploys the image for this container, if any. Setting this
+            ensures that services that use this sidecar get automatically redeployed when a new version of the sidecar
+            is deployed.
+        plugins: An optional list of container plugins that should be applied to this container. This is a shortcut that
+            can be used to avoid having to pass the container name to each plugin.
+
+    Returns:
+        A plugin that adds the container to the pod.
+    """
+    return _container_plugin(
+        name = name,
+        image = image,
+        command = command,
+        args = args,
+        is_main_container = is_main_container,
+        is_init_container = False,
+        cpu = cpu,
+        memory = memory,
+        storage = storage,
+        sidecar_service = sidecar_service,
+        plugins = plugins,
+    )
+
+def init_container(
+        name,
+        image = None,
+        command = None,
+        args = None,
+        cpu = None,
+        memory = None,
+        storage = None,
+        sidecar_service = None,
+        plugins = []):
+    """
+    Add an init container to the pod.
+
+    Init containers run to completion one-by-one in sequence before the non-init containers in the pod are started. They
+    can be used to run setup tasks that need to happen before a service or job is started.
+
+    Most of the time, you won't need to define one of these yourself. We provide plugins for common setup tasks like
+    writing config files and rendering secrets.
+
+    Args:
+        name: A name given to the container. This name will be visible in Amp. This name can be used to apply other
+            plugins to the container using the `container_name` parameter.
+        image: The container image from ECR to use for the container. Passing a simple string like "stripe/gocode" will
+            use the Git revision being deployed as the tag to fetch from that ECR repo. To get a specific revision of
+            an image, regardless of what is being deployed, use the `image` helper to generate a full ECR URI.
+        command: An array of the command and any arguments to run in this container. Prefer this to the `args` parameter.
+        args: An array of arguments to pass to the container image's entrypoint command. It's generally preferred to be
+            explicit about the command to run by using `command`, but for some third-party containers, it might be better
+            to defer to the image by using `args`.
+        cpu: The amount of CPU the container needs, provided using `cores` or `millicores`.
+        memory: The amount of memory the container needs, provided using `gigabytes` or `megabytes`.
+        storage: The amount of ephemeral storage the container needs, provided using `gigabytes` or `megabytes`.
+        sidecar_service: The name of the sidecar service that deploys the image for this container, if any. Setting this
+            ensures that services that use this sidecar get automatically redeployed when a new version of the sidecar
+            is deployed.
+        plugins: An optional list of container plugins that should be applied to this container. This is a shortcut that
+            can be used to avoid having to pass the container name to each plugin.
+
+    Returns:
+        A plugin that adds the init container to the pod.
+    """
+    return _container_plugin(
+        name = name,
+        image = image,
+        command = command,
+        args = args,
+        is_main_container = False,
+        is_init_container = True,
+        cpu = cpu,
+        memory = memory,
+        storage = storage,
+        sidecar_service = sidecar_service,
+        plugins = plugins,
+    )
+
+def container_port(port, container_name = None, port_name = None):
+    """
+    Register a port for a container.
+
+    With our default networking setup, this ensures that Kubernetes knows what ports a pod is listening on. It uses
+    this information to avoid scheduling multiple workloads on the same host if they are going to use the same port.
+
+    Args:
+        port: The port that the container will listen on.
+        container_name: The name of the container to add the port to. Defaults to the main container of the pod.
+        port_name: Optional name for the port that can be referred to by services.
+
+    Returns:
+        A plugin that adds the port to the container.
+    """
+
+    return container_plugin(
+        _add_container_port,
+        container_name = container_name,
+        port = port,
+        port_name = port_name,
+    )
+
+def resource_requirements(cpu, memory, storage = None):
+    reqs = {}
+    if cpu != None:
+        reqs["cpu"] = cpu
+    if memory != None:
+        reqs["memory"] = memory
+    if storage != None:
+        reqs["ephemeral-storage"] = storage
+
+    return _core.ResourceRequirements(
+        limits = reqs,
+        requests = reqs,
+    )
+
+def _container_plugin(
+        *,
+        name,
+        image,
+        command,
+        args,
+        is_main_container,
+        is_init_container,
+        cpu,
+        memory,
+        storage,
+        sidecar_service,
+        plugins):
+
+    if command == None and args == None:
+        fail("Container %s must specify either a command or args" % name)
+
+    if command != None and args != None:
+        fail("Container %s cannot specify both command and args" % name)
+
+    for plugin in plugins:
+        if not hasattr(plugin, "update_container"):
+            fail("Container %s includes a plugin that isn't meant for a single container: %s" % (name, plugin))
+
+    return compose_plugins(
+        pod_plugin(
+            _update_pod,
+            name = name,
+            is_main_container = is_main_container,
+            is_init_container = is_init_container,
+            image = image,
+            command = command,
+            args = args,
+            memory = memory,
+            cpu = cpu,
+            storage = storage,
+            sidecar_service = sidecar_service,
+        ),
+        container_plugin(
+            _update_container,
+            container_name = name,
+            plugins = plugins,
+        ),
+    )
+
+def _update_pod(ctx, plugin, pod_def):
+    container = {
+        "render": _render_container,
+        "is_main_container": plugin.is_main_container,
+        "is_init_container": plugin.is_init_container,
+        "name": plugin.name,
+        "image": plugin.image,
+        "command": plugin.command,
+        "args": plugin.args,
+        "env": {},
+        "env_from_fields": {},
+        "include_default_env": True,
+        "memory": plugin.memory,
+        "cpu": plugin.cpu,
+        "storage": plugin.storage,
+        "ports": {},
+        "probes": {},
+        "lifecycle": {},
+        "volume_mounts": {},
+        "security": None,
+        "shared_msp": pod_def.get("shared_msp", False), # inherit from the parent resource
+    }
+
+    # Ensure the pod is annotated to indicate that this pod uses the given sidecar service.
+    if plugin.sidecar_service != None:
+        container["sidecar_service"] = plugin.sidecar_service
+
+    if plugin.is_main_container:
+        if "main_container" in pod_def:
+            fail("Cannot add container %s as main container in pod because container %s is already the main container." % (plugin.name, pod_def["main_container"]["name"]))
+
+        pod_def["main_container"] = container
+        pod_def["containers"].insert(0, container)
+    elif plugin.is_init_container:
+        pod_def["init_containers"].append(container)
+    else:
+        pod_def["containers"].append(container)
+
+def _update_container(ctx, plugin, container_def):
+    for container_plugin in plugin.plugins:
+        container_plugin.update_container(ctx, container_plugin, container_def)
+
+def _render_container(ctx, container_def, pod):
+    container = struct(**container_def)
+
+    env = render_env_vars(ctx, container)
+
+    ports = [_render_container_port(ctx, port, host_network = pod.host_network) for port in container.ports.values()]
+    volume_mounts = sorted(
+        [render_volume_mount(ctx, mount) for mount in container.volume_mounts.values()],
+        key=_get_volume_mount_path
+    )
+
+    probes = container.probes
+
+    lifecycle = None
+    if not container.is_init_container:
+        lifecycle = render_lifecycle(ctx, container.lifecycle)
+
+    rendered = _core.Container(
+        name = container.name,
+        image = image(ctx, container.image),
+        env = env,
+        resources = resource_requirements(
+            memory = container.memory,
+            cpu = container.cpu,
+            storage = container.storage,
+        ),
+        lifecycle = lifecycle,
+        ports = ports,
+        volumeMounts = volume_mounts,
+        terminationMessagePolicy = "FallbackToLogsOnError",
+        **probes
+    )
+
+    if container.command != None:
+        rendered.command = container.command
+
+    if container.args != None:
+        rendered.args = container.args
+
+    if container.security != None:
+        rendered.securityContext = render_security_context(container.security, pod)
+
+    return rendered
+
+def _get_volume_mount_path(volume_mount):
+    return volume_mount.mountPath
+
+def _add_container_port(ctx, arguments, container_def):
+    container_def["ports"][arguments.port] = arguments
+
+def _render_container_port(ctx, port, host_network):
+    return _core.ContainerPort(
+        containerPort = port.port,
+        hostPort = port.port if host_network else None,
+        name = port.port_name,
+    )
+
+def container_resources(*, cpu, memory, container_name=None):
+    return container_plugin(
+        _set_container_resources,
+        cpu = cpu,
+        memory = memory,
+        container_name = container_name,
+    )
+
+def _set_container_resources(ctx, arguments, container_def):
+    container_def["cpu"] = arguments.cpu
+    container_def["memory"] = arguments.memory

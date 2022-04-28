@@ -1,0 +1,103 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions for creating and configuring Kubernetes [Job][]s, which support
+running fire-and-forget batch workloads.
+
+[job]: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
+"""
+
+load("config/kubernetes/core/lifecycle.sky", "restart_policy")
+load("config/kubernetes/core/pod.sky", "all_containers")
+load("config/kubernetes/meta/metadata.sky", "render_metadata")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "job_plugin")
+
+def job(ctx, *plugins, **kwargs):
+    """
+    Define a batch job that will run once.
+
+    A [Job][] manages a single execution of a batch workload by creating at least
+    one pod to do the task's work. In the case that the pod fails, the job may
+    create additional pods to retry depending on how it is configured.
+
+    [job]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#job-v1-batch
+
+    Args:
+        ctx: The Skycfg context from the `main` function.
+        *plugins: One or more plugins to configure the job.
+        **kwargs: Options for the [JobSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#jobspec-v1-batch).
+            A shortcut for the `job_options` plugin.
+
+    Returns:
+        A [Job](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#job-v1-batch)
+        Kubernetes protobuf message describing the configuration of the batch job.
+    """
+    job = {
+        "render": _render_job,
+        "type": "job",
+        "metadata": {},
+        "kwargs": {},
+    }
+
+    all_plugins = [
+        job_options(**_default_job_kwargs),
+        restart_policy("Never"),
+    ]
+    all_plugins.extend(plugins)
+    all_plugins.append(job_options(**kwargs))
+
+    plugin = compose_plugins(*all_plugins)
+    plugin.update_job(ctx, plugin, job)
+    plugin.update_pod(ctx, plugin, job["pod"])
+
+    for container in all_containers(job["pod"]):
+        plugin.update_containers(ctx, plugin, container)
+
+    return job["render"](ctx, job)
+
+def job_options(**kwargs):
+    """
+    Defines options for a batch job.
+
+    The arguments map directly to fields on the JobSpec in Kubernetes. The `job`
+    entrypoint applies some default options, but these can be overridden with this plugin.
+    One of the arguments in the Job spec is "ttlSecondsAfterFinished", which is set to a
+    default value of 30 days such that completed jobs are deleted in 30 days.
+
+    Args:
+        **kwargs: Options to apply to the batch job. These map directly to fields on the Kubernetes
+            [JobSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#jobspec-v1-batch).
+
+    Returns:
+        A plugin that applies the options to a batch job.
+    """
+    if kwargs.get("ttlSecondsAfterFinished") == None:
+        # Set 30 days default value for "ttlSecondsAfterFinished" field such that completed Jobs are deleted.
+        kwargs["ttlSecondsAfterFinished"] = 60 * 60 * 24 * 30
+    return job_plugin(
+        _update_job_options,
+        kwargs = kwargs,
+    )
+
+_batch = proto.package("k8s.io.api.batch.v1")
+
+_default_job_kwargs = {
+}
+
+def _update_job_options(ctx, plugin, job_def):
+    job_def["kwargs"].update(plugin.kwargs)
+
+def _render_job(ctx, job_def):
+    job_def["metadata"] = struct(**job_def["metadata"])
+    job = struct(**job_def)
+
+    pod_template = job.pod["render"](ctx, job.pod)
+    kwargs = job.kwargs
+
+    return _batch.Job(
+        metadata = render_metadata(ctx, job.metadata),
+        spec = _batch.JobSpec(
+            template = pod_template,
+            **kwargs
+        ),
+    )

@@ -1,0 +1,250 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load("config/kubernetes/core/container.sky", "container")
+load("config/kubernetes/core/probe.sky", "http_probe", "probes")
+load("config/kubernetes/core/volume.sky", "mount_host_volume")
+load(
+    "config/kubernetes/helpers/context.sky",
+    "get_env",
+    "get_henson_config",
+)
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load(
+    "config/kubernetes/networking/internal/helpers.sky",
+    "host_mount_stripe_cas",
+    "pod_mount",
+)
+load("config/kubernetes/networking/internal/envoy-monitor.sky", "ENVOY_MONITOR_PORT")
+load(
+    "config/kubernetes/networking/internal/config/envoy-config-srv-config.sky",
+    "CDS_PORT",
+    "DEBUG_PORT",
+    "ENVOY_CONFIG_SRV_RUNTIME_DIR",
+    "ENVOY_LOGS_DIR",
+    "ENVOY_RUNTIME_DIR",
+    "LDS_PORT",
+    "UNPRIVILEGED_ENVOY_PORT",
+    "XDS_DEBUG_BASEDIR",
+    "apply_user_config_ratchets",
+    "generate_sidecar_version",
+    "generate_sidecar_cli_args",
+    "generate_sidecar_config",
+)
+load(
+    "config/kubernetes/helpers/security.sky",
+    "mount_credentials_proxy",
+    "use_credentials_proxy",
+)
+
+def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_target, user_overrides):
+    apply_user_config_ratchets(config_target, user_overrides)
+    name = "envoy-config-srv"
+    return compose_plugins(
+        envoy_config_srv_container(
+            ctx,
+            name,
+            namespace,
+            local_consul_services,
+            config_target,
+            user_overrides,
+        ),
+        host_mount_stripe_cas(name),
+        # Need this for:
+        # - /pay/conf/env.yaml (currently dormant unless we omit --env-path)
+        # - /pay/conf/ec2_placement_availability_zone - we only know the AZ at
+        #   runtime, and this is important for configuring az-aware routing
+        mount_host_volume(
+            "/pay/conf",
+            container_name = name,
+            mount_args = {"read_only": True},
+            volume_args = {
+                "type": "Directory",
+                "reason": "envoy-config-srv sidecar needs to access to /pay/conf/{env.yaml, ec2_placement_availability_zone}",
+            },
+        ),
+        mount_host_volume(
+            XDS_DEBUG_BASEDIR,
+            container_name = name,
+            mount_args = {"read_only": False},
+            volume_args = {
+                "type": "Directory",
+                "reason": "envoy-config-srv sidecar must persist debug info",
+            },
+        ),
+        # When `use_envoy_admin_healthcheck: true`, envoy-config-srv writes the
+        # system flags here, to be consumed exactly-once by the next boot of envoy
+        pod_mount(name, ENVOY_RUNTIME_DIR),
+        # envoy-config-srv writes a drain file here when it is signalled to be drained
+        # in order to preserve the drain signal across restarts
+        pod_mount(name, ENVOY_CONFIG_SRV_RUNTIME_DIR),
+        # envoy-config-srv obtains service credentials from creds-proxy in order
+        # to mTLS connect to envoy-control-srv
+        use_credentials_proxy(),
+        mount_credentials_proxy(container_name = name),
+        # TODO(xyu): verify whether these mounts are needed
+        # - ENVOY_LOGS_DIR
+        # - consul-proxy
+    )
+
+def envoy_config_srv_container(ctx, self, namespace, local_consul_services, config_target, user_overrides):
+    args = generate_sidecar_cli_args(config_target, user_overrides)
+    egress_tier = args["egress_proxy_tier"]
+    if egress_tier != "" and egress_tier != "p0":
+        fail("Unrecognized egress proxy tier: %s" % egress_tier)
+
+    command = [
+        "/bin/envoy-config-srv",
+        "--use-raw-config-json=" + json.marshal(_envoy_config_srv_config(ctx, local_consul_services, config_target, user_overrides)),
+        # FIXME(xyu): We don't actually have easy access to this info on the
+        # host. Computing it requires deep host violations:
+        # 1. compute puppet root - this doesn't seem possible
+        #   - production = /etc/puppet/
+        #   - non-prod =   /etc/puppet/environments/<branch>
+        # 2. read the domain info to access the correct yaml config
+        #    cat /etc/puppet/config/$(cat /pay/conf/domain)/domain.yaml
+        # 3. extract the 'account' attribute
+        #
+        # For now, just hardcode or decide to use the defaults
+        "--machine-org=030465607062",
+        "--allowed-machine-orgs=030465607062",
+        # NB(xyu): Clear --env-path to remove its default value so that the
+        # combination of --cluster and --env are used instead.
+        # This means we are determining cluster and env using *deploy-time*
+        # info. This will be the wrong thing to do if our infra deploys to
+        # northwest and then some other system deploys a pod to a different
+        # region, in which case we will need to calculate the *runtime info*
+        "--env-path=",
+        "--cluster=%s" % config_target.region,
+        "--env=%s" % config_target.env,
+        # NB(xyu): This is actually the _identity_ used to compute reachability
+        "--host-type=%s" % namespace,
+        # NB(xyu): We can only expose this info at runtime, so setting this
+        # cli to read the file mounted from /pay/conf.
+        "--locality-zone=file:///pay/conf/ec2_placement_availability_zone",
+        "--listener-port=%s" % UNPRIVILEGED_ENVOY_PORT,
+        "--lds-addr=localhost:%s" % LDS_PORT,
+        "--debug-addr=0.0.0.0:%s" % DEBUG_PORT,
+        "--cds-addr=localhost:%s" % CDS_PORT,
+        "--debug-cluster=envoy-config-srv--local--debug",
+        "--log-path=%s" % ENVOY_LOGS_DIR,
+        "--stats-addr=localhost:%s" % ENVOY_MONITOR_PORT,
+        "--stats-prefix=envoy_config_srv.",
+        "--enable-inbound",
+        "--allowed-clusters=northwest",
+        "--allowed-clusters=east",
+        "--allowed-clusters=bom",
+        "--allowed-clusters=cmh",
+        "--allowed-clusters=pdx",
+        "--enable-fallback",
+        "--enable-outbound",
+        "--outbound-port=10080",
+        "--route-domains=service.envoy",
+        "--route-domains=service.envoy:10080",
+        "--dynamic-egress-proxy-cluster-name=%s" % ("dynamic-egress-proxy-p0" if egress_tier == "p0" else "big-dynamic-egress-proxy"),
+        "--trusted-egress-proxy-cluster-name=%s" % ("trusted-egress-proxy-p0" if egress_tier == "p0" else "big-trusted-egress-proxy"),
+        "--enable-egress-proxies-names=dynamic,trusted",
+        "--enable-egress-proxies-unix-socket",
+        "--mproxy-cluster=mproxy-%s" % args["mproxy_tier"],
+        "--enable-service-credentials",
+        "--enable-sds",
+        "--xds-log-dir=%s/$(STRIPE_POD_NAMESPACE)_$(STRIPE_POD_NAME)" % XDS_DEBUG_BASEDIR,
+        "--stripe-pod-ip=$(STRIPE_POD_IP)",
+        "--cluster-watch-addr=%s" % args["cluster_watch_addr"],
+        "--remove-query-params-from-access-logs",
+    ]
+
+    if args["enable_inbound_websockets"]:
+        command.append("--enable-websockets")
+
+
+    return container(
+        name = self,
+        image = _envoy_config_srv_image(ctx, config_target, user_overrides),
+        command = command,
+        sidecar_service = self,
+        plugins = [
+            probes(
+                readiness = http_probe(
+                    port = DEBUG_PORT,
+                    path = "/msp-infra-ready",
+                ),
+            ),
+        ],
+    )
+
+def _envoy_config_srv_image(ctx, config_target, user_overrides):
+    version = generate_sidecar_version(config_target, user_overrides)
+    # NB: If version is from a non-master build, you are manually testing a non-master build and must change
+    # stripe/traffic to stripe-qa/traffic
+    return "containers.global.prod.stripe.io/stripe/traffic/envoy-config-srv@sha256:%s" % version["version"]
+
+def _henson_inbound_acl(acl):
+    return {
+        "consul_service": acl.consul_service,
+        "allowed_clients": [
+            {"host_type": client.host_type}
+            for client in acl.allowed_clients
+        ],
+    }
+
+def _henson_outbound_acl(acl):
+    return {
+        "service_name": acl.service_name,
+        "mtls_authorities": acl.mtls_authorities,
+    }
+
+def _henson_listener_config(from_proto):
+    if from_proto == None:
+        return {"inbound_listeners": [], "outbound_services": []}
+
+    return {
+        "inbound_listeners": [
+            _henson_inbound_acl(acl)
+            for acl in from_proto.inbound_listeners
+        ],
+        "outbound_services": [
+            _henson_outbound_acl(acl)
+            for acl in from_proto.outbound_services
+        ],
+    }
+
+def _envoy_config_srv_config(ctx, local_consul_services, config_target, user_overrides):
+    henson_acls_proto = get_henson_config(ctx).inbound_config
+
+    # XXX(xyu): This is gross, but we have to transform in order to figure out
+    # whether the outbound service acls are truly empty
+    henson_acls = _henson_listener_config(henson_acls_proto)
+
+    cfg = generate_sidecar_config(config_target, user_overrides)
+    if (cfg["enable_local_reachability"] == True and
+        henson_acls["outbound_services"] == []):
+        print(
+            "".join([
+                "WARNING: Shared MSP requires you to declare your outbound service ",
+                "dependencies, but you've declared an empty set! If you are sure that ",
+                "your service doesn't egress any traffic, then you are all set!\n",
+                "\nOtherwise:\n",
+                "  - Please use the wizard in Amp at http://go/shared-msp/migration-guide\n",
+                "  - For additional help, please ping us in #outbound-acls\n",
+            ]),
+        )
+    if (cfg["enable_local_reachability"] == False):
+        print(
+            "".join([
+                "WARNING: You are using a breakglass to infer rather than explicitly declare ",
+                "Outbound ACLs for your service (#outbound-acls). ",
+                "This is deprecated and no longer supported. ",
+                "If traffic to/from your service breaks, you are on your own, so ",
+                "please revert use of this breakglass as soon as you can.",
+            ]),
+        )
+
+    cfg.update({
+        "henson_listener_config": henson_acls,
+        # NB(xyu): _pod-local_ property synthesized from service registration
+        # Proto schema: go/kube-tools/blob/master/envoy-config-srv/proto/config/config.proto#L259-L277
+        "static_local_consul": {
+            "agent_services": local_consul_services,
+        },
+    })
+
+    return {"sidecar": cfg}

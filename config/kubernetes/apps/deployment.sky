@@ -1,0 +1,171 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions for creating and configuring Kubernetes [Deployment][]s, which are the main way that
+we run long-running service workloads on Kubernetes.
+
+[deployment]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+"""
+load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
+load("config/kubernetes/core/pod.sky", "all_containers", "main_container")
+load("config/kubernetes/helpers/bluegreen.sky", "with_blue_green_traffic_shifting", "add_blue_green_strategy")
+load("config/kubernetes/core/lifecycle.sky", "prestop_all_containers", "prestop_all_infra_sidecars", "DEFAULT_GRACE_PERIOD_SECONDS", "grace_period", "generate_prestop_sleep_action", "DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME")
+load("config/kubernetes/helpers/rolling.sky", "add_rolling_speed_override")
+load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector", "get_availability_tier_from_metadata")
+load("config/kubernetes/networking/public/networking.sky", "networking")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "deployment_plugin")
+load("config/kubernetes/sidecars/metrics.sky", "metrics")
+load("config/kubernetes/helpers/context.sky", "get_env")
+load("config/kubernetes/core/volume.sky", "volume_mount_all_containers")
+load("config/kubernetes/helpers/ldap.sky", "mount_ldap_host_volumes", "LDAP_MOUNT_NAME")
+
+def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwargs):
+    """
+    Schedule one or more instances of a stateless service.
+
+    A Deployment allows running one of more instances (pods) of a service, and facilitates smoothly
+    rolling out new versions of those instances when the configuration is changed. Most stateless
+    services that run on Kubernetes are described by a deployment.
+
+    Args:
+        ctx: The Skycfg context from the `main` function.
+        *plugins: One or more plugins to configure the service.
+        shared_msp: boolean which is True iff the deployment should go to shared MSP (default is False)
+        mount_ldap_volumes: Whether we should auto-apply the
+            `mount_ldap_host_volumes` plugin. Defaults to true to mirror pre-MSP, but
+            some applications may wish to opt-out if it conflicts with other mounts
+            in their countainer image.
+        **kwargs: Options for the [DeploymentSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deploymentspec-v1-apps).
+            A shortcut for the `deployment_options` plugin.
+
+    Returns:
+        A [Deployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deployment-v1-apps)
+        Kubernetes protobuf message describing the configuration of the service.
+    """
+
+    deployment = {
+        "render": _render_deployment,
+        "type": "deployment",
+        "metadata": {},
+        "shared_msp": shared_msp,
+        "registered_services": [],
+        "kwargs": {},
+        "networking_config": None,
+        "metrics_config": None
+    }
+
+    all_plugins = [
+        deployment_options(
+            strategy = rolling_update_strategy(
+                max_unavailable = 1,
+                max_surge = 1,
+            ),
+            # allow plenty of time for autoscale-srv to scale up capacity for the deployment
+            progressDeadlineSeconds = 3600,
+        ),
+        add_blue_green_strategy(), # Do this early to allow overrides by the user's plugins
+    ]
+    all_plugins.extend(plugins)
+    all_plugins.append(deployment_options(**kwargs))
+    all_plugins.append(with_blue_green_traffic_shifting())
+    all_plugins.append(add_rolling_speed_override())
+
+    plugin = compose_plugins(*all_plugins)
+    _apply_plugin(ctx, plugin, deployment)
+
+    # for shared msp, services get registered at update time, but the plugin needs them
+    # at create time, so we init and update the networking plugin after all the others
+    if shared_msp:
+        namespace = deployment["metadata"].get("namespace", None)
+        if namespace == None:
+            fail("Namespace not set for shared MSP deployment. Perhaps missing a namespace param to your pod?")
+
+        # If no grace period is set, use the default
+        _apply_plugin(ctx, compose_plugins(grace_period(DEFAULT_GRACE_PERIOD_SECONDS, overwrite = False)), deployment)
+        pod_termination_grace_period_seconds = deployment["pod"]["grace_period"]
+
+        networking_plugin = networking(
+            ctx,
+            namespace=namespace,
+            availability_tier=get_availability_tier_from_metadata(deployment["metadata"]),
+            host_network=False,
+            register_services=deployment['registered_services'],
+            config=deployment["networking_config"],
+            pod_termination_grace_period_seconds=pod_termination_grace_period_seconds,
+        )
+        _apply_plugin(ctx, networking_plugin, deployment)
+        # Automatically add the metrics sidecar to any deployments. If we encounter a service that
+        # wants to disable this we can add a flag.
+        _apply_plugin(ctx, metrics(ctx, config=deployment["metrics_config"]), deployment)
+
+        _apply_plugin(ctx, compose_plugins(
+            prestop_all_infra_sidecars(pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
+            prestop_all_containers(generate_prestop_sleep_action(DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME)),
+            volume_mount_all_containers(
+                "/usr/stripe/bin/kube-prestop",
+                read_only=True,
+            ),
+        ), deployment)
+
+
+    # Mount ldap volumes to a container if a host mount named etc-lmscache does not exist.
+    # Repeatedly mounting the same directory causes a failed deploy.
+    # Currently, some services explicitly mount etc-lmscache by calling this plugin.
+    # We want to mount this directory to all containers by default without
+    # breaking existing services.
+    # We cannot add this plugin to the default plugin list above (`all_plugins`) as it requires
+    # the plugins provided in the *plugins argument to run beforehand. The default plugin list
+    # may already have resulted in mounting of /etc/lmscache
+    container = main_container(deployment["pod"])
+    if mount_ldap_volumes and container and LDAP_MOUNT_NAME not in container["volume_mounts"]:
+        _apply_plugin(ctx, compose_plugins(mount_ldap_host_volumes()), deployment)
+
+    return deployment["render"](ctx, deployment)
+
+def _apply_plugin(ctx, plugin, deployment):
+    plugin.update_deployment(ctx, plugin, deployment)
+    plugin.update_pod(ctx, plugin, deployment["pod"])
+
+    for container in all_containers(deployment["pod"]):
+        plugin.update_containers(ctx, plugin, container)
+
+
+def deployment_options(**kwargs):
+    """
+    Defines options for a deployment.
+
+    The arguments map directly to fields on the DeploymentSpec in Kubernetes. Commonly used
+    options include `replicas` and `strategy`.
+
+    Args:
+        **kwargs: Options to apply to the deployment. These map directly to fields on the Kubernetes
+            [DeploymentSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deploymentspec-v1-apps).
+
+    Returns:
+        A plugin that applies the options to a deployment.
+    """
+    return deployment_plugin(
+        _update_deployment_options,
+        kwargs = kwargs,
+    )
+
+_apps = proto.package("k8s.io.api.apps.v1")
+_core = proto.package("k8s.io.api.core.v1")
+
+def _update_deployment_options(ctx, plugin, deployment_def):
+    deployment_def["kwargs"].update(plugin.kwargs)
+
+def _render_deployment(ctx, deployment_def):
+    deployment_def["metadata"] = struct(**deployment_def["metadata"])
+    deployment = struct(**deployment_def)
+
+    pod_template = deployment.pod["render"](ctx, deployment.pod)
+
+    return _apps.Deployment(
+        metadata = render_metadata(ctx, deployment.metadata),
+        spec = _apps.DeploymentSpec(
+            selector = render_selector(ctx, deployment.metadata),
+            template = pod_template,
+            **deployment.kwargs
+        ),
+    )

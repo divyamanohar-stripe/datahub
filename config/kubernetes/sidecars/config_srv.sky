@@ -1,0 +1,71 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/core/probe.sky", "http_probe")
+load("config/kubernetes/core/env_var.sky", "default_env_vars")
+load("config/kubernetes/sidecars/variables.sky", "CONFIG_SRV_CONTAINER_ENV", "CONFIG_SRV_CONTAINER_DIGEST")
+load("config/kubernetes/core/volume.sky", "render_volume_mount", "volume_mount")
+
+sidecar_name = "config-srv-sidecar"
+
+_core = proto.package("k8s.io.api.core.v1")
+
+def config_srv_sidecar(*, http_port = 10104, grpc_port = 10105):
+    """
+    Sets up a read-through cache in front of config-srv as a sidecar.
+    Used when reading values from config-srv in Ruby with the client library.
+
+    Args:
+        http_port: The port that the local HTTP server should serve on.
+            By default, it uses port 10104, which consumers should already be configured to use.
+        grpc_port: The port that the local GRPC server should serve on.
+            By default, it uses port 10105, which consumers should already be configured to use.
+
+    Returns:
+        A plugin that adds the sidecar container to the pod.
+    """
+
+    return pod_plugin(
+        _update_pod,
+        http_port = http_port,
+        grpc_port = grpc_port,
+    )
+
+def _update_pod(ctx, plugin, pod_def):
+    if "config_srv_sidecar_container" in pod_def:
+        return
+
+    container_def = {
+        "render": _config_srv_sidecar_container,
+        "name": sidecar_name,
+        "http_port": plugin.http_port,
+        "grpc_port": plugin.grpc_port,
+    }
+    pod_def["config_srv_sidecar_container"] = container_def
+    pod_def["containers"].append(container_def)
+
+def _config_srv_sidecar_container(ctx, container_def, pod):
+    container = struct(**container_def)
+
+    return _core.Container(
+        name = container.name,
+        image = image(
+            ctx,
+            name = "stripe/deploy-and-staging/config-srv-sidecar",
+            label = CONFIG_SRV_CONTAINER_DIGEST,
+            env = CONFIG_SRV_CONTAINER_ENV,
+        ),
+        command = [
+            "/pay/deploy/gocode/current/config-srv-sidecar/config-srv-sidecar",
+            "--http-port=%s" % container.http_port,
+            "--grpc-port=%s" % container.grpc_port,
+            # This will communicate with the veneur instance running on the host in Dedicated MSP,
+            # and the metrics() sidecar on Shared MSP (which is always present)
+            "--veneur-address=udp://127.0.0.1:8128",
+        ],
+        env = default_env_vars(ctx),
+        # credentials-proxy needed to sign aws requests for s3 fallback
+        volumeMounts = [
+            render_volume_mount(ctx, volume_mount("/run/stripe/credentials-proxy")),
+        ],
+    )

@@ -1,0 +1,409 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+# This file defines control plane replica sets for Monster isolation groups
+
+load("config/kubernetes/async-processing/monster/config.sky",
+     "AVAILABILITY_TIER_A100", "AVAILABILITY_TIER_A200", "AVAILABILITY_TIER_A400", "AVAILABILITY_TIER_A400_AUTO")
+load("config/kubernetes/async-processing/monster/hostset_control_plane.sky",
+     "cluster", "host_set", "no_replicas_cluster")
+
+
+A100_HOST_SETS = struct(
+    availability_tier=AVAILABILITY_TIER_A100,
+    hostsets=[
+        host_set(
+            "high_priority_emails",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "high_priority_webhooks",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+    ]
+)
+
+A200_HOST_SETS = struct(
+    availability_tier=AVAILABILITY_TIER_A200,
+    hostsets=[
+        host_set(
+            "api-platform",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=30),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "billing",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "capital",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "cards-authz",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "clearing",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "connect",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "connections",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "emails",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "frontline_experience",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "issuing",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "latam",
+            qa={
+                "northwest":    cluster(api_replicas=2, feeder_replicas=2),
+                "bom":          cluster(api_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(api_replicas=2, feeder_replicas=3),
+                "bom":          cluster(api_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "merchant-fraud-ml",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=5),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "mobile",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "model-ingestion",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=32),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "payment-flows",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "payouts",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "radar",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "review-platform",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=3),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "risk",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=7),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "usersec",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=9),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "verifications",
+            qa={
+                "northwest":    cluster(api_replicas=2, feeder_replicas=2),
+                "bom":          cluster(api_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(api_replicas=2, feeder_replicas=3),
+                "bom":          cluster(api_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "webhooks",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=32),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            }
+        ),
+    ]
+)
+
+A400_HOST_SETS = struct(
+    availability_tier=AVAILABILITY_TIER_A400,
+    hostsets=[
+        host_set(
+            "general",
+            is_canary=True,
+            qa={
+                "northwest":    cluster(api_replicas=2, feeder_replicas=5),
+                "bom":          cluster(api_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(api_replicas=15, feeder_replicas=65),
+                # As of 2022-02-08, monster-api in bom has ~1/50th the traffic of northwest
+                # but shows CPU load spikes on more than 2 boxes, so we're slightly overprovisioning
+                # as a starting point
+                "bom":          cluster(api_replicas=3, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, feeder_replicas=2),
+            }
+        ),
+        host_set(
+            "sigma",
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          no_replicas_cluster(),
+            },
+            prod={
+                "northwest":    cluster(feeder_replicas=40),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          no_replicas_cluster(),
+            }
+        ),
+    ]
+)
+
+TEST_HOST_SET = struct(
+    availability_tier=AVAILABILITY_TIER_A400,
+    hostsets=[
+        host_set(
+            "monster-test",
+            is_canary=True,
+            qa={
+                "northwest":    cluster(feeder_replicas=2),
+                "bom":          cluster(feeder_replicas=2),
+                "cmh":          cluster(feeder_replicas=2),
+            },
+            prod={
+                "northwest": cluster(
+                    feeder_replicas=0,
+                    fanout_replicas=0,
+                    express_replicas=0,
+                    sweeper_replicas=0,
+                ),
+                "bom": cluster(
+                    feeder_replicas=0,
+                    fanout_replicas=0,
+                    express_replicas=0,
+                    sweeper_replicas=0,
+                ),
+                "cmh": cluster(
+                    feeder_replicas=0,
+                    fanout_replicas=0,
+                    express_replicas=0,
+                    sweeper_replicas=0,
+                )
+            }
+        ),
+    ]
+)
+
+HOST_SETS_LIST = [
+    A100_HOST_SETS,
+    A200_HOST_SETS,
+    A400_HOST_SETS,
+    TEST_HOST_SET
+]

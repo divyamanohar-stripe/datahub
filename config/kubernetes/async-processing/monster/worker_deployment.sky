@@ -1,0 +1,288 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load("config/kubernetes/async-processing/monster/config.sky", "get_msp_availability_tier")
+load("config/kubernetes/async-processing/monster/secrets.sky", "monster_secrets")
+load("config/kubernetes/async-processing/monster/util.sky", "generate_consul_name")
+load("config/kubernetes/core/container.sky", "container", "container_port")
+load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/core/volume.sky", "mount_pod_volume")
+load("config/kubernetes/entrypoints.sky", "deployment")
+load("config/kubernetes/helpers/dynamic.sky", "dynamic_replicas")
+load("config/kubernetes/helpers/failure_threshold.sky", "failure_threshold")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/ldap.sky", "mount_ldap_host_volumes")
+load("config/kubernetes/helpers/node_selectors.sky", "host_set")
+load("config/kubernetes/helpers/security.sky", "add_security_groups")
+load("config/kubernetes/meta/metadata.sky", "labels")
+load("config/kubernetes/networking/public/config.sky", "networking_config")
+load("config/kubernetes/pay-server.sky", "default_pay_server_image", "pay_server_pod", "einhorn_service")
+load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
+load("config/kubernetes/sidecars/envoy_ratelimit.sky", "ratelimit_sidecar")
+load("config/kubernetes/sidecars/geoip.sky", "use_geoip_databases")
+load("config/kubernetes/sidecars/offload_profiles.sky", "use_offload_profiles")
+
+def generate_pod_name(prefix, monster_service, monster_isolation_group, suffix):
+    return "monster-{}-{}-{}{}".format(prefix, worker_type(monster_service), monster_isolation_group, suffix)
+
+# Used to avoid churning the pod names
+def worker_type(monster_service):
+    return {
+        "consume-workers": "workers",
+        "fanout-workers": "fanout",
+        "config-workers": "config",
+    }[monster_service]
+
+def monster_deployment_labels(config):
+    return labels({
+        "monster.stripe.io/ig": config.monster_isolation_group,
+        "monster.stripe.io/tier": config.monster_availability_tier,
+        "monster.stripe.io/service": worker_type(config.monster_service),
+    })
+
+def monster_deployment(ctx, config, port, shared_msp=False, suffix = ""):
+    if shared_msp:
+        return monster_deployment_shared_msp(ctx, config, port, suffix=suffix)
+    else:
+        return monster_deployment_dedicated_msp(ctx, config, port, suffix=suffix)
+
+# Create a k8s deployment for Dedicated MSP
+def monster_deployment_dedicated_msp(ctx, config, port, suffix = ""):
+    formatted_isolation_group = config.monster_isolation_group.replace("_", "-")
+    name = generate_pod_name("msp", config.monster_service, formatted_isolation_group, suffix)
+    env_vars = {
+      "MONSTER_IS_MSP": "1", # TODO(tonyyang): remove this and other pay-server usage
+      "MONSTER_SERVICE": config.monster_service,
+      "MONSTER_ISOLATION_GROUP": config.monster_isolation_group,
+      "MONSTER_DEPLOYMENT": name,
+    }
+    env_vars.update(config.extra_env or [])
+
+    return deployment(
+        ctx,
+
+        pay_server_pod(
+            # Example for consuming workers: monster-msp-consume-workers-radar, maybe with "-canary"
+            name = name,
+            image = default_pay_server_image,
+            # All monster workers use this host type for ACLs etc
+            host_type = "monsterworkersbox",
+            command = ["/deploy/pay-server/current/{}".format(config.script)],
+            cpu = config.cpu,
+            memory = config.memory,
+        ),
+
+        einhorn_service(
+            name = generate_consul_name(formatted_isolation_group, config.monster_service),
+            workers = config.einhorn_workers,
+            # Ports must be unique per host, it's just easier to give each pod a unique port.
+            port = port,
+            tags = ["http2"],
+            meta = {
+                "lb_policy": "LEAST_REQUEST",
+                "monster_isolation_group": config.monster_isolation_group,
+                "monster_service": config.monster_service,
+            },
+            nonblocking = True,
+            signal_timeout = 360,
+            max_unacked = 1,
+            max_upgrade_additional = 1,
+            nice = "15:0",
+            gc_before_fork = True,
+            seconds = "0.1",  # skycfg doesn't support floats
+            kill_children_on_exit = True,
+            preload_or_fail = True,
+            startup_failure_threshold = 900,
+        ),
+
+        container_env_vars(env_vars),
+
+        # Identify the deployment
+        monster_deployment_labels(config),
+
+        # Tells k8s to run on the msp-$tier nodes.
+        host_set("msp-{}".format(config.monster_availability_tier)),
+
+        # Make GeoIP cron autorefresher files accessible to service
+        use_geoip_databases(use_legacy_host_mounts = True),
+
+        # Required for Authz usage in monster consumers
+        mount_ldap_host_volumes(),
+
+        monster_secrets(),
+        auto_secrets(autoload_dir="/pay/secrets"),
+
+        failure_threshold(config.failure_threshold),
+        ratelimit_sidecar(ctx, label="latest", host_type="monsterworkersbox"),
+        use_offload_profiles(),
+
+        strategy = config.strategy,
+        replicas = config.replicas,
+
+    )
+
+# Create a shared MSP deployment
+def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
+    formatted_isolation_group = config.monster_isolation_group.replace("_", "-")
+    name = generate_pod_name("shared-msp", config.monster_service, formatted_isolation_group, suffix)
+    env_vars = {
+      "MONSTER_IS_MSP": "1", # TODO(tonyyang): remove this and other pay-server usage
+      "MONSTER_SERVICE": config.monster_service,
+      "MONSTER_ISOLATION_GROUP": config.monster_isolation_group,
+      "MONSTER_DEPLOYMENT": name,
+    }
+    env_vars.update(config.extra_env or [])
+
+    return deployment(
+        ctx,
+
+        pay_server_pod(
+            # Example for consuming workers: monster-shared-msp-consume-workers-radar, maybe with "-canary"
+            name = name,
+            image = default_pay_server_image,
+            # Namespaces replace host types for service identity in Shared MSP
+            namespace = "monsterworkersbox",
+            command = ["/deploy/pay-server/current/{}".format(config.script)],
+            instance_type = config.aws_instance_size,
+            availability_tier = get_msp_availability_tier(config.monster_availability_tier),
+        ),
+
+        einhorn_service(
+            name = generate_consul_name(formatted_isolation_group, config.monster_service),
+            workers = config.einhorn_workers,
+            # Ports must be unique per host, it's just easier to give each pod a unique port.
+            port = port,
+            tags = ["http2"],
+            meta = {
+                "lb_policy": "LEAST_REQUEST",
+                "monster_isolation_group": config.monster_isolation_group,
+                "monster_service": config.monster_service,
+            },
+            nonblocking = True,
+            signal_timeout = 360,
+            max_unacked = 1,
+            max_upgrade_additional = 1,
+            nice = "15:0",
+            gc_before_fork = True,
+            seconds = "0.1",  # skycfg doesn't support floats
+            kill_children_on_exit = True,
+            preload_or_fail = True,
+            startup_failure_threshold = 900,
+        ),
+
+        container_env_vars(env_vars),
+
+        # Identify the deployment
+        monster_deployment_labels(config),
+
+        # Make GeoIP cron autorefresher files accessible to service
+        use_geoip_databases(),
+
+        # Sidecar container running NSQ for payouts use cases
+        container(
+            name = "nsqd",
+            image = image(
+                ctx,
+                "stripe/ruby-infra/nsq",
+                label = "latest",
+            ),
+            command = ["/nsqd", "--data-path=/data"],
+        ),
+        mount_pod_volume("/data", mount_args = { "read_only": False }, container_name = "nsqd"),
+        container_port(4150, container_name = "nsqd"),
+        container_port(4151, container_name = "nsqd"),
+
+        # Required for Authz usage in monster consumers
+        mount_ldap_host_volumes(),
+
+        monster_secrets(),
+        auto_secrets(autoload_dir="/pay/secrets"),
+
+        add_security_groups(
+          "monsterworkersbox",
+          "nsq-producers",
+          "pay-server",
+          "s3_ap_cidrs",
+          "s3_us_cidrs",
+        ),
+
+        failure_threshold(config.failure_threshold),
+
+        networking_config(enable_global_ratelimit = True), # replaces host-type based rate limit sidecars
+        use_offload_profiles(),
+        shared_msp = True,
+
+        strategy = config.strategy,
+        replicas = config.replicas,
+
+    )
+
+# This is a duplicate fn to create monster pods w/ dynamic replicas. TODO: DRY
+def monster_deployment_dynamic(ctx, config, port, suffix = ""):
+    formatted_isolation_group = config.monster_isolation_group.replace("_", "-")
+    name = generate_pod_name("msp", config.monster_service, formatted_isolation_group, suffix)
+    env_vars = {
+      "MONSTER_IS_MSP": "1",
+      "MONSTER_SERVICE": config.monster_service,
+      "MONSTER_ISOLATION_GROUP": config.monster_isolation_group,
+      "MONSTER_DEPLOYMENT": name,
+    }
+    env_vars.update(config.extra_env or [])
+
+    return deployment(
+        ctx,
+
+        pay_server_pod(
+            # Example for consuming workers: monster-msp-consume-workers-radar, maybe with "-canary"
+            name = name,
+            # All monster workers use this host type for ACLs etc
+            host_type = "monsterworkersbox",
+            command = ["/deploy/pay-server/current/{}".format(config.script)],
+            cpu = config.cpu,
+            memory = config.memory,
+        ),
+
+        einhorn_service(
+            name = generate_consul_name(formatted_isolation_group, config.monster_service),
+            workers = config.einhorn_workers,
+            # Ports must be unique per host, it's just easier to give each pod a unique port.
+            port = port,
+            tags = ["http2"],
+            meta = {
+                "lb_policy": "LEAST_REQUEST",
+                "monster_isolation_group": config.monster_isolation_group,
+                "monster_service": config.monster_service,
+            },
+            nonblocking = True,
+            signal_timeout = 360,
+            max_unacked = 1,
+            max_upgrade_additional = 1,
+            nice = "15:0",
+            gc_before_fork = True,
+            seconds = "0.1",  # skycfg doesn't support floats
+            kill_children_on_exit = True,
+            preload_or_fail = True,
+            startup_failure_threshold = 1200,
+        ),
+
+        container_env_vars(env_vars),
+
+        # Tells k8s to run on the msp-$tier nodes.
+        host_set("msp-{}".format(config.monster_availability_tier)),
+
+        # Make GeoIP cron autorefresher files accessible to service
+        use_geoip_databases(use_legacy_host_mounts = True),
+
+        # Required for Authz usage in monster consumers
+        mount_ldap_host_volumes(),
+
+        monster_secrets(),
+        auto_secrets(autoload_dir="/pay/secrets"),
+
+        dynamic_replicas(
+            config.dynamic_replicas.desired,
+            config.dynamic_replicas.max,
+            config.dynamic_replicas.min
+        ),
+        ratelimit_sidecar(ctx, label="latest", host_type="monsterworkersbox"),
+        use_offload_profiles(),
+        strategy = config.strategy,
+    )

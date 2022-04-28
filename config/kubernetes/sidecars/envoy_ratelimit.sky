@@ -1,0 +1,86 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+# team: reliability-patterns-and-practices
+load("config/kubernetes/core/container.sky", "container", "container_port")
+load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/helpers/context.sky", "get_env", "get_cluster")
+load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+
+
+
+# Defines how to extract the kubernetes namespace value and pass it process
+#   `env_var` defines the environment variable within the pod runtime environment in which to store the value
+#   `tag_key` defines the key of the tag/dimension that will be added to metrics
+#   `field` defines what the value of the environment variable will be. It is a reference to fields from the [kubernetes downwards api](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables)
+NAMESPACE = struct(
+    env_var = "K8S_NAMESPACE",
+    tag_key = "namespace",
+    field = "metadata.namespace",
+)
+
+# We support the following:
+# bom - QA and Prod
+# northwest - QA and Prod
+# cmh - QA (don't fail but there is no redis cluster in QA), Preprod, Prod (nw cluster)
+# All other options will fail.
+def get_redis_cluster_addr(ctx):
+    if get_cluster(ctx) not in ["bom", "northwest", "cmh"]:
+        fail("Invalid cluster/env combination: {}/{}".format(get_cluster(ctx), get_env(ctx)))
+
+    if get_cluster(ctx) == "cmh":
+        if get_env(ctx) == "qa":
+            # Returning empty string here is equivalent to turning off global ratelimit.
+            return ""
+
+    # Don't allow bom/northwest to have preprod
+    if get_cluster(ctx) in ["bom", "northwest"] and get_env(ctx) == "preprod":
+        fail("Invalid cluster/env combination: {}/{}".format(get_cluster(ctx), get_env(ctx)))
+
+    return "service-to-service-ratelimit.elasticache.{}.{}.stripe.io:6379".format(get_cluster(ctx), get_env(ctx))
+
+def get_config_srv_addr(ctx):
+    # BOM doesn't have config-srv.
+    # CMH, NW do have config-srv
+    if get_cluster(ctx) == "bom":
+        return "config-srv.northwest.service.envoy:10080"
+    else:
+        return "config-srv.service.envoy:10080"
+
+def ratelimit_sidecar(ctx, label, host_type):
+    """
+    Adds the Envoy-RateLimit sidecar to the deployment.
+    This sidecar is needed to perform global rate-limiting.
+    Ports exposed/Listeners:
+        20081 - GRPC, used by Envoy calling into the sidecar
+        20082 - HTTP
+
+    Args:
+        label: DEPRECATED (no longer used)
+        host_type: The logical host-type/pod-type. Used by the sidecar when loading configuration.
+
+    Returns:
+        A plugin that installs the envoy-ratelimit-srv sidecar.
+    """
+    command = ["/bin/envoy-ratelimit-srv", "--host-type", host_type, "--stats-addr", "127.0.0.1:8200", "--use-config-srv", "--config-srv-address", get_config_srv_addr(ctx), "--redis-cluster-address", get_redis_cluster_addr(ctx), "--use-global-ratelimiter"]
+    return compose_plugins(
+        container(
+            name = "envoy-ratelimit-srv",
+            image = sidecar_image(ctx,
+                name = "envoy-ratelimit-srv-image",
+                fallback = image(
+                    ctx,
+                    "stripe/traffic/envoy-ratelimit-srv",
+                    label = "latest",
+                ),
+            ),
+            command = command,
+            sidecar_service = "envoy-ratelimit-srv-image",
+            plugins = [
+                container_env_vars(from_fields = {
+                    NAMESPACE.env_var: NAMESPACE.field,
+                }),
+            ],
+        ),
+        container_port(20081, "envoy-ratelimit-srv", "grpc"),
+        container_port(20082, "envoy-ratelimit-srv", "http"),
+    )

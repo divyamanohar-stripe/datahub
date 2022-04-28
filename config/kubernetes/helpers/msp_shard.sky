@@ -1,0 +1,134 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Plugins for annotating which shard a pod will be deployed to.
+"""
+
+load("config/kubernetes/core/generic.sky", "is_dedicated_msp", "is_shared_msp")
+load("config/kubernetes/helpers/context.sky", "get_target_shard", "get_env", "get_cluster")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/conditional.sky", "conditional_plugin")
+load("config/kubernetes/plugins/types.sky", "any_resource_plugin")
+
+# TODO(dfradette): remove this annotation once Amp has been changed to use `stripe.io/msp-shard`
+MSP_CLUSTER_ANNOTATION = "stripe.io/msp-cluster"
+
+MSP_SHARD_ANNOTATION = "stripe.io/msp-shard"
+
+def _shard(name, *, shared_msp=True):
+    return struct(name=name, shared_msp=shared_msp)
+
+ENV_CLUSTER_SHARDS = {
+    "qa": {
+        "bom": [_shard("kubemaster")],
+        "cmh": [_shard("kubemaster")],
+        "east": [_shard("kubemaster")],
+        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb")],
+    },
+    "preprod": {
+        "cmh": [_shard("kubemaster")]
+    },
+    "prod": {
+        "bom": [_shard("kubemaster")],
+        "cmh": [_shard("kubemaster")],
+        "east": [_shard("kubemaster")],
+        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb")],
+    },
+}
+
+
+def all_available_shards(ctx, shared_msp=None):
+    """
+    Returns all available shards based on the current Henson context.
+    Args:
+      ctx: The Henson context.
+      shared_msp: If specified, only return shards that do (True) or don't (False) support Shared MSP.
+    """
+    clusters = ENV_CLUSTER_SHARDS.get(get_env(ctx), {})
+    shards = clusters.get(get_cluster(ctx), [])
+    if shared_msp == None:
+        return [s.name for s in shards]
+    return [s.name for s in shards if s.shared_msp == shared_msp]
+
+def msp_shard(shard):
+    """
+    Specify the MSP shard that the pod will be deployed to. Will error if the specified
+    shard is not supported in the given context.
+    Args:
+        shard: The name of the MSP shard.
+    """
+    return any_resource_plugin(_set_msp_shard, shard = shard)
+
+def _set_msp_shard(ctx, plugin, resource_def):
+    shard = getattr(plugin, "shard")
+
+    if shard not in all_available_shards(ctx):
+        fail(
+            "`{shard}` is not available in {env}-{cluster}".format(
+            shard = shard,
+            env = get_env(ctx),
+            cluster = get_cluster(ctx),
+        ))
+
+    resource_def["metadata"]["annotations"].update(
+            _shard_annotations(shard),
+    )
+
+def prefer_msp_shard(name = "kubeapiaa"):
+  """
+  Selects the shard if it's available within the current Henson context. If you are not
+  on Orchestration, this probably isn't the plugin you are looking for!
+  Args:
+    name: The name of the MSP shard. Defaults to 'kubeapiaa'.
+  """
+  return any_resource_plugin(_prefer_msp_shard, preferred = name)
+
+def _prefer_msp_shard(ctx, plugin, resource_def):
+    preferred = getattr(plugin, "preferred")
+    available_shards = all_available_shards(ctx)
+
+    shard = "kubemaster"
+    if preferred in available_shards:
+        shard = preferred
+
+    resource_def["metadata"]["annotations"].update(
+        _shard_annotations(shard)
+    )
+
+def autoset_shard():
+    """
+    Returns a plugin that will automatically set the MSP
+    target resource's shard to an appropriate selection.
+    """
+    return compose_plugins(
+        conditional_plugin(
+            condition=is_shared_msp,
+            plugin=any_resource_plugin(_shard_from_henson),
+        ),
+        conditional_plugin(
+            condition=is_dedicated_msp,
+            # legacy dedicated MSP services are fixed to run on kubemaster
+            # for the time being
+            plugin=msp_shard("kubemaster"),
+        ),
+    )
+
+def _shard_from_henson(ctx, plugin, resource_def):
+    """
+    Set the MSP target resource's shard to the shard provided by henson. Henson
+    will factor in the deployment's cluster and env, load balancing
+    considerations, as well as any explicit user overwrites to provide
+    a shard that makes sense.
+    """
+    shard = get_target_shard(ctx)
+    if not shard:
+        print("Got None shard selection from henson ctx")
+    resource_def["metadata"]["annotations"].update(
+        _shard_annotations(shard)
+    )
+
+
+def _shard_annotations(shard):
+    return {
+        MSP_CLUSTER_ANNOTATION: shard,
+        MSP_SHARD_ANNOTATION: shard,
+    }

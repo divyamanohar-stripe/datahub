@@ -1,0 +1,170 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Helper functions for configuring security properties of your service
+"""
+
+
+load("config/kubernetes/plugins/types.sky", "pod_or_container_plugin", "pod_plugin", "container_plugin")
+load("config/kubernetes/core/volume.sky", "host_volume", "volume_mount")
+
+SECGROUP_KEY = "stripe.io/extra-security-groups"
+
+def run_as_unprivileged(uid = None, gid = None, container_name = None, supplementalGroups = None):
+    """
+    Sets up a pod or container to run as an unprivileged user.
+
+    Normally, pods run as the user and group configured in the container image, or as `root` if
+    not specified. This plugin configure specific containers or an entire pod to run as a specific
+    user/group.
+
+    Args:
+        uid: The user ID to run the pod or container as. Defaults to 3001, which is provisioned on
+            Stripe's Kubernetes workers to be the `stripe-service` user.
+        gid: The group ID to run the pod or container as. Defaults to 3001, which is provisioned on
+            Stripe's Kubernetes workers to be the `stripe-service` group.
+        container_name: The name of a container to run as an unprivileged user. If omitted, the
+            entire pod will run this way, which is usually preferred.
+        supplementalGroups: A list of groups applied to the first process run in each container,
+            in addition to the container's primary GID. Only applied to pod security contexts.
+
+    Returns:
+        A plugin that configures the security settings of a pod or container.
+    """
+    return pod_or_container_plugin(
+        _update_pod,
+        _update_container,
+        container_name = container_name,
+        uid = uid,
+        gid = gid,
+        supplementalGroups = supplementalGroups,
+    )
+
+_credentials_proxy_path = "/run/stripe/credentials-proxy"
+
+def use_credentials_proxy():
+    return host_volume(
+        _credentials_proxy_path,
+        type = "Directory",
+        reason = "Securely provides certificates and other credentials to containers.",
+    )
+
+def mount_credentials_proxy(container_name = None):
+    return volume_mount(_credentials_proxy_path, container_name = container_name)
+
+_core = proto.package("k8s.io.api.core.v1")
+
+def render_pod_security_context(security_def, pod):
+    securityContext = _core.PodSecurityContext()
+
+    if "uid" in security_def or "gid" in security_def:
+        uid = _uidgid_or_default(security_def["uid"], pod)
+        gid = _uidgid_or_default(security_def["gid"], pod)
+
+        securityContext.runAsNonRoot = True
+        securityContext.runAsUser = uid
+        securityContext.runAsGroup = gid
+        securityContext.fsGroup = gid
+
+        if "supplementalGroups" in security_def:
+            securityContext.supplementalGroups = security_def["supplementalGroups"]
+
+    return securityContext
+
+def render_security_context(security_def, pod):
+    securityContext = _core.SecurityContext()
+
+    if "uid" in security_def or "gid" in security_def:
+        securityContext.runAsNonRoot = True
+        securityContext.runAsUser = _uidgid_or_default(security_def["uid"], pod)
+        securityContext.runAsGroup = _uidgid_or_default(security_def["gid"], pod)
+
+    if "capabilities" in security_def:
+        securityContext.capabilities = _add_to_default_capabilities(security_def["capabilities"])
+
+    return securityContext
+
+def _update_pod(ctx, plugin, pod_def):
+    if pod_def["security"] == None:
+        pod_def["security"] = {}
+
+    pod_def["security"]["uid"] = plugin.uid
+    pod_def["security"]["gid"] = plugin.gid
+    pod_def["security"]["supplementalGroups"] = plugin.supplementalGroups
+
+def _update_container(ctx, plugin, container_def):
+    if container_def["security"] == None:
+        container_def["security"] = {}
+
+    container_def["security"]["uid"] = plugin.uid
+    container_def["security"]["gid"] = plugin.gid
+
+def _uidgid_or_default(uidgid, pod):
+    if uidgid != None:
+        return uidgid
+
+    if getattr(pod, "shared_msp", False):
+        return 1577241873 # Should match $kubernetes_pod_unix_id: https://go/lg/$kubernetes_pod_unix_id%20=
+    return 3001
+
+def _add_to_default_capabilities(capabilities):
+    DEFAULT_ADD_CAPABILITIES = []
+    DEFAULT_DROP_CAPABILITIES = []
+
+    if capabilities:
+        if capabilities["add"]:
+            DEFAULT_ADD_CAPABILITIES.extend(capabilities["add"])
+
+        if capabilities["drop"]:
+            DEFAULT_DROP_CAPABILITIES.extend(capabilities["drop"])
+
+    return _core.Capabilities(
+        add = DEFAULT_ADD_CAPABILITIES,
+        drop = DEFAULT_DROP_CAPABILITIES,
+    )
+
+def add_security_groups(*secgroups):
+    """
+    Add the provided security groups to the list of security groups for the service
+
+    These security groups will be automatically applied to any instance on which the
+    service runs. Be aware that security groups are not container specific but will be
+    applied to all containers running in your service pods. You may use multiple
+    instances of this plugin and the final set of security groups will be the union
+    of the different subsets (e.g. if sidecars need to specify secgroups).
+
+    Args:
+        *secgroups: the security groups to add
+     """
+    return pod_plugin(
+        _add_pod_secgroups,
+        secgroups=secgroups,
+    )
+
+def _add_pod_secgroups(ctx, arguments, pod_def):
+    """
+    Add the secgroups to the pod
+    """
+    if "sec_groups" not in pod_def:
+        # our starlark dialect doesn't support sets so we'll use a hashmap -> True
+        pod_def["sec_groups"] = {}
+    sec_groups = pod_def["sec_groups"]
+    sec_groups.update([(group, True) for group in arguments.secgroups])
+    # update the annotation which will be a JSON encoded sorted list of the sec groups
+    pod_def['resource']["metadata"]["annotations"][SECGROUP_KEY] = json.marshal(sorted(sec_groups))
+
+def allow_ulimit_management(container_name):
+    return container_plugin(
+        _update_container_capabilities,
+        container_name = container_name,
+        add_capabilities = ["SYS_RESOURCE"],
+        drop_capabilities = [],
+    )
+
+def _update_container_capabilities(ctx, plugin, container_def):
+    if container_def["security"] == None:
+        container_def["security"] = {}
+
+    container_def["security"]["capabilities"] = {
+        "add": plugin.add_capabilities,
+        "drop": plugin.drop_capabilities,
+    }

@@ -1,0 +1,220 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Helper functions for extracting information from the Henson context.
+
+The Henson context is the single `ctx` argument passed to the `main` function when
+deploying a Henson service with Skycfg. It contains a dictionary of data that can be
+useful when defining a workload. These functions provide a consistent interface for
+accessing that data.
+"""
+
+def get_name(ctx):
+    """
+    Get the name of the Henson service being deployed.
+
+    Fails if the service name is too long to safely use as a Kubernetes resource name.
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        The service name
+    """
+    name = get_henson_config(ctx).service_name
+
+    # Kubernetes has a hard limit of 63 chars on object names. We sometimes append values to names,
+    # and also put names in labels for things like obtaining certs. Therefore we impose a hard limit
+    # of 48 chars, which should be reasonable.
+    # See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+    if len(name) > 48:
+        fail("Object identifiers should be maximum 48 chars, but found '{}' with length {}".format(name, len(name)))
+    return name
+
+def has_availability_tier(ctx):
+    """
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        a boolean indicating if the service's availability_tier is defined in the henson config.
+    """
+    return get_henson_config(ctx).availability_tier != ''
+
+def get_availability_tier(ctx):
+    """
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        A string representing the availability tier of the service (ex. "A400"). May return an empty
+        string if the availability tier is undefined in henson.
+    """
+    return get_henson_config(ctx).availability_tier
+
+def get_owner(ctx):
+    """
+    Get the owner of the service being deployed.
+
+    This comes from the `contact.responsible_team` key in the Henson service YAML.
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        The service owner.
+    """
+    return get_henson_config(ctx).contact.responsible_team
+
+def get_cluster(ctx):
+    """
+    Get the name of the Stripe cluster being deployed to.
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        The name of the Stripe cluster. For example: "northwest".
+    """
+    return ctx.vars["stripe.cluster"]
+
+def get_deploy_time(ctx):
+    """
+    Get the time the current deploy started.
+    WARNING: Adding this value to your skycfg makes the build/deploy not reproducible. It'll also cause
+    kubernetes to redeploy your code every time henson runs even if there are no code changes.
+
+    NOTE: this requires setting provide_deploy_time_in_ctx in your henson configs
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        A string containing a timestamp of the time the current deploy started.
+    """
+    return ctx.vars.get("henson.deploy_time", "")
+
+def get_henson_config(ctx):
+    return ctx.vars["henson.service"]
+
+def get_henson_git_commit(ctx):
+    """
+    Get the revision of the Git commit being deployed.
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        The SHA1 hash of the Git commit.
+    """
+    return ctx.vars["henson.git_commit"]
+
+def get_env(ctx):
+    """
+    Get the environment being deployed to.
+
+    Args:
+        ctx: The Henson context.
+
+    Returns:
+        Either "prod" or "qa"
+    """
+    return ctx.vars["stripe.environment"]
+
+def get_henson_repo(ctx):
+    """
+    Get the repository for the service being deployed.
+
+    This maps to the `repo` key in the Henson service YAML.
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        The repository name.
+    """
+    return get_henson_config(ctx).repo
+
+def get_container_images(ctx):
+    """
+    Gets the service's mapping of container image build artifacts to ECR repository URLs.
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        A dictionary where the keys are build artifact names for container images and the values
+        are cluster/environment-specific ECR URLs for that build artifact's image.
+    """
+    return ctx.vars.get("henson.container_images", {})
+
+def get_sidecar_container_images(ctx):
+    """
+    Gets the service's mapping of sidecar service names to container image URLs.
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        A dictionary where the keys are names of sidecar services and the values
+        are the URLs that should be used for the container image for that service.
+    """
+    return ctx.vars.get("henson.sidecar_container_images", {})
+
+def get_blue_green_color(ctx):
+    """
+    Gets the service's "colour", for blue/green deploys.
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        The colour as a string, or None if there is no colour provided
+    """
+    return ctx.vars.get("henson.blue_green_color")
+
+def get_aws_region(ctx):
+    """
+    Gets the AWS region that the service is being deployed to, e.g. us-west-2
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        An AWS region, e.g. us-west-2
+    """
+    return ctx.vars["aws.region"]
+
+def get_rolling_speed_override(ctx):
+    """
+    Gets the rolling speed override for this deployment
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        The rolling speed override, an int between 0 and 100 (inclusive)
+    """
+    return ctx.vars.get("henson.rolling_speed_override", 0)
+
+def get_function_name(ctx):
+    """
+    Gets the skycfg function name used to generate the protos for this deployment.
+
+    Args:
+        ctx: The Henson context
+
+    Returns:
+        The name of the skycfg function passed into the ctx
+    """
+    return ctx.vars.get("skycfg.function_name", None)
+
+def get_target_shard(ctx):
+    """
+    Gets the target shard to which the evaluated resource should be deployed
+
+    Args:
+        ctx: The Henson context
+    Returns:
+        The name of the shard
+    """
+    return ctx.vars.get("stripe.shard", "kubemaster")

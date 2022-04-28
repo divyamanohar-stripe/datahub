@@ -1,0 +1,165 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load(
+    "config/kubernetes/core/container.sky",
+    "container",
+    "container_port",
+)
+load("config/kubernetes/core/pod.sky", "pod_share_pid_namespace")
+load("config/kubernetes/helpers/context.sky", "get_env")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/networking/internal/common.sky", "POD_NETWORKING_BASEDIR")
+load(
+    "config/kubernetes/networking/internal/helpers.sky",
+    "mount_splunk_forwarded_basedir",
+    "pod_mount",
+)
+load("config/kubernetes/helpers/constants.sky", "ENVOY_MONITOR_SIDECAR_NAME")
+
+# When trying to test a digest from a non-master branch, use stripe-qa instead of stripe in the URI
+_CONTAINER_IMAGES = {
+    # Digest found from envoy-monitor artifact at https://cibot.corp.stripe.com/builds/bui_LEjCfduaA0WvCS referencing git SHA 9b6260b6145045e90177e46238eeb340b2cb06a6
+    "prod": "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:4c1621a3783b8def8335e8bf0aface0f2a5056b21f08d3329d0ebebcbfdf813d",
+    "preprod": "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:4c1621a3783b8def8335e8bf0aface0f2a5056b21f08d3329d0ebebcbfdf813d",
+    "qa": "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:4c1621a3783b8def8335e8bf0aface0f2a5056b21f08d3329d0ebebcbfdf813d",
+}
+
+ENVOY_MONITOR_PORT = 18300
+_envoy_monitor_logdir = "%s/envoy-monitor" % POD_NETWORKING_BASEDIR
+_veneur_sock_dir = "/veneur-sockets"  # FIXME(xyu): metrics.sky should expose this as a constant
+
+def envoy_monitor_sidecar(ctx, namespace):
+    name = ENVOY_MONITOR_SIDECAR_NAME
+    return compose_plugins(
+        pod_share_pid_namespace(True),
+        envoy_monitor_container(
+            ctx,
+            name,
+            namespace = namespace,
+        ),
+        mount_splunk_forwarded_basedir(container_name = name),
+        pod_mount(name, _veneur_sock_dir),
+    )
+
+def envoy_monitor_container(ctx, self, namespace):
+    upstream_stats_sock = "%s/statsd.sock" % _veneur_sock_dir
+    container_image = _CONTAINER_IMAGES.get(get_env(ctx))
+    if container_image == None:
+        fail("Unexpected environment %s, could not find corresponding envoy-monitor container image" % get_env(ctx))
+
+    return container(
+        name = self,
+        image = container_image,
+        command = [
+            "/bin/envoy-monitor",
+            # NB(xyu): pod-veneur tags metrics by <namespace, service-name>
+            # - this `host-type` is only used by the metrics proxy to attach
+            #   `real_host_type` tags metrics envoy-monitor is
+            #   explicitly-configured to globalie or envoy-monitor's own
+            #   higher-level metrics emitted for debugging
+            "--host-type=%s" % namespace,
+            "--proxy-upstream-addr=unixgram://%s" % upstream_stats_sock,
+            "--proxy-listen-addr=udp://localhost:%s" % ENVOY_MONITOR_PORT,
+            "--log-gauge",
+            "--gauge-log-destination=%s/envoy-gauge-metrics.log" % _envoy_monitor_logdir,
+            "--process-names=envoy-stripe.stripped",
+            "--process-names=envoy-config-srv",
+            "--process-names=envoy-monitor",
+            "--use-raw-config-json=" + json.marshal(_envoy_monitor_config()),
+        ],
+        sidecar_service = self,
+        plugins = [
+            container_port(
+                ENVOY_MONITOR_PORT,
+                container_name = self,
+                port_name = "envoy-monitor",
+            ),
+        ],
+    )
+
+def _envoy_monitor_sustained_metrics(fmt, source_metrics):
+    return [fmt % (metric, metric) for metric in source_metrics]
+
+def _envoy_monitor_globalized_metrics(source_metrics):
+    return {prefix: "global" for prefix in source_metrics}
+
+def _envoy_monitor_config():
+    return {
+        # NB(xyu): daemontools.service.starts sustained metrics are no longer a
+        # thing in MSP
+        "sustained_metrics": _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:10m|inc:%s.10x1m",
+            [
+                "envoy.http.rds.update_rejected",
+                "envoy.http.rds.update_failure",
+                "envoy.listener_manager.lds.update_failure",
+                "envoy.listener_manager.lds.update_rejected",
+                "envoy.cluster_manager.cds.update_rejected",
+                "envoy.cluster_manager.cds.update_failure",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.5x1m",
+            [
+                "envoy.http.rds.update_rejected",
+                "envoy.listener_manager.lds.update_rejected",
+                "envoy.cluster_manager.cds.update_rejected",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.over10gb.5x1m|>=10000000000",
+            [
+                "envoy.server.memory_heap_size",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.over5gb.5x1m|>=5000000000",
+            [
+                "envoy.server.memory_heap_size",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:15s,over:1m|inc:%s.4x15s|!=0",
+            [
+                # Convert healthy/unhealthy gauges into steady-state counters
+                # metrics are emitted on a 10s interval
+                "envoy_config_srv.envoy.state.healthy",
+                "envoy_config_srv.envoy.state.unhealthy",
+                "envoy_config_srv.envoy.state.magic_healthcheck.healthy",
+                "envoy_config_srv.envoy.state.magic_healthcheck.unhealthy",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge20.15x1m|>=20",
+            [
+                "envoy_config_srv.snapshot_update.local.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge60.15x1m|>=60",
+            [
+                "envoy_config_srv.snapshot_update.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge120.15x1m|>=120",
+            [
+                "envoy_config_srv.snapshot_update.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:15s,over:1m|inc:%s.ge75.4x15s|>=75",
+            [
+                "envoy_monitor.process.fd_usage",
+            ],
+        ),
+
+        # NB(xyu): globalizing metrics in the MSP pod context is a NOP.
+        # We will only globalize *gauge metrics* since we forward those
+        # to splunk.
+        # - pod veneur attaches [namespace, service-name] to metrics it receives
+        # - pod veneur does not attach the _host_ tag
+        # - pod veneur metrics are not tagged with host_type or host_set
+        "globalized_metrics": _envoy_monitor_globalized_metrics(
+            [
+                # -- globalized gauge metrics --
+                "envoy.cluster.health_check.degraded",
+                "envoy.cluster.lb_subsets_active",
+                "envoy.cluster.membership_degraded",
+                "envoy.cluster.membership_excluded",
+                "envoy.cluster.membership_healthy",
+                "envoy.cluster.membership_total",
+            ],
+        ),
+    }

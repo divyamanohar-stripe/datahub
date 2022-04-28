@@ -1,0 +1,260 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Public API for constructing Consul service registration.
+Use `consul_service` and helpers therein to construct a list of services to pass
+in to `networking(...)` plugin
+
+For a service to receive traffic from other machines, it must be registered in Consul,
+which allows other services to discover it.
+"""
+
+load("config/kubernetes/core/container.sky", "container_port")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "container_plugin", "deployment_plugin", "statefulset_plugin")
+load("config/kubernetes/helpers/constants.sky", "CONSUL_SIDECAR_CONTAINER_NAME")
+
+def consul_meta_envoy_priority_routing(routing_header, routing_assignment, meta = None):
+    """
+    Creates consul metadata telling Envoy to priority route to this service.
+
+    Note: this also requires `priority_based_routing` to be set to `true` for the target service;
+    see https://sn-docs.corp.stripe.com/user-guide/configuration/service-flags for details.
+
+    Args:
+        routing_header: The header for Envoy to look up when priority routing to this service.
+        routing_assignment: The assignment for this service; the value of the routing_header will be compared to this assignment
+            and sent to this service if it is equal.
+        meta: Optional, existing meta to merge priority routing into.
+
+    Returns:
+        A dict that can be used as consul meta.
+    """
+
+    if routing_header == None or routing_header == "":
+        fail("Priority routing header must be provided")
+
+    if routing_assignment == None or routing_assignment == "":
+        fail("Priority routing assignment must be provided")
+
+    if meta == None:
+        meta = {}
+    meta["envoy-lb_subsets-header_name"] = routing_header
+    meta["envoy-lb_subsets-header_value"] = routing_assignment
+    return meta
+
+def register_service(
+        port,
+        name,
+        tags = [],
+        checks = [],
+        meta = {},
+        container_name = None,
+        port_name = None,
+        **kwargs):
+    """
+    Define a service for the deployment which the networking plugin will include in its
+    registered services
+
+    Args:
+        port: The port the service is running on.
+        name: The name of the service to register in Consul.
+        tags: Optional tags for the Consul service.
+        checks: Optional checks for the Consul service.
+        meta: Optional metadata for the Consul service.
+        (DEPRECATED) container_name: Optional name of the container that is running the service. Defaults to the
+            main container of the pod.
+        port_name: Optional name for the port that can be referred to by services.
+        **kwargs: Optional extra settings for the service, which will be provided directly to the
+            Consul sidecar. Generally, this is not needed.
+
+    """
+    return compose_plugins(
+        deployment_plugin(
+            _register_service,
+            service=define_registered_service(port, name, tags, checks, meta, container_name, port_name, **kwargs),
+        ),
+        statefulset_plugin(
+            _register_service,
+            service=define_registered_service(port, name, tags, checks, meta, container_name, port_name, **kwargs),
+        ),
+    )
+
+def _register_service(ctx, arguments, resource_def):
+    resource_def['registered_services'].append(arguments.service)
+
+def define_registered_service(
+        port,
+        name,
+        tags = [],
+        checks = [],
+        meta = {},
+        container_name = None,
+        port_name = None,
+        **kwargs):
+    """
+    Passed to the `networking(register_services=[...])` plugin to register a
+    Consul service to allow traffic to be routed to the pod.
+
+    This function returns an opaque datastructure meant to be consumed by the
+    `networking()` plugin:
+    - an opaque representation of the consul service data
+    - plugins that provide a hint for the service's port
+
+    NOTE: passing `consul_service` to `networking()` does not automatically set
+    up Kubernetes healthchecking for a pod. Use `healthchecked_service` instead.
+
+    Args:
+        port: The port the service is running on.
+        name: The name of the service to register in Consul.
+        tags: Optional tags for the Consul service.
+        checks: Optional checks for the Consul service.
+        meta: Optional metadata for the Consul service.
+        (DEPRECATED) container_name: Optional name of the container that is running the service. Defaults to the
+            main container of the pod.
+        port_name: Optional name for the port that can be referred to by services.
+        **kwargs: Optional extra settings for the service, which will be provided directly to the
+            Consul sidecar. Generally, this is not needed.
+
+    Returns:
+        A dictionary with the following schema:
+        {
+          "service": an opaque representation of a consul service (dictionary)
+          "plugins": a set of opaque plugins to apply
+        }
+    """
+    # NB(xyu): I couldn't find any livegrep examples of people using this field
+    # in practice. The whole point of setting `container_name` appears to be to
+    # set the k8s containerPort hint on the correct container. Consider
+    # deprecating this if it simplifies the data model
+    if container_name != None:
+        fail("consul_service: `container_name` argument is deprecated. Please stop using it")
+
+    # https://jira.corp.stripe.com/browse/ORCH-1006
+    if len(tags) == 0:
+        tags = []
+
+    service = {
+        "name": name,
+        "port": port,
+        "tags": tags,
+        "checks": checks,
+        "meta": meta,
+    }
+    service.update(kwargs)
+
+    plugins = []
+    if port != 0:
+        plugins.append(container_port(port, container_name = container_name, port_name = port_name))
+
+    return {
+        'service': service,
+        'plugins': plugins
+    }
+
+
+# Backwards compatibility
+def envoy_consul_tag(healthcheck):
+    print("!! [DEPRECATED] `envoy_consul_tag` -- please use `consul_tag_envoy_healthcheck`. This warning will soon become a failure.")
+    return consul_tag_envoy_healthcheck(healthcheck)
+
+def consul_tag_envoy_healthcheck(healthcheck):
+    """
+    Creates a Consul tag telling Envoy how to healthcheck the service.
+
+    Using the `healthchecked_service` plugin will set up this tag for you.
+
+    Args:
+        healthcheck: The HTTP path of the healthcheck endpoint for the service.
+
+    Returns:
+        A tag that can be used with `consul_service`.
+    """
+    return "envoy_health_check?%s" % url.encode_query({"path": healthcheck})
+
+def consul_http_check(path, port, interval = "10s", timeout = "5s", notes = None):
+    """
+    Creates a Consul check to perform HTTP healthchecking on the service.
+
+    Using the `healthchecked_service` plugin will set up this check for you.
+
+    Args:
+        path: The HTTP path of the healthcheck endpoint for the service.
+        port: The HTTP port to use to perform the healthcheck.
+        interval: The frequency at which to perform the check. Defaults to 10s.
+        timeout: The timeout of the check attempts. Defaults to 5s.
+        notes: Optional notes to add to the check.
+
+    Returns:
+        A check that can be used with `consul_service`.
+    """
+    check = {
+        "interval": interval,
+        "http": {
+            "scheme": "http",
+            "port": port,
+            "path": path,
+        },
+        "timeout": timeout,
+    }
+
+    if notes != None:
+        check["notes"] = notes
+
+    return check
+
+
+def consul_grpc_check(*, port, interval = "10s", service = None, notes = None):
+    """
+    Creates a Consul check to perform gRPC healthchecking on the service.
+
+    Args:
+        port: The port to use to perform the healthcheck.
+        interval: The frequency at which to perform the check. Defaults to 10s.
+        service: Optional service identifier for Consul to include in the gRPC health check request.
+        notes: Optional notes to add to the check.
+
+    Returns:
+        A check that can be used with `consul_service`.
+    """
+    check = {
+        "interval": interval,
+        "grpc": {
+            "port": port,
+        },
+    }
+
+    if service != None:
+        check["grpc"]["service"] = service
+
+    if notes != None:
+        check["notes"] = notes
+
+    return check
+
+
+# Backwards compatibility
+consul_check = consul_http_check
+
+# NB(xyu): This should probably be an internal-facing API -- it is only used by
+# health.sky
+def consul_termination_delay(delay = "90s"):
+    """
+    Delays the termination of the consul sidecar.
+
+    This allows a service to fail healthchecks for a while before deregistering from consul.
+
+    Args:
+        delay: The duration to delay, in golang time.Duration notation
+
+    Returns:
+        A plugin that delays the consul sidecar from deregistering the service from consul.
+    """
+
+    return container_plugin(
+        _add_termination_delay_to_consul,
+        container_name = CONSUL_SIDECAR_CONTAINER_NAME,
+        delay = delay,
+    )
+
+def _add_termination_delay_to_consul(ctx, arguments, container_def):
+    container_def["termination_delay"] = arguments.delay

@@ -1,0 +1,84 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+DEFUALT_CONTAINER_ENV = "prod"
+
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/09820afebb6eebe9912282eb8f73c7d65812e65f
+FEATURE_FLAGS_CONTAINER_DIGEST = "sha256:868d652c75af60ecf929dc93fd23a6168ac6a7051abf934923860477c46595ef"
+FEATURE_FLAGS_CONTAINER_ENV = DEFUALT_CONTAINER_ENV
+
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/1afc0e7913226c69875daa61ead1f93e31c89c31
+GEOIP_CONTAINER_DIGEST = "sha256:70a8ad456132e21d614c5cf15d08c781d5a3e855319c2843b6bf800176d3ae99"
+GEOIP_CONTAINER_ENV = DEFUALT_CONTAINER_ENV
+
+# gets env from the context
+FILE_WRITER_ALPINE_CONTAINER_SHA = "3e3fcf4be3e2260ab21f149f4065ce312f72f1c0"
+
+# To update, get the latest container digest from
+# https://amp.corp.stripe.com/containers/northwest/stripe/deploy-and-staging/config-srv-sidecar.
+# You can get the gocode commit by looking at recent gocode builds - see
+# https://confluence.corp.stripe.com/display/DEPLOY/Config-srv+sidecar#Configsrvsidecar-Updatingtheconfig-srvsidecar.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/0e943fb1decef73796f326a9803dcd94e364488d
+CONFIG_SRV_CONTAINER_DIGEST = "sha256:f4e3de95f066faed0c68705dde9135d73d1d4f18a7189d688414f68d70a68e7a"
+CONFIG_SRV_CONTAINER_ENV = DEFUALT_CONTAINER_ENV
+
+# HEADS UP! Updating these values is no longer the right way to roll out a new version of the confidant sidecar.
+#
+# The confidant sidecar is now using our new support for sidecar deploys! You can rollout a new version of the
+# container image by deploying the `confidant-sidecar` service:
+#
+# QA: http://go/qa/deploy/confidant-sidecar
+# Prod: http://go/deploy/confidant-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/6af4246bf90864898b29f73c03447e4bf381e0e7
+CONFIDANT_CONTAINER_FALLBACK_DIGEST = "sha256:e2b2f7ea741ed2a3ad321edaff45745a929edad7d247cc17fe64021274c8324a"
+CONFIDANT_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+
+# HEADS UP! Updating these values is no longer the right way to roll out a new version of the consul sidecar.
+#
+# The consul sidecar is now using our new support for sidecar deploys! You can rollout a new version of the
+# container image by deploying the `consul-sidecar` service:
+#
+# QA: http://go/qa/deploy/consul-sidecar
+# Prod: http://go/deploy/consul-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/060de738465b7a1d1c5e5c2c2fbc13624861111c
+CONSUL_CONTAINER_FALLBACK_DIGEST = "sha256:928793cd1ed52ae869a88d8cc21ec667d2dda86aa1a7046963bba9debfab72d4"
+CONSUL_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+
+TEST_SUBJECT_CONTAINER_FALLBACK_DIGEST = "sha256:9b7f3026c7526835b7d53f9038c1c5c9be7a28f304a96cc880fc5cfc3d107ec9"
+
+# HEADS UP! Updating these values is no longer the right way to roll out a new version of the health sidecar.
+#
+# The health sidecar is now using our new support for sidecar deploys! You can rollout a new version of the
+# container image by deploying the `health-sidecar` service:
+#
+# QA: http://go/qa/deploy/health-sidecar
+# Prod: http://go/deploy/health-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/0f3db5f2060fc379d0940824abf8b4faf010731f
+HEALTH_CONTAINER_FALLBACK_SHA = "0f3db5f2060fc379d0940824abf8b4faf010731f"
+HEALTH_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+
+# HEADS UP! Updating these values is no longer the right way to roll out a new version of the worker sidecar.
+#
+# The worker sidecar is now using our new support for sidecar deploys! You can rollout a new version of the
+# container image by deploying the `workermanager-sidecar` service:
+#
+# QA: http://go/qa/deploy/workermanager-sidecar
+# Prod: http://go/deploy/workermanager-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/f19a7a70686e9b23c89511dd0eaff604825872b3
+WORKER_CONTAINER_FALLBACK_SHA = "f19a7a70686e9b23c89511dd0eaff604825872b3"
+WORKER_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV

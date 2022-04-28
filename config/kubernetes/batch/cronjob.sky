@@ -1,0 +1,125 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+Functions for creating and configuring Kubernetes [CronJob][]s, which support running fire-and-forget
+job workloads on a regular schedule.
+
+[cronjob]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+"""
+
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/core/pod.sky", "all_containers")
+load("config/kubernetes/core/lifecycle.sky", "restart_policy")
+load("config/kubernetes/meta/metadata.sky", "render_metadata")
+load("config/kubernetes/plugins/types.sky", "cronjob_plugin")
+load("config/kubernetes/public/sox_compliance/exception_list.sky", "cron_in_exceptions")
+
+def cronjob(ctx, *plugins, ttl_secs_after_finish=2592000, **kwargs):
+    """
+    Define a batch job that will run on a schedule.
+
+    A CronJob describes a task that should be run on a particular schedule. CronJobs work by
+    creating a new [Job][] when their schedule fires. The Job manages a single execution of
+    of the task by creating at least one pod to do the task's work. In the case that the pod
+    fails, the job may create additional pods to retry depending on how it is configured.
+
+    [job]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#job-v1-batch
+
+    Args:
+        ctx: The Skycfg context from the `main` function.
+        *plugins: One or more plugins to configure the cron job.
+        ttl_secs_after_finish: Number of seconds after which to delete the Job related to this Cron.
+            This is set as "ttlSecondsAfterFinished" field in the Cron's Job Spec. Defaults to 30 days.
+        **kwargs: Options for the [CronJobSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#cronjobspec-v1beta1-batch).
+            A shortcut for the `cronjob_options` plugin.
+
+    Returns:
+        A [CronJob](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#cronjob-v1beta1-batch)
+        Kubernetes protobuf message describing the configuration of the cron job.
+    """
+    cronjob = {
+        "render": _render_cronjob,
+        "type": "cronjob",
+        "metadata": {},
+        "kwargs": {},
+        "ttl_secs_after_finish": ttl_secs_after_finish,
+    }
+
+    all_plugins = [
+        cronjob_options(**_default_cronjob_kwargs),
+        restart_policy("Never"),
+    ]
+    all_plugins.extend(plugins)
+    all_plugins.append(cronjob_options(**kwargs))
+
+    plugin = compose_plugins(*all_plugins)
+    plugin.update_cronjob(ctx, plugin, cronjob)
+    plugin.update_pod(ctx, plugin, cronjob["pod"])
+
+    for container in all_containers(cronjob["pod"]):
+        plugin.update_containers(ctx, plugin, container)
+
+    return cronjob["render"](ctx, cronjob)
+
+def cronjob_options(**kwargs):
+    """
+    Defines options for a cron job.
+
+    The arguments map directly to fields on the CronJobSpec in Kubernetes. The `cronjob`
+    entrypoint applies some default options, but these can be overridden with this plugin.
+
+    Args:
+        **kwargs: Options to apply to the cron job. These map directly to fields on the Kubernetes
+            [CronJobSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#cronjobspec-v1beta1-batch).
+
+    Returns:
+        A plugin that applies the options to a cron job.
+    """
+    return cronjob_plugin(
+        _update_cronjob_options,
+        kwargs = kwargs,
+    )
+
+_batch_beta1 = proto.package("k8s.io.api.batch.v1beta1")
+_batch = proto.package("k8s.io.api.batch.v1")
+
+_default_cronjob_kwargs = {
+    "concurrencyPolicy": "Forbid",
+    "successfulJobsHistoryLimit": 2,
+    "failedJobsHistoryLimit": 2,
+    "startingDeadlineSeconds": 7200,
+}
+
+# _get_sox_control_labels returns a label for sox_control depending on whether the
+# cron falls under the SOX controls.
+def _get_sox_control_labels(namespace, name):
+    sox_labels = {
+        "stripe.io/sox_control": "enabled",
+    }
+    if cron_in_exceptions(namespace, name):
+        sox_labels["stripe.io/sox_control"] = "disabled"
+    return sox_labels
+
+def _update_cronjob_options(ctx, plugin, cronjob_def):
+    cronjob_def["kwargs"].update(plugin.kwargs)
+
+def _render_cronjob(ctx, cronjob_def):
+    cronjob_def["metadata"] = struct(**cronjob_def["metadata"])
+    cronjob = struct(**cronjob_def)
+
+    pod_template = cronjob.pod["render"](ctx, cronjob.pod)
+    kwargs = cronjob.kwargs
+    extra_labels = _get_sox_control_labels(cronjob.metadata.namespace, cronjob.metadata.name)
+    return _batch_beta1.CronJob(
+        metadata = render_metadata(ctx, cronjob.metadata, extra_labels=extra_labels),
+        spec = _batch_beta1.CronJobSpec(
+            jobTemplate = _batch_beta1.JobTemplateSpec(
+                metadata = render_metadata(ctx, cronjob.metadata, extra_labels=extra_labels),
+                spec = _batch.JobSpec(
+                    # Delete the completed Job in specified time.
+                    ttlSecondsAfterFinished = cronjob.ttl_secs_after_finish,
+                    template = pod_template,
+                ),
+            ),
+            **kwargs
+        ),
+    )
