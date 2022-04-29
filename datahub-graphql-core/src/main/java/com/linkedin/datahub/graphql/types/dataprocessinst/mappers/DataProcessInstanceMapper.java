@@ -5,6 +5,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.datahub.graphql.generated.DataProcessInstance;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.types.common.mappers.AuditStampMapper;
+import com.linkedin.datahub.graphql.types.common.mappers.StringMapMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.util.MappingHelper;
 import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 import com.linkedin.dataprocess.DataProcessInstanceProperties;
@@ -43,6 +44,10 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
 
     private void mapDataProcessProperties(@Nonnull DataProcessInstance dpi, @Nonnull DataMap dataMap) {
         DataProcessInstanceProperties dataProcessInstanceProperties = new DataProcessInstanceProperties(dataMap);
+        final com.linkedin.datahub.graphql.generated.DataProcessInstanceProperties properties =
+            new com.linkedin.datahub.graphql.generated.DataProcessInstanceProperties();
+        properties.setCustomProperties(StringMapMapper.map(dataProcessInstanceProperties.getCustomProperties()));
+        dpi.setProperties(properties);
         dpi.setName(dataProcessInstanceProperties.getName());
         if (dataProcessInstanceProperties.hasCreated()) {
             dpi.setCreated(AuditStampMapper.map(dataProcessInstanceProperties.getCreated()));

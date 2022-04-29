@@ -4419,6 +4419,11 @@ type DataProcessInstance implements EntityWithRelationships & Entity {
     type: EntityType!
 
     """
+    Additional read only properties about a DataProcessInstance
+    """
+    properties: DataProcessInstanceProperties
+
+    """
     The history of state changes for the run
     """
     state(startTimeMillis: Long, endTimeMillis: Long, limit: Int): [DataProcessRunEvent]
@@ -4448,6 +4453,31 @@ type DataProcessInstance implements EntityWithRelationships & Entity {
     The link to view the task run in the source system
     """
     externalUrl: String
+}
+
+"""
+Additional read only properties about a DataProcessInstance
+"""
+type DataProcessInstanceProperties {
+  """
+  The name of the DataProcessInstance used in display
+  """
+  name: String!
+
+  """
+  Custom properties of the DataProcessInstance
+  """
+  customProperties: [StringMapEntry!]
+
+  """
+  When the DataProcessInstance was kicked off
+  """
+  created: AuditStamp
+
+  """
+  External URL associated with the DataProcessInstance
+  """
+  externalUrl: String
 }
 
 """
