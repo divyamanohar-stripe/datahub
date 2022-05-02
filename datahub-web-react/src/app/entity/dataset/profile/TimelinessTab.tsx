@@ -85,37 +85,35 @@ function renderDescriptions(runs: Run[], slcDuration: moment.Duration, runCount:
     }
 
     function renderOverSlcRate(runsOverSlcCount: number, runsCount: number) {
+        function getTagColor(rate: number) {
+            if (rate <= 0) return 'blue';
+            if (rate <= 0.1) return 'yellow';
+            return 'tag';
+        }
+
         const runsOverSlcRate = runsOverSlcCount / runsCount;
         const runsOverSlcRateText = runsOverSlcRate.toLocaleString(undefined, {
             style: 'percent',
             minimumFractionDigits: 1,
         });
-        // @imperative
-        let tagColor: string;
-        if (runsOverSlcRate <= 0) {
-            tagColor = 'green';
-        } else if (runsOverSlcRate <= 0.1) {
-            tagColor = 'yellow';
-        } else {
-            tagColor = 'red';
-        }
+        const tagColor = getTagColor(runsOverSlcRate);
+
         return <Tag color={tagColor}>{runsOverSlcRateText}</Tag>;
     }
 
     function renderOverSlcDelayAverage(runsOverSlc: Run[]) {
+        function getTagColor(delayedHours: number) {
+            if (delayedHours <= 0) return 'blue';
+            if (delayedHours <= 4) return 'yellow';
+            return 'red';
+        }
+
         const runsOverSlcDelayedHours = moment.duration(runsOverSlc.reduce((acc, e) => acc - e.timeLeft, 0)).asHours();
         const runsOverSlcAverageDelay =
             runsOverSlcDelayedHours === 0 ? '0' : (runsOverSlcDelayedHours / runsOverSlc.length).toFixed(2);
         const runsOverSlcAverageDelayText = `${runsOverSlcAverageDelay} hours`;
-        // @imperative
-        let tagColor: string;
-        if (runsOverSlcDelayedHours <= 0) {
-            tagColor = 'green';
-        } else if (runsOverSlcDelayedHours <= 4) {
-            tagColor = 'yellow';
-        } else {
-            tagColor = 'red';
-        }
+        const tagColor = getTagColor(runsOverSlcDelayedHours);
+
         return <Tag color={tagColor}>{runsOverSlcAverageDelayText}</Tag>;
     }
 
@@ -170,8 +168,8 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
             shape: 'circle',
             style: {
                 fill: 'white',
-                stroke: '#5B8FF9',
-                lineWidth: 2,
+                stroke: 'blue',
+                lineWidth: 1,
             },
         },
         annotations: [
@@ -179,7 +177,7 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
                 type: 'regionFilter',
                 start: ['min', slcInHours] as [string, number],
                 end: ['max', 'max'] as [string, string],
-                color: '#F4664A',
+                color: 'red',
             },
             {
                 type: 'text',
@@ -195,7 +193,7 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
                 start: ['min', slcInHours] as [string, number],
                 end: ['max', slcInHours] as [string, number],
                 style: {
-                    stroke: '#F4664A',
+                    stroke: 'red',
                     lineDash: [2, 2],
                 },
             },
