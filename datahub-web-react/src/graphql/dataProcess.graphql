@@ -5,6 +5,12 @@ fragment runResults on DataProcessInstanceResult {
     runs {
         urn
         type
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
         created {
             time
             actor
