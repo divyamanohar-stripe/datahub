@@ -111,7 +111,7 @@ def _service(ctx, replicas, suffix = ""):
     raw_secret(
         filename = "db_root_password.txt",
         key = "datahub/mysqldb/db_root_password",
-        container_names = ["datahub-gms-initmysql", "datahub-gms"]
+        container_names = ["datahub-gms-initmysql", "datahub-gms", "datahub-gms-canary"]
     ),
     # set various env vars on both datahub-gms and datahub-gms-canary
     container_env_vars(
