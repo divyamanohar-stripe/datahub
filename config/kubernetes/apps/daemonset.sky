@@ -5,8 +5,11 @@ Functions for creating and configuring Kubernetes [DaemonSet][]s
 [daemonset]: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
 """
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-load("config/kubernetes/core/pod.sky", "all_containers")
-load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector")
+load("config/kubernetes/apps/strategy.sky", "rolling_update_daemonset_strategy")
+load("config/kubernetes/core/pod.sky", "all_containers", "pod")
+load("config/kubernetes/helpers/node_selectors.sky", "node_selectors", "host_type", "SHARED_MSP_HOST_TYPE")
+load("config/kubernetes/helpers/msp_shard.sky", "msp_shard")
+load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector", "metadata")
 load("config/kubernetes/plugins/types.sky", "daemonset_plugin")
 
 def daemonset(ctx, *plugins, **kwargs):
@@ -87,3 +90,45 @@ def _render_daemonset(ctx, daemonset_def):
             **daemonset.kwargs
         ),
     )
+
+def mspworker_daemonset(ctx, name, shard, node_selector_label, *plugins, max_unavailable = "10%"):
+    """
+    Creates a daemonset to be applied to mspworker nodes
+
+    Args:
+        ctx: The Skycfg context from the `main` function.
+        name: Name of the daemonset
+        shard: Shard that the daemonset is to be deployed to
+        node_selector_label: The node selector to use to determine which nodes to deploy to, will look for the value of "true". Used as part of initial
+            migration from static pods to daemonsets. TODO - Deprecate after migration is complete.
+        *plugins: One or more plugins to configure the service.
+        max_unavailable: Percentage (as a string) of pods across the daemonset that will be updated at once. Default is 10%
+
+
+    Returns:
+        A [DaemonSet](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.21/#daemonset-v1-apps)
+        Kubernetes protobuf message describing the configuration of the service.
+    """
+
+    all_plugins = []
+    all_plugins.extend(plugins)
+
+    common_plugins = [
+        pod(host_network = True),
+        metadata(
+            namespace = SHARED_MSP_HOST_TYPE,
+            service_name = name,
+        ),
+        host_type(SHARED_MSP_HOST_TYPE),
+        msp_shard(shard),
+        node_selectors({node_selector_label: "true"})
+    ]
+
+    all_plugins.extend(common_plugins)
+
+    return daemonset(
+        ctx,
+        compose_plugins(*all_plugins),
+        updateStrategy = rolling_update_daemonset_strategy(max_unavailable),
+    )
+

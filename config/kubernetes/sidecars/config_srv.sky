@@ -1,10 +1,11 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/plugins/types.sky", "pod_plugin")
-load("config/kubernetes/helpers/images.sky", "image")
-load("config/kubernetes/core/probe.sky", "http_probe")
 load("config/kubernetes/core/env_var.sky", "default_env_vars")
-load("config/kubernetes/sidecars/variables.sky", "CONFIG_SRV_CONTAINER_ENV", "CONFIG_SRV_CONTAINER_DIGEST")
+load("config/kubernetes/core/lifecycle.sky", "render_lifecycle")
+load("config/kubernetes/core/probe.sky", "http_probe")
 load("config/kubernetes/core/volume.sky", "render_volume_mount", "volume_mount")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/sidecars/variables.sky", "CONFIG_SRV_CONTAINER_ENV", "CONFIG_SRV_CONTAINER_DIGEST")
 
 sidecar_name = "config-srv-sidecar"
 
@@ -47,6 +48,15 @@ def _update_pod(ctx, plugin, pod_def):
 def _config_srv_sidecar_container(ctx, container_def, pod):
     container = struct(**container_def)
 
+    # credentials-proxy needed to sign aws requests for s3 fallback
+    volume_mounts = [render_volume_mount(ctx, volume_mount("/run/stripe/credentials-proxy"))]
+
+    container_volumes = container.volume_mounts.values() if 'volume_mounts' in container_def else []
+
+    volume_mounts.extend([render_volume_mount(ctx, mount) for mount in container_volumes])
+
+    lifecycle = render_lifecycle(ctx, container_def['lifecycle']) if "lifecycle" in container_def else None
+
     return _core.Container(
         name = container.name,
         image = image(
@@ -64,8 +74,6 @@ def _config_srv_sidecar_container(ctx, container_def, pod):
             "--veneur-address=udp://127.0.0.1:8128",
         ],
         env = default_env_vars(ctx),
-        # credentials-proxy needed to sign aws requests for s3 fallback
-        volumeMounts = [
-            render_volume_mount(ctx, volume_mount("/run/stripe/credentials-proxy")),
-        ],
+        volumeMounts = volume_mounts,
+        lifecycle = lifecycle,
     )

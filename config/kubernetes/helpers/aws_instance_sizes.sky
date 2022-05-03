@@ -53,14 +53,14 @@ def aws_instance_size(instance_type):
     # it by using basis points and using integer division. 100 basis point
     # is equal to 1% (625 basis points = 6.25%).
     base_instance_family_memory_reduction_basis_points = {
-        "c5": 675,
-        "m5": 375,
+        "c5": 750,
+        "m5": 700,
         "r5": 525,
         # TODO(gregj) this m6 value is copied from m5 -- I didn't actually go look at the memory
         # usage on instances of these actual types, since we're just prototyping m6a instances on
         # AMD in QA for now. We'll need to find the actual value here before actually running gen 6
         # types.
-        "m6": 375,
+        "m6": 700,
     }
 
     reduction_basis_points = base_instance_family_memory_reduction_basis_points.get(base_instance_family(instance_type), 0)

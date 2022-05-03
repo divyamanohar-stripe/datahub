@@ -142,7 +142,13 @@ def get_instance_type(ctx, availability_tier, monster_service="worker"):
     mapping = {
         "worker": worker_mapping,
         "sweeper": get_all_cluster(get_all_tier("c5.2xlarge")),
-        "feeder": get_all_cluster(get_all_tier("c5.2xlarge")),
+        "feeder": get_all_cluster({
+            AVAILABILITY_TIER_A100: "c5.2xlarge",
+            AVAILABILITY_TIER_A200: "c5.2xlarge",
+            AVAILABILITY_TIER_A200_LOW_CPU: "c5.2xlarge",
+            AVAILABILITY_TIER_A400: "c5d.4xlarge",
+            AVAILABILITY_TIER_A400_AUTO: "c5.2xlarge",
+        }),
         "fanout": get_all_cluster(get_all_tier("c5.2xlarge")),
         "fanout-retry": get_all_cluster(get_all_tier("c5.2xlarge")),
         "api": get_all_cluster(get_all_tier("m5d.xlarge")),

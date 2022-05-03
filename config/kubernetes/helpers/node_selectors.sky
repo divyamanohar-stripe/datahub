@@ -5,6 +5,8 @@ Plugins for managing the pod's node selectors.
 
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 
+SHARED_MSP_HOST_TYPE = "mspworker"
+
 def host_type(name):
     """
     Specify the host-type to restrict this deploy to.
