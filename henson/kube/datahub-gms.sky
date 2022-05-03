@@ -18,12 +18,13 @@ def env_configs(ctx):
     mysql_port = "3306"
     if get_env(ctx) == "qa":
         qa_mysql_host = "qa-datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com"
+        kafka_schema_registry = "PLAINTEXT://kafkaschemareg-northwest-green.service.qa-northwest.consul:9092"
         return {
             "replicas": 1,
             "mysql_host": qa_mysql_host,
             "ebean_datasource_host": qa_mysql_host + ":" + mysql_port,
             "ebean_datasource_url": mysql_datasource_url_template % (qa_mysql_host, mysql_port),
-            "kafka_bootstrap_server": "todo",
+            "kafka_bootstrap_server": kafka_schema_registry,
             "kafka_schemaregistry_url": schema_registry_envoy_url,
             "elasticsearch_host": "vpc-qa-datahubes-zrv4ev2m5g77tjoy6kxq67sdga.us-west-2.es.amazonaws.com",
             "elasticsearch_port": "443",
@@ -54,6 +55,26 @@ def _service(ctx, replicas, suffix = ""):
     ctx,
     artifact = "datahub-image",
   )
+
+  common_gms_env_vars = {
+      "DATASET_ENABLE_SCSI": "false",
+      "EBEAN_DATASOURCE_USERNAME": "datahub",
+      "EBEAN_DATASOURCE_HOST": env_configs(ctx)["ebean_datasource_host"],
+      "EBEAN_DATASOURCE_URL": env_configs(ctx)["ebean_datasource_url"],
+      "EBEAN_DATASOURCE_DRIVER": "com.mysql.jdbc.Driver",
+      "KAFKA_BOOTSTRAP_SERVER": env_configs(ctx)["kafka_bootstrap_server"],
+      "KAFKA_SCHEMAREGISTRY_URL": env_configs(ctx)["kafka_schemaregistry_url"],
+      "ELASTICSEARCH_HOST": env_configs(ctx)["elasticsearch_host"],
+      "ELASTICSEARCH_PORT": env_configs(ctx)["elasticsearch_port"],
+      "GRAPH_SERVICE_IMPL": "elasticsearch",
+      "LOG_DIR": "/datahub/datahub-gms/logs",
+      "ENTITY_REGISTRY_CONFIG_PATH": "/datahub/datahub-gms/resources/entity-registry.yml",
+      "MAE_CONSUMER_ENABLED": "true",
+      "MCE_CONSUMER_ENABLED": "true",
+      "UI_INGESTION_ENABLED": "false",
+      "JAVA_OPTS": "-Xms4g -Xmx4g",
+      "JMX_OPTS": "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082"
+  }
 
   service_port = 8080
   deploy = deployment(
@@ -92,30 +113,15 @@ def _service(ctx, replicas, suffix = ""):
         key = "datahub/mysqldb/db_root_password",
         container_names = ["datahub-gms-initmysql", "datahub-gms"]
     ),
-    # set various env vars
+    # set various env vars on both datahub-gms and datahub-gms-canary
     container_env_vars(
-        vars = {
-            "DATASET_ENABLE_SCSI": "false",
-            "EBEAN_DATASOURCE_USERNAME": "datahub",
-            "EBEAN_DATASOURCE_HOST": env_configs(ctx)["ebean_datasource_host"],
-            "EBEAN_DATASOURCE_URL": env_configs(ctx)["ebean_datasource_url"],
-            "EBEAN_DATASOURCE_DRIVER": "com.mysql.jdbc.Driver",
-            "KAFKA_BOOTSTRAP_SERVER": env_configs(ctx)["kafka_bootstrap_server"],
-            "KAFKA_SCHEMAREGISTRY_URL": env_configs(ctx)["kafka_schemaregistry_url"],
-            "ELASTICSEARCH_HOST": env_configs(ctx)["elasticsearch_host"],
-            "ELASTICSEARCH_PORT": env_configs(ctx)["elasticsearch_port"],
-            "GRAPH_SERVICE_IMPL": "elasticsearch",
-            "LOG_DIR": "/datahub/datahub-gms/logs",
-            "ENTITY_REGISTRY_CONFIG_PATH": "/datahub/datahub-gms/resources/entity-registry.yml",
-            "MAE_CONSUMER_ENABLED": "true",
-            "MCE_CONSUMER_ENABLED": "true",
-            "UI_INGESTION_ENABLED": "false",
-            "JAVA_OPTS": "-Xms4g -Xmx4g",
-            "JMX_OPTS": "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082"
-        },
+        vars = common_gms_env_vars,
         container_name = 'datahub-gms',
     ),
-
+    container_env_vars(
+        vars = common_gms_env_vars,
+        container_name = 'datahub-gms-canary',
+    ),
     run_as_unprivileged(), # this runs the containers as 'stripe-service'
     replicas = replicas,
     # details on this: https://skycfg.corp.stripe.com/rollouts
