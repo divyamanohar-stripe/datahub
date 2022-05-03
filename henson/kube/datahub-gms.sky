@@ -13,7 +13,7 @@ load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 
 def env_configs(ctx):
-    mysql_datasource_url_template = "jdbc:mysql://%s:%s/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8"
+    mysql_datasource_url_template = "jdbc:mysql://%s:%s/datahub?verifyServerCertificate=false&useSSL=false&useUnicode=yes&characterEncoding=UTF-8"
     schema_registry_envoy_url = "http://schema-registry.service.envoy:10080/contexts/.datahub"
     mysql_port = "3306"
     if get_env(ctx) == "qa":
