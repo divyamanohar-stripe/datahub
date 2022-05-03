@@ -1,0 +1,78 @@
+load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/core/container.sky", "init_container", "container")
+load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
+load("config/kubernetes/helpers/aws_instance_sizes.sky", "m5d_xlarge")
+load("config/kubernetes/helpers/context.sky", "get_cluster", "get_env")
+load("config/kubernetes/helpers/quantities.sky", "cores", "gigabytes")
+load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
+load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_unprivileged")
+load("config/kubernetes/sidecars/confidant.sky", "raw_secret")
+load("config/kubernetes/stripe.sky", "stripe_pod")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+
+def total_replicas(ctx):
+    if get_env(ctx) == "qa":
+        return 1
+    else:
+        return 3
+
+# Canary to one replica
+def canary(ctx):
+    return _service(ctx, replicas = 1, suffix = "-canary")
+
+# Deploy to the rest of the fleet
+def main(ctx):
+    return _service(ctx, replicas = total_replicas(ctx))
+
+def _service(ctx, replicas, suffix = ""):
+  container_image = image(
+    ctx,
+    artifact = "datahub-image",
+  )
+
+  service_port = 9002
+  deploy = deployment(
+    ctx,
+    stripe_pod(
+      name="datahub-frontend" + suffix,
+      namespace="datahub",
+      command = ["./datahub-frontend/bin/stripe-frontend-start.sh"],
+      # m5.xlarge instances have 4 cores and 16 GB of memory
+      instance_type = m5d_xlarge,
+      image = container_image,
+    ),
+    healthchecked_service(
+      name = "datahub-frontend",
+      port = service_port,
+      path = "/admin",
+    ),
+    add_security_groups("datahub"),
+    raw_secret(
+        filename = "playsecret.txt",
+        key = "datahub/frontend/playsecret",
+    ),
+    # set various env vars
+    container_env_vars(
+        vars = {
+            "DATAHUB_GMS_HOST": "datahub-gms.service.envoy",
+            "DATAHUB_GMS_PORT": "10080",
+            "DATAHUB_APP_VERSION": "1.0",
+            "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
+            "LOG_DIR": "/datahub/datahub-frontend/logs",
+            "AUTH_JAAS_ENABLED": "false",
+            "DATAHUB_ANALYTICS_ENABLED": "false",
+            "JAVA_OPTS": "-Xms4g -Xmx4g -Dhttp.port=9002 -Dconfig.file=datahub-frontend/conf/application.conf -Djava.security.auth.login.config=datahub-frontend/conf/jaas.conf -Dlogback.configurationFile=datahub-frontend/conf/logback.xml -Dlogback.debug=false -Dpidfile.path=/dev/null"
+        },
+        container_name = 'datahub-frontend',
+    ),
+    run_as_unprivileged(), # this runs the containers as 'stripe-service'
+    replicas = replicas,
+    # details on this: https://skycfg.corp.stripe.com/rollouts
+    # these numbers allow us to have sufficient number of healthy instances
+    # in each of our deployment stages
+    strategy = rolling_update_strategy("50%", "50%"),
+    shared_msp = True,
+  )
+  return [deploy]

@@ -1,0 +1,124 @@
+load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/core/container.sky", "init_container", "container")
+load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
+load("config/kubernetes/helpers/aws_instance_sizes.sky", "m5d_xlarge")
+load("config/kubernetes/helpers/context.sky", "get_cluster", "get_env")
+load("config/kubernetes/helpers/quantities.sky", "cores", "gigabytes")
+load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
+load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_unprivileged")
+load("config/kubernetes/sidecars/confidant.sky", "raw_secret")
+load("config/kubernetes/stripe.sky", "stripe_pod")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+
+def env_configs(ctx):
+    mysql_datasource_url_template = "jdbc:mysql://%s/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8"
+    schema_registry_envoy_url = "http://schema-registry.service.envoy:10080/contexts/.datahub"
+    if get_env(ctx) == "qa":
+        qa_mysql_host = "qa-datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com:3306"
+        return {
+            "replicas": 1,
+            "ebean_datasource_host": qa_mysql_host,
+            "ebean_datasource_url": mysql_datasource_url_template % qa_mysql_host,
+            "kafka_bootstrap_server": "todo",
+            "kafka_schemaregistry_url": schema_registry_envoy_url,
+            "elasticsearch_host": "vpc-qa-datahubes-zrv4ev2m5g77tjoy6kxq67sdga.us-west-2.es.amazonaws.com",
+            "elasticsearch_port": "443",
+        }
+    else:
+        prod_mysql_host = "todo"
+        return {
+            "replicas": 3,
+            "ebean_datasource_host": prod_mysql_host,
+            "ebean_datasource_url": mysql_datasource_url_template % prod_mysql_host,
+            "kafka_bootstrap_server": "todo",
+            "kafka_schemaregistry_url": schema_registry_envoy_url,
+            "elasticsearch_host": "todo",
+            "elasticsearch_port": "443",
+        }
+
+# Canary to one replica
+def canary(ctx):
+    return _service(ctx, replicas = 1, suffix = "-canary")
+
+# Deploy to the rest of the fleet
+def main(ctx):
+    return _service(ctx, replicas = env_configs(ctx)["replicas"])
+
+def _service(ctx, replicas, suffix = ""):
+  container_image = image(
+    ctx,
+    artifact = "datahub-image",
+  )
+
+  service_port = 8080
+  deploy = deployment(
+    ctx,
+    stripe_pod(
+      name="datahub-gms" + suffix,
+      namespace="datahub",
+      command = ["./datahub-gms/scripts/stripe-start.sh"],
+      # m5.xlarge instances have 4 cores and 16 GB of memory
+      instance_type = m5d_xlarge,
+      image = container_image,
+    ),
+    healthchecked_service(
+      name = "datahub-gms",
+      port = service_port,
+      path = "/health",
+    ),
+    # init container to run MySQL init
+    init_container(
+        name = "datahub-gms-initmysql",
+        command = ["/datahub/datahub-gms/scripts/stripe-init.sh"],
+        cpu = cores(1),
+        memory = gigabytes(1),
+    ),
+    container_env_vars(
+        vars = {
+            "MYSQL_USERNAME": "datahub",
+            "MYSQL_HOST": env_configs(ctx)["ebean_datasource_host"],
+            "DATAHUB_DB_NAME": "datahub",
+        },
+        container_name = 'datahub-gms-initmysql',
+    ),
+    add_security_groups("datahub"),
+    raw_secret(
+        filename = "db_root_password.txt",
+        key = "datahub/mysqldb/db_root_password",
+        container_names = ["datahub-gms-initmysql", "datahub-gms"]
+    ),
+    # set various env vars
+    container_env_vars(
+        vars = {
+            "DATASET_ENABLE_SCSI": "false",
+            "EBEAN_DATASOURCE_USERNAME": "datahub",
+            "EBEAN_DATASOURCE_HOST": env_configs(ctx)["ebean_datasource_host"],
+            "EBEAN_DATASOURCE_URL": env_configs(ctx)["ebean_datasource_url"],
+            "EBEAN_DATASOURCE_DRIVER": "com.mysql.jdbc.Driver",
+            "KAFKA_BOOTSTRAP_SERVER": env_configs(ctx)["kafka_bootstrap_server"],
+            "KAFKA_SCHEMAREGISTRY_URL": env_configs(ctx)["kafka_schemaregistry_url"],
+            "ELASTICSEARCH_HOST": env_configs(ctx)["elasticsearch_host"],
+            "ELASTICSEARCH_PORT": env_configs(ctx)["elasticsearch_port"],
+            "GRAPH_SERVICE_IMPL": "elasticsearch",
+            "LOG_DIR": "/datahub/datahub-gms/logs",
+            "ENTITY_REGISTRY_CONFIG_PATH": "/datahub/datahub-gms/resources/entity-registry.yml",
+            "MAE_CONSUMER_ENABLED": "true",
+            "MCE_CONSUMER_ENABLED": "true",
+            "UI_INGESTION_ENABLED": "false",
+            "JAVA_OPTS": "-Xms4g -Xmx4g",
+            "JMX_OPTS": "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082"
+        },
+        container_name = 'datahub-gms',
+    ),
+
+    run_as_unprivileged(), # this runs the containers as 'stripe-service'
+    replicas = replicas,
+    # details on this: https://skycfg.corp.stripe.com/rollouts
+    # these numbers allow us to have sufficient number of healthy instances
+    # in each of our deployment stages
+    strategy = rolling_update_strategy("50%", "50%"),
+    shared_msp = True,
+  )
+  return [deploy]

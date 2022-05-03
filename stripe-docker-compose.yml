@@ -133,13 +133,13 @@ services:
     depends_on:
     - mysql
     environment:
-    - MYSQL_HOST=mysql
-    - MYSQL_PORT=3306
+    - MYSQL_HOST=mysql:3306
     - MYSQL_USERNAME=datahub
-    - MYSQL_PASSWORD=datahub
     - DATAHUB_DB_NAME=datahub
     hostname: mysql-setup
-    image: acryldata/datahub-mysql-setup:head
+    image: stripe/datahub:latest
+    volumes:
+      - ./docker/datahub-gms/local_dbpwd_secret.txt:/pay/keys/db_root_password.txt
   schema-registry:
     container_name: schema-registry
     depends_on:

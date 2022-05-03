@@ -1,0 +1,54 @@
+service_name: datahub-frontend
+availability_tier: A300
+repo: stripe-private-oss-forks/datahub
+description: "DataHub Frontend service"
+contact:
+  responsible_team: schema-and-query
+  slack_channel: data-platform
+kubernetes:
+  template: "henson/kube/datahub-frontend.sky"
+container_images:
+  - artifact_name: datahub-image
+    ecr:
+      repository: stripe/stripe-private-oss-forks/datahub
+deploy:
+  clusters:
+    - northwest
+  rollout:
+    stages:
+      - kubernetes:
+          function_name: canary
+        clusters:
+          - northwest
+        stage_advance:
+          abort_unhealthy_after: 120
+          wait_duration: 60
+          healthchecks:
+            - consul_health:
+                service_name: datahub-frontend
+      - kubernetes:
+          function_name: main
+        clusters:
+          - northwest
+        stage_advance:
+          abort_unhealthy_after: 120
+          wait_duration: 60
+          healthchecks:
+            - consul_health:
+                service_name: datahub-frontend
+# TODO: In a subsequent pass setup autodeploys + more deploy notifications
+announce:
+  announce_channels:
+    - channel: datahub-bots
+# TODO: add links to dashboard & runbooks when we have them
+# http://go/outbound-acls
+inbound_config:
+  inbound_listeners:
+    # Services
+    - consul_service: datahub-frontend
+      allowed_clients:
+        - host_type: intfe # TODO: migrate this to peoplefe
+  outbound_services:
+    - service_name: datahub-gms
+      mtls_authorities:
+        - datahub
