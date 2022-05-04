@@ -27,7 +27,7 @@ def env_configs(ctx):
             "kafka_bootstrap_server": kafka_schema_registry,
             "kafka_schemaregistry_url": schema_registry_envoy_url,
             "elasticsearch_host": "vpc-qa-datahubes-zrv4ev2m5g77tjoy6kxq67sdga.us-west-2.es.amazonaws.com",
-            "elasticsearch_port": "443",
+            "elasticsearch_port": "80",
         }
     else:
         prod_mysql_host = "todo"
@@ -39,7 +39,7 @@ def env_configs(ctx):
             "kafka_bootstrap_server": "todo",
             "kafka_schemaregistry_url": schema_registry_envoy_url,
             "elasticsearch_host": "todo",
-            "elasticsearch_port": "443",
+            "elasticsearch_port": "80",
         }
 
 # Canary to one replica
