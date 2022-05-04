@@ -1,0 +1,8 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+# Skycfg version, used to track whether a specific change has been rolled out
+# everywhere or what skycfg version a pod is using.
+
+# Bump this version by 1 for every change (PR) and update the digest.
+# Run `pay exec scripts/orchestration/skycfg_digest.rb` to get the current digest.
+SKYCFG_VERSION = "2"
+SKYCFG_DIGEST = "2f4544e817a52fd3482d855b735cd1fb22f36ef02e56e81a94b3eef1452a367e"

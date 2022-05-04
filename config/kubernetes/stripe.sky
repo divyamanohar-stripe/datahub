@@ -14,7 +14,7 @@ load("config/kubernetes/helpers/availability_tiers.sky", "A400")
 load("config/kubernetes/core/lifecycle.sky", "prestop_all_containers", "exec_action")
 load("config/kubernetes/helpers/aws_instance_sizes.sky", "aws_instance_size")
 load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
-load("config/kubernetes/helpers/node_selectors.sky", "node_selectors", host_type_plugin="host_type")
+load("config/kubernetes/helpers/node_selectors.sky", "node_selectors", host_type_plugin="host_type", "SHARED_MSP_HOST_TYPE")
 load("config/kubernetes/helpers/quantities.sky", "millicores", "megabytes")
 load("config/kubernetes/helpers/security.sky", "run_as_unprivileged")
 load("config/kubernetes/helpers/pod_sizing.sky", "auto_size")
@@ -22,8 +22,6 @@ load("config/kubernetes/meta/metadata.sky", "annotations", "labels", "metadata")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/confidant.sky", "secret_options")
 load("config/kubernetes/sidecars/feature_flags.sky", "use_feature_flags")
-
-SHARED_MSP_HOST_TYPE = "mspworker"
 
 def stripe_pod(
         name,

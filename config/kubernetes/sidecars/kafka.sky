@@ -51,8 +51,8 @@ def _kafka_sidecar(
         container = struct(**container_def)
         fallback = image(
             ctx,
-            name = "stripe/kafka-tools/kafka-sidecar",
-            label = "sha256:42ee0a704681319c053e867391fd55e7f93f635458ece9f2931a1bba2b51db6c",
+            name = "stripe/zoolander/kafka-sidecar",
+            label = "sha256:2c9c802b96e511e1da235637f11e80065e6e448ac938532d7a8bdb6754191dac",
             env = "prod",
         )
         volume_mounts = [

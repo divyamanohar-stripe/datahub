@@ -52,10 +52,10 @@ def _default_sidecar_version(target):
 
     # QA sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LXnfO4kSWlBacc
-    # Git Commit: f76348cbd61a421b22eeeb6f19ff09a2cbdd8e9d
-    # Summary   : add modify_only flag to inbound http listeners (#2477)
-    qa_digest   = "4925923db8a588b1c48e5c7eb6adf4029db6d23cff7dd75c74862d4aacf0603e"
+    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LYCqftJgkCSFaK
+    # Git Commit: 8460610d3db569adc2cb8eb9fab64516922c113a
+    # Summary   : Update circuit-breakers.md (#2483)
+    qa_digest   = "1969e220096c8abfa927ab0a9c3ee32b5ca742cf3dada2ae61cdce4dea1c4915"
 
     return {
         "version": match(
