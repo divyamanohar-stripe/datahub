@@ -32,6 +32,16 @@ def _service(ctx, replicas, suffix = ""):
     artifact = "datahub-image",
   )
 
+  common_frontend_env_vars = {
+      "DATAHUB_GMS_HOST": "datahub-gms.service.envoy",
+      "DATAHUB_GMS_PORT": "10080",
+      "DATAHUB_APP_VERSION": "1.0",
+      "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
+      "LOG_DIR": "/datahub/datahub-frontend/logs",
+      "AUTH_JAAS_ENABLED": "false",
+      "DATAHUB_ANALYTICS_ENABLED": "false",
+      "JAVA_OPTS": "-Xms4g -Xmx4g -Dhttp.port=9002 -Dconfig.file=datahub-frontend/conf/application.conf -Djava.security.auth.login.config=datahub-frontend/conf/jaas.conf -Dlogback.configurationFile=datahub-frontend/conf/logback.xml -Dlogback.debug=false -Dpidfile.path=/dev/null"
+  }
   service_port = 9002
   deploy = deployment(
     ctx,
@@ -52,20 +62,16 @@ def _service(ctx, replicas, suffix = ""):
     raw_secret(
         filename = "playsecret.txt",
         key = "datahub/frontend/playsecret",
+        container_names = ["datahub-frontend", "datahub-frontend-canary"]
     ),
-    # set various env vars
+    # set various env vars on both datahub-frontend and datahub-frontend-canary
     container_env_vars(
-        vars = {
-            "DATAHUB_GMS_HOST": "datahub-gms.service.envoy",
-            "DATAHUB_GMS_PORT": "10080",
-            "DATAHUB_APP_VERSION": "1.0",
-            "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
-            "LOG_DIR": "/datahub/datahub-frontend/logs",
-            "AUTH_JAAS_ENABLED": "false",
-            "DATAHUB_ANALYTICS_ENABLED": "false",
-            "JAVA_OPTS": "-Xms4g -Xmx4g -Dhttp.port=9002 -Dconfig.file=datahub-frontend/conf/application.conf -Djava.security.auth.login.config=datahub-frontend/conf/jaas.conf -Dlogback.configurationFile=datahub-frontend/conf/logback.xml -Dlogback.debug=false -Dpidfile.path=/dev/null"
-        },
+        vars = common_frontend_env_vars,
         container_name = 'datahub-frontend',
+    ),
+    container_env_vars(
+        vars = common_frontend_env_vars,
+        container_name = 'datahub-frontend-canary',
     ),
     run_as_unprivileged(), # this runs the containers as 'stripe-service'
     replicas = replicas,
