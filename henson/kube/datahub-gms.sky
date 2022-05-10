@@ -18,13 +18,13 @@ def env_configs(ctx):
     mysql_port = "3306"
     if get_env(ctx) == "qa":
         qa_mysql_host = "qa-datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com"
-        kafka_schema_registry = "PLAINTEXT://kafkaschemareg-northwest-green.service.qa-northwest.consul:9092"
+        kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.qa-northwest.consul:9092"
         return {
             "replicas": 1,
             "mysql_host": qa_mysql_host,
             "ebean_datasource_host": qa_mysql_host + ":" + mysql_port,
             "ebean_datasource_url": mysql_datasource_url_template % (qa_mysql_host, mysql_port),
-            "kafka_bootstrap_server": kafka_schema_registry,
+            "kafka_bootstrap_server": kafka_datahub,
             "kafka_schemaregistry_url": schema_registry_envoy_url,
             "elasticsearch_host": "vpc-qa-datahubes-zrv4ev2m5g77tjoy6kxq67sdga.us-west-2.es.amazonaws.com",
             "elasticsearch_port": "80",
