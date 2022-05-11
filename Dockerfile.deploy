@@ -25,8 +25,14 @@ COPY entity-registry.yml /datahub/datahub-gms/resources/entity-registry.yml
 COPY war.war /datahub/datahub-gms/bin/war.war
 COPY jetty.xml /datahub/datahub-gms/scripts/jetty.xml
 COPY stripe-start.sh /datahub/datahub-gms/scripts/stripe-start.sh
+COPY mysql_init.sh /datahub/datahub-gms/scripts/stripe-init.sh
+COPY mysql_init.sql /datahub/datahub-gms/scripts/init.sql
+COPY stripe-frontend-start.sh /datahub/datahub-frontend/bin/stripe-frontend-start.sh
 COPY jetty-runner.jar /datahub/datahub-gms/bin/jetty-runner.jar
 COPY jetty-util.jar /datahub/datahub-gms/bin/jetty-util.jar
 COPY jetty-jmx.jar /datahub/datahub-gms/bin/jetty-jmx.jar
+
+# install mysql-client to help with MySQL init
+RUN apt-get update && apt-get install -y mysql-client
 
 WORKDIR /datahub

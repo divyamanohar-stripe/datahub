@@ -48,4 +48,7 @@ cp metadata-service/war/build/libs/war.war /build/war.war
 cp metadata-models/src/main/resources/entity-registry.yml /build/entity-registry.yml
 cp docker/datahub-gms/jetty.xml /build/jetty.xml
 cp docker/datahub-gms/stripe-start.sh /build/stripe-start.sh
+cp docker/datahub-frontend/stripe-frontend-start.sh /build/stripe-frontend-start.sh
+cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
+cp docker/mysql-setup/init.sql /build/mysql_init.sql
 cp Dockerfile.deploy /build

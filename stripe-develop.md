@@ -31,15 +31,14 @@ While making changes to DataHub there's a couple of options available to test yo
     $ sc docker pull containers.global.qa.stripe.io/stripe-qa/stripe-private-oss-forks/datahub@sha256:3b5b50dbae40e04cc4c74deff5ed9cff7f0775e58fb389fa93332d2368e9d2cc
     $ docker images | grep containers.global.qa.stripe.io
       containers.global.qa.stripe.io/stripe-qa/stripe-private-oss-forks/datahub   sc-docker-pull   5494360d4482   35 minutes ago   1.39GB
-    $ docker tag 5494360d4482 stripe/datahub:cibuild
+    $ docker tag 5494360d4482 stripe/datahub:latest
     ```
-    Now you can update the datahub-frontend and datahub-gms images in `stripe-docker-compose.yml` with the image: `stripe/datahub:cibuild`
   * Make your changes, build your image locally:
     ```bash
     $ ./docker-compose-build.sh
     ...
     ```
-  In both these cases, when you've got your Docker image pulled / built, you can run DataHub using:
+  In both these cases, you end up with an image - `stripe/datahub:latest`. When you've got your Docker image pulled / built, you can run DataHub using:
   ```bash
   $ docker compose -p datahub -f stripe-docker-compose.yml up -d
   ```
