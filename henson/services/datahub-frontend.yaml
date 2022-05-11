@@ -47,7 +47,7 @@ inbound_config:
     # Services
     - consul_service: datahub-frontend
       allowed_clients:
-        - host_type: intfe # TODO: migrate this to peoplefe
+        - host_type: peoplefeproxybox
   outbound_services:
     - service_name: datahub-gms
       mtls_authorities:
