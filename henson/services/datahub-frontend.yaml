@@ -48,7 +48,11 @@ inbound_config:
     - consul_service: datahub-frontend
       allowed_clients:
         - host_type: peoplefeproxybox
+        - host_type: datahub
   outbound_services:
     - service_name: datahub-gms
+      mtls_authorities:
+        - datahub
+    - service_name: datahub-frontend
       mtls_authorities:
         - datahub
