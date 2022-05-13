@@ -12,11 +12,20 @@ load("config/kubernetes/sidecars/confidant.sky", "raw_secret")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 
-def total_replicas(ctx):
+def env_configs(ctx):
     if get_env(ctx) == "qa":
-        return 1
+        return {
+            "replicas": 1,
+            # connect via consul as attemtping to connect via envoy results in an error:
+            # HTTP/2 400 Bad Request: HTTP message contains more than the configured limit of 64 headers
+            # More details: https://jira.corp.stripe.com/browse/SCHMAQUERY-1522
+            "gms_host": "datahub-gms.service.qa-northwest.consul",
+        }
     else:
-        return 3
+        return {
+            "replicas": 3,
+            "gms_host": "todo",
+       }
 
 # Canary to one replica
 def canary(ctx):
@@ -24,7 +33,7 @@ def canary(ctx):
 
 # Deploy to the rest of the fleet
 def main(ctx):
-    return _service(ctx, replicas = total_replicas(ctx))
+    return _service(ctx, replicas = env_configs(ctx)["replicas"])
 
 def _service(ctx, replicas, suffix = ""):
   container_image = image(
@@ -33,7 +42,7 @@ def _service(ctx, replicas, suffix = ""):
   )
 
   common_frontend_env_vars = {
-      "DATAHUB_GMS_HOST": "datahub-gms.service.qa-northwest.consul",
+      "DATAHUB_GMS_HOST": env_configs(ctx)["gms_host"],
       "DATAHUB_GMS_PORT": "8080",
       "DATAHUB_APP_VERSION": "1.0",
       "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
