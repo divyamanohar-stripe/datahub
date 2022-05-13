@@ -33,8 +33,8 @@ def _service(ctx, replicas, suffix = ""):
   )
 
   common_frontend_env_vars = {
-      "DATAHUB_GMS_HOST": "datahub-gms.service.envoy",
-      "DATAHUB_GMS_PORT": "10080",
+      "DATAHUB_GMS_HOST": "datahub-gms.service.qa-northwest.consul",
+      "DATAHUB_GMS_PORT": "8080",
       "DATAHUB_APP_VERSION": "1.0",
       "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
       "LOG_DIR": "/datahub/datahub-frontend/logs",
