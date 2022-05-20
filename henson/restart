@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -euxo pipefail
+
+if [ "pypipusherbox" != "$(cat /pay/conf/host_type)" ]; then
+    echo "Not running on a pypipusherbox, exiting."
+    exit 0
+fi
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+cd "$root"
+
+if [ "prod" == "$(cat /pay/conf/host_env)" ]; then
+    base="artifactory"
+else
+    base="qa-artifactory"
+fi
+
+target="$(TMPDIR=/pay/tmp mktemp -d)"
+trap 'rm -rf -- "$target"' EXIT
+
+/usr/bin/python3 -m venv "$target"
+
+"$target/bin/pip" \
+    install \
+    --index-url https://artifactory-content.stripe.build/artifactory/api/pypi/pypi-unsafe/simple \
+    twine
+
+for f in dist/*; do
+    echo " - uploading $f"
+    "$target/bin/twine" \
+        upload "$f" \
+        --skip-existing \
+        --non-interactive \
+        --username anonymous \
+        --password '' \
+        --client-cert /etc/ssl/private/machine-cert-and-key.pem \
+        --repository-url https://"$base".stripe.build/artifactory/api/pypi/pypi-local-oss-forks/
+done

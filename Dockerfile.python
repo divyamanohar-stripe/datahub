@@ -1,0 +1,11 @@
+FROM containers.global.prod.stripe.io/third-party/manylinux
+ENV \
+    PATH=/venv/bin:$PATH \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_INDEX_URL=https://artifactory-content.stripe.build/artifactory/api/pypi/pypi-safe/simple \
+    PIP_NO_CACHE_DIR=1
+RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel
+
+WORKDIR /src
+
+CMD /src/jenkins-build.sh

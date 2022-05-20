@@ -1,3 +1,9 @@
+network:
+  http_proxy_whitelist:
+    - artifactory-content.stripe.build
+    - rpm.nodesource.com
+    - vault.centos.org
+    - archives.fedoraproject.org
 jenkins_jobs:
   - name: "stripe-private-oss-forks-datahub"
     henson_tarball:

@@ -44,6 +44,15 @@ curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-jmx/9.4.20.v20190813/jetty-jmx-9.4.20.v20190813.jar --output /build/jetty-jmx.jar
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-util/9.4.20.v20190813/jetty-util-9.4.20.v20190813.jar --output /build/jetty-util.jar
 
+echo Building metadata ingestion python client
+pushd metadata-ingestion
+
+python3 -m pip wheel . --no-deps --wheel-dir dist
+echo Python build complete
+
+cp -r dist /build
+popd
+
 cp datahub-frontend/build/distributions/datahub-frontend.zip /build/datahub-frontend.zip
 cp metadata-service/war/build/libs/war.war /build/war.war
 cp metadata-models/src/main/resources/entity-registry.yml /build/entity-registry.yml
@@ -53,3 +62,7 @@ cp docker/datahub-frontend/stripe-frontend-start.sh /build/stripe-frontend-start
 cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
 cp docker/mysql-setup/init.sql /build/mysql_init.sql
 cp Dockerfile.deploy /build
+
+# henson service for pushing python wheels to internal pypi
+mkdir /build/henson
+cp henson/restart /build/henson/

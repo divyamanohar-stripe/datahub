@@ -1,0 +1,19 @@
+
+
+service_name: stripe-datahub
+description: Python client for datahub metadata ingestion
+repo: stripe-private-oss-forks/datahub
+contact:
+  responsible_team: schema-and-query
+  slack_channel: schema-and-query
+deploy:
+  host_types:
+    - pypipusherbox
+  autodeploy:
+    enabled: true
+restart:
+  script:
+    user: pypipusher
+announce:
+  slack_channels:
+    - datahub-bots
