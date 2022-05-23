@@ -6,7 +6,7 @@ set -ex
 pushd metadata-ingestion
 
 echo ""
-echo "@@ Building"
+echo "@@ Building Wheels"
 echo ""
 python3 -m pip wheel . --no-deps --wheel-dir dist
 echo ""
