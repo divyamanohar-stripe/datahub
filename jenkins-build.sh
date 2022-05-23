@@ -53,7 +53,3 @@ cp docker/datahub-frontend/stripe-frontend-start.sh /build/stripe-frontend-start
 cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
 cp docker/mysql-setup/init.sql /build/mysql_init.sql
 cp Dockerfile.deploy /build
-
-# henson service for pushing python wheels to internal pypi
-mkdir /build/henson
-cp henson/restart /build/henson/
