@@ -3,17 +3,12 @@
 
 set -ex
 
+pushd metadata-ingestion
+
 echo ""
 echo "@@ Building"
 echo ""
-
-
-pushd metadata-ingestion
-
-
-
 python3 -m pip wheel . --no-deps --wheel-dir dist
-
 echo ""
 echo "@@ Build completed"
 echo ""
