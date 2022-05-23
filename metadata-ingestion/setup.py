@@ -11,6 +11,13 @@ package_metadata: dict = {}
 with open("./src/datahub/__init__.py") as fp:
     exec(fp.read(), package_metadata)
 
+def stripe_version(major: str) -> str:
+    import subprocess
+
+    cmd = ('git', 'describe', '--tags', 'HEAD')
+    out = subprocess.check_output(cmd).strip().decode()
+    *_, commits, revision = out.rsplit('-', 2)
+    return f'+stripe.{major}.{commits}.{revision}'
 
 def get_long_description():
     root = os.path.dirname(__file__)
@@ -436,7 +443,7 @@ entry_points = {
 setuptools.setup(
     # Package metadata.
     name=package_metadata["__package_name__"],
-    version=package_metadata["__version__"],
+    version=stripe_version(package_metadata["__version__"]),
     url="https://datahubproject.io/",
     project_urls={
         "Documentation": "https://datahubproject.io/docs/",
