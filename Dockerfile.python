@@ -8,4 +8,4 @@ RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel
 
 WORKDIR /src
 
-CMD /src/jenkins-build.sh
+CMD /src/jenkins-python-build.sh

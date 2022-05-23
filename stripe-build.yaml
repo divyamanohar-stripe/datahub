@@ -21,6 +21,9 @@ jenkins_jobs:
     network:
       http_proxy_verbose: true
       http_proxy_report_only: true
+  - name: "stripe-private-oss-forks-datahub-py"
+    henson_tarball:
+      docker: Dockerfile.python
 publisher_settings:
   run_test_publisher: true
   run_cache_publisher: true
