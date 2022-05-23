@@ -36,7 +36,8 @@ echo Building datahub.
 # We just compile the metadata service and frontend for now
 ./gradlew :metadata-service:war:build
 
-./gradlew :datahub-frontend:dist
+# Skip yarn tests temporarily till we resolve: https://jira.corp.stripe.com/browse/SCHMAQUERY-1551
+./gradlew :datahub-frontend:dist -x yarnTest
 
 # Metadata service also requires some jetty related jars
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190813/jetty-runner-9.4.20.v20190813.jar --output /build/jetty-runner.jar
