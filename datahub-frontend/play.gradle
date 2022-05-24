@@ -43,6 +43,8 @@ dependencies {
   play externalDependency.shiroCore
   play externalDependency.playCache
   play externalDependency.playWs
+  play externalDependency.playServer
+  play externalDependency.playAkkaHttpServer
   play externalDependency.kafkaClients
 
   playTest externalDependency.mockito
