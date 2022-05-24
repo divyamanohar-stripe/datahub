@@ -17,3 +17,4 @@ announce:
     - datahub-bots
 jenkins:
   job_name: stripe-private-oss-forks-datahub-py
+  artifact_name: acryl-datahub
