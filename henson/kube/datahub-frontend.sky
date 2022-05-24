@@ -13,25 +13,15 @@ load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 
 def env_configs(ctx):
-    if get_env(ctx) == "qa":
-        return {
-            "replicas": 1,
-            # connect via consul as attemtping to connect via envoy results in an error:
-            # HTTP/2 400 Bad Request: HTTP message contains more than the configured limit of 64 headers
-            # More details: https://jira.corp.stripe.com/browse/SCHMAQUERY-1522
-            "gms_host": "datahub-gms.service.envoy",
-        }
-    else:
-        return {
-            "replicas": 3,
-            "gms_host": "todo",
-       }
+    # As a fallout of: https://jira.corp.stripe.com/browse/SCHMAQUERY-1522, we run the frontend with 1
+    # replica so that we don't run into an infinite callback loop while hitting frontend API endpoints
+    # such as /api/v2/graphql that call themselves
+    return {
+        "replicas": 1,
+        "gms_host": "datahub-gms.service.envoy",
+    }
 
-# Canary to one replica
-def canary(ctx):
-    return _service(ctx, replicas = 1, suffix = "-canary")
-
-# Deploy to the rest of the fleet
+# Deploy to the fleet
 def main(ctx):
     return _service(ctx, replicas = env_configs(ctx)["replicas"])
 
