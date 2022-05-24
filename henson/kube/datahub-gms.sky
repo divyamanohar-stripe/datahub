@@ -26,8 +26,9 @@ def env_configs(ctx):
             "ebean_datasource_url": mysql_datasource_url_template % (qa_mysql_host, mysql_port),
             "kafka_bootstrap_server": kafka_datahub,
             "kafka_schemaregistry_url": schema_registry_envoy_url,
-            "elasticsearch_host": "vpc-qa-datahubes-zrv4ev2m5g77tjoy6kxq67sdga.us-west-2.es.amazonaws.com",
-            "elasticsearch_port": "80",
+            "elasticsearch_host": "sproxy.service.envoy",
+            "elasticsearch_port": "10080",
+            "elasticsearch_path_prefix": "/searchdatahub",
         }
     else:
         prod_mysql_host = "todo"
@@ -66,6 +67,7 @@ def _service(ctx, replicas, suffix = ""):
       "KAFKA_SCHEMAREGISTRY_URL": env_configs(ctx)["kafka_schemaregistry_url"],
       "ELASTICSEARCH_HOST": env_configs(ctx)["elasticsearch_host"],
       "ELASTICSEARCH_PORT": env_configs(ctx)["elasticsearch_port"],
+      "ELASTICSEARCH_PATH_PREFIX": env_configs(ctx)["elasticsearch_path_prefix"],
       "GRAPH_SERVICE_IMPL": "elasticsearch",
       "LOG_DIR": "/datahub/datahub-gms/logs",
       "ENTITY_REGISTRY_CONFIG_PATH": "/datahub/datahub-gms/resources/entity-registry.yml",
