@@ -1,6 +1,6 @@
 
 
-service_name: stripe-datahub
+service_name: stripe-datahub-py
 description: Python client for datahub metadata ingestion
 repo: stripe-private-oss-forks/datahub
 contact:
