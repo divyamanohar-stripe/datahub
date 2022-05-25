@@ -1,16 +1,27 @@
 import os
+from pathlib import Path
 import sys
 from typing import Dict, Set
+
 
 import setuptools
 
 is_py37_or_newer = sys.version_info >= (3, 7)
-
+path = Path(os.path.abspath(os.path.dirname(__file__)))
 
 package_metadata: dict = {}
 with open("./src/datahub/__init__.py") as fp:
     exec(fp.read(), package_metadata)
 
+def stripe_version(major: str) -> str:
+    # added for stripe internal versioning
+    import subprocess
+
+    cmd = ('git', '-C', str(path.parent.absolute()), 'describe', '--tags', 'HEAD')
+    out = subprocess.check_output(cmd).strip().decode()
+    *_, commits, revision = out.rsplit('-', 2)
+    print(f'+stripe.{major}.{commits}.{revision}')
+    return f'+stripe.{major}.{commits}.{revision}'
 
 def get_long_description():
     root = os.path.dirname(__file__)
@@ -436,7 +447,7 @@ entry_points = {
 setuptools.setup(
     # Package metadata.
     name=package_metadata["__package_name__"],
-    version=package_metadata["__version__"],
+    version=stripe_version(package_metadata["__version__"]),
     url="https://datahubproject.io/",
     project_urls={
         "Documentation": "https://datahubproject.io/docs/",
