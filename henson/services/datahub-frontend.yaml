@@ -17,6 +17,16 @@ deploy:
   rollout:
     stages:
       - kubernetes:
+          function_name: canary
+        clusters:
+          - northwest
+        stage_advance:
+          abort_unhealthy_after: 120
+          wait_duration: 60
+          healthchecks:
+            - consul_health:
+                service_name: datahub-frontend
+      - kubernetes:
           function_name: main
         clusters:
           - northwest
