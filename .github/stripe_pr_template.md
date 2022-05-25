@@ -1,12 +1,12 @@
 <!--
-  If this branch is in-progress, start the title with [wip]. Cibot will prevent this branch from being merged until the title is edited to remove a leading [wip].
+  If this branch is in-progress, start the title with [wip]. CIBot will prevent this branch from being merged until the title is edited to remove the leading [wip].
 -->
 
 ### Notify
 cc @stripe-private-oss-forks/schema-and-query
 
 <!--
-  Assign a reviewer by commenting `r? <TEAM>` once your PR has built successfully. Once the reviewer has approved the change,  comment `rl? <TEAM>` to find a Calibrated Reviewer if needed. go/code-review provides more guidance on the code review process.
+  Assign a reviewer by commenting `r? <TEAM>` once your PR has built successfully. See go/code-review for more guidance on the code review process.
 -->
 
 ### Summary
