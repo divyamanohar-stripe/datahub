@@ -1,4 +1,5 @@
 import os
+import path
 import sys
 from typing import Dict, Set
 
@@ -14,7 +15,7 @@ with open("./src/datahub/__init__.py") as fp:
 def stripe_version(major: str) -> str:
     import subprocess
 
-    cmd = ('git', 'describe', '--tags', 'HEAD')
+    cmd = ('git', '-C', str(path.parent.absolute()), 'describe', '--tags', 'HEAD')
     out = subprocess.check_output(cmd).strip().decode()
     *_, commits, revision = out.rsplit('-', 2)
     return f'+stripe.{major}.{commits}.{revision}'
