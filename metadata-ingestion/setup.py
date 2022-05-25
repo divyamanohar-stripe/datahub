@@ -1,12 +1,13 @@
 import os
-import path
+from pathlib import Path
 import sys
 from typing import Dict, Set
+
 
 import setuptools
 
 is_py37_or_newer = sys.version_info >= (3, 7)
-
+path = Path(os.path.abspath(os.path.dirname(__file__)))
 
 package_metadata: dict = {}
 with open("./src/datahub/__init__.py") as fp:
