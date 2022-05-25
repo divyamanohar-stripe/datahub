@@ -14,6 +14,7 @@ with open("./src/datahub/__init__.py") as fp:
     exec(fp.read(), package_metadata)
 
 def stripe_version(major: str) -> str:
+    # added for stripe internal versioning
     import subprocess
 
     cmd = ('git', '-C', str(path.parent.absolute()), 'describe', '--tags', 'HEAD')
