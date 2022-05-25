@@ -4,11 +4,11 @@
 set -ex
 
 pushd metadata-ingestion
-
+pwd
 echo ""
 echo "@@ Building Python Wheels"
 echo ""
-python3 -m pip wheel . --no-deps --wheel-dir dist
+python3 setup.py bdist_wheel
 echo ""
 echo "@@ Build completed"
 echo ""
