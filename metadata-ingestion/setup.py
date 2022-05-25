@@ -20,6 +20,7 @@ def stripe_version(major: str) -> str:
     cmd = ('git', '-C', str(path.parent.absolute()), 'describe', '--tags', 'HEAD')
     out = subprocess.check_output(cmd).strip().decode()
     *_, commits, revision = out.rsplit('-', 2)
+    print(f'+stripe.{major}.{commits}.{revision}')
     return f'+stripe.{major}.{commits}.{revision}'
 
 def get_long_description():

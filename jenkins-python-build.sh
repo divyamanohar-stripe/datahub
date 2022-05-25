@@ -4,7 +4,7 @@
 set -ex
 
 pushd metadata-ingestion
-pwd
+
 echo ""
 echo "@@ Building Python Wheels"
 echo ""
