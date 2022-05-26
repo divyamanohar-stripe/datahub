@@ -22,6 +22,7 @@ RUN mkdir -p /datahub/datahub-gms/scripts
 RUN mkdir -p /datahub/datahub-gms/bin
 
 COPY entity-registry.yml /datahub/datahub-gms/resources/entity-registry.yml
+COPY stripe-jmxfetch.yaml /datahub/datahub-gms/resources/stripe-jmxfetch.yaml
 COPY war.war /datahub/datahub-gms/bin/war.war
 COPY jetty.xml /datahub/datahub-gms/scripts/jetty.xml
 COPY stripe-start.sh /datahub/datahub-gms/scripts/stripe-start.sh

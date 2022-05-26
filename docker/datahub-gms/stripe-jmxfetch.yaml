@@ -1,0 +1,52 @@
+init_config:
+
+instances:
+  - host: localhost
+    port: 8082
+    name: datahub-gms
+    new_gc_metrics: true
+    conf:
+      - include:
+          bean: java.lang:name=G1 Old Generation,type=GarbageCollector
+          attribute:
+            CollectionCount:
+              alias: datahub_gms.gc.major_collection_count
+            CollectionTime:
+              alias: datahub_gms.gc.major_collection_time
+      - include:
+          bean: java.lang:name=G1 Young Generation,type=GarbageCollector
+          attribute:
+            CollectionCount:
+              alias: datahub_gms.gc.minor_collection_count
+            CollectionTime:
+              alias: datahub_gms.gc.minor_collection_time
+      - include:
+          bean_regex: 'metrics:name=(.*)\.([A-Za-z]+),type=timers'
+          attribute:
+            50thPercentile:
+              alias: datahub_gms.latency.p50
+            95thPercentile:
+              alias: datahub_gms.latency.p95
+            99thPercentile:
+              alias: datahub_gms.latency.p99
+            Count:
+              metric_type: counter
+              alias: datahub_gms.count
+      - include:
+          bean_regex: 'metrics:name=(.*)\.([A-Za-z]+),type=histograms'
+          attribute:
+            50thPercentile:
+              alias: datahub_gms.histogram.p50
+            95thPercentile:
+              alias: datahub_gms.histogram.p95
+            99thPercentile:
+              alias: datahub_gms.histogram.p99
+            Count:
+              metric_type: counter
+              alias: datahub_gms.count
+      - include:
+          bean_regex: 'metrics:name=(.*)\.([A-Za-z]+)\.(failed|success),type=counters'
+          attribute:
+            Count:
+              metric_type: counter
+              alias: datahub_gms.count

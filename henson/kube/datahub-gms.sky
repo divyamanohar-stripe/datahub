@@ -1,6 +1,7 @@
 load("config/kubernetes/apps/deployment.sky", "deployment")
 load("config/kubernetes/core/container.sky", "init_container", "container")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/core/volume.sky", "mount_pod_volume", "volume_mount")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
 load("config/kubernetes/helpers/aws_instance_sizes.sky", "m5d_xlarge")
@@ -48,6 +49,51 @@ def env_configs(ctx):
             "elasticsearch_path_prefix": "/" + es_cluster_name,
         }
 
+def add_jmxfetch_sidecar(ctx, service_name, jmx_port, props_volume, yaml_file):
+    return compose_plugins(
+      container(
+        name = "jmxfetch",
+        image = image(
+            ctx,
+            "third-party/jmxfetch",
+            label = "latest",
+        ),
+        command = [
+            "java",
+            "-classpath",
+            "/jmxfetch-0.14.0-jar-with-dependencies.jar",
+            "org.datadog.jmxfetch.App",
+            "--check",
+            yaml_file,
+            "--check_period",
+            "15000",
+            "--conf_directory",
+            props_volume,
+            "--log_level",
+            "INFO",
+            "--log_location",
+            "/jmxfetch/jmxfetch-datahub-gms.log",
+            "--reporter",
+            "statsd:127.0.0.1:8200",
+            "--status_location",
+            "/jmxfetch/status_datahub_gms.yaml",
+            "collect",
+        ],
+        plugins = [
+            container_env_vars(
+                vars = {
+                    "JAVA_OPTS": " ".join([
+                        "-Xms50m",
+                        "-Xmx200m",
+                    ]),
+                },
+            ),
+        ],
+      ),
+      mount_pod_volume("/jmxfetch", container_name = "jmxfetch", mount_args = {"read_only": False}),
+      mount_pod_volume(props_volume, container_name = "jmxfetch"),
+    )
+
 # Canary to one replica
 def canary(ctx):
     return _service(ctx, replicas = 1, suffix = "-canary")
@@ -62,6 +108,7 @@ def _service(ctx, replicas, suffix = ""):
     artifact = "datahub-image",
   )
 
+  PROPS_VOLUME = "/pay/jmxfetch-config"
   common_gms_env_vars = {
       "DATASET_ENABLE_SCSI": "false",
       "EBEAN_DATASOURCE_USERNAME": "datahub",
@@ -123,6 +170,19 @@ def _service(ctx, replicas, suffix = ""):
         },
         container_name = 'datahub-gms-initmysql',
     ),
+    # init container to copy the jmx fetch yaml to the properties volume so that JMX fetch
+    # can access it
+    init_container(
+        name="copy-jmxfetch-yaml",
+        command=["cp", "/datahub/datahub-gms/resources/stripe-jmxfetch.yaml", PROPS_VOLUME],
+        cpu = cores(1),
+        memory = gigabytes(1),
+        plugins = [
+            volume_mount(PROPS_VOLUME, read_only = False),
+        ],
+    ),
+    # configure the jmx fetch sidecar container
+    add_jmxfetch_sidecar(ctx, "datahub-gms", "8082", PROPS_VOLUME, "stripe-jmxfetch.yaml"),
     add_security_groups("datahub"),
     raw_secret(
         filename = "db_root_password.txt",
