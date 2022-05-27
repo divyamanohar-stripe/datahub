@@ -10,17 +10,9 @@
           "urn:li:corpuser:datahub"
         ]
       },
-      "privileges":[
-        "MANAGE_POLICIES",
-        "MANAGE_INGESTION",
-        "MANAGE_SECRETS",
-        "MANAGE_USERS_AND_GROUPS",
-        "VIEW_ANALYTICS",
-        "GENERATE_PERSONAL_ACCESS_TOKENS",
-        "MANAGE_DOMAINS"
-      ],
-      "displayName":"Root User - All Platform Privileges",
-      "description":"Grants full platform privileges to root datahub super user.",
+      "privileges":[],
+      "displayName":"Root User - No Platform Privileges",
+      "description":"Cuts down platform privileges to default datahub user.",
       "state":"ACTIVE",
       "type":"PLATFORM",
       "editable":false
@@ -38,11 +30,10 @@
         ]
       },
       "privileges":[
-        "EDIT_ENTITY",
         "VIEW_ENTITY_PAGE"
       ],
-      "displayName":"Root User - Edit and View All Resources",
-      "description":"Grants full edit and view privileges for all resources to root 'datahub' root user.",
+      "displayName":"Root User - View All Resources",
+      "description":"Grants full view privileges for all resources to root 'datahub' root user.",
       "state":"ACTIVE",
       "type":"METADATA",
       "editable":false
