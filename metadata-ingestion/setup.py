@@ -33,7 +33,6 @@ def get_long_description():
 
 base_requirements = {
     # Compatability.
-    "dataclasses>=0.6; python_version < '3.7'",
     "typing_extensions>=3.10.0.2",
     "mypy_extensions>=0.4.3",
     # Actual dependencies.
@@ -155,7 +154,7 @@ plugins: Dict[str, Set[str]] = {
     "datahub-rest": {"requests"},
     # Integrations.
     "airflow": {
-        "apache-airflow >= 1.10.2",
+        "apache-airflow == 1.10.4+stripe.1.3297.g4992af75",
     },
     "great-expectations": sql_common | {"sqllineage==1.3.4"},
     # Source plugins
