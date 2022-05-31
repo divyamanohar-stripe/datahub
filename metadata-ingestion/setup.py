@@ -446,7 +446,7 @@ entry_points = {
 setuptools.setup(
     # Package metadata.
     name=package_metadata["__package_name__"],
-    version=stripe_version(package_metadata["__version__"]),
+    version=f'{package_metadata["__version__"]}{stripe_version("1")}',
     url="https://datahubproject.io/",
     project_urls={
         "Documentation": "https://datahubproject.io/docs/",
