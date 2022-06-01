@@ -32,9 +32,6 @@ def get_long_description():
 
 
 base_requirements = {
-    # Compatability.
-    "typing_extensions>=3.10.0.2",
-    "mypy_extensions>=0.4.3",
     # Actual dependencies.
     "typing-inspect",
     "pydantic>=1.5.1",
@@ -58,11 +55,6 @@ framework_common = {
     "termcolor>=1.0.0",
     "types-termcolor>=1.0.0",
     "psutil>=5.8.0",
-    # Markupsafe breaking change broke Jinja and some other libs
-    # Pinning it to a version which works even though we are not using explicitly
-    # https://github.com/aws/aws-sam-cli/issues/3661
-    # Airflow compatibility: https://github.com/apache/airflow/blob/2.2.2/setup.cfg#L125
-    "markupsafe>=1.1.1,<=2.0.1",
     "Deprecated",
     "types-Deprecated",
 }
