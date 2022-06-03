@@ -33,7 +33,6 @@ export GRADLE_OPTS
 
 echo Building datahub.
 
-# We just compile the metadata service and frontend for now
 ./gradlew :metadata-service:war:build
 
 # Skip yarn tests temporarily till we resolve: https://jira.corp.stripe.com/browse/SCHMAQUERY-1551
@@ -54,3 +53,21 @@ cp docker/datahub-frontend/stripe-frontend-start.sh /build/stripe-frontend-start
 cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
 cp docker/mysql-setup/init.sql /build/mysql_init.sql
 cp Dockerfile.deploy /build
+
+./gradlew :metadata-ingestion:codegen
+
+pushd metadata-ingestion
+
+echo ""
+echo "@@ Building Python Wheels"
+echo ""
+python3 setup.py bdist_wheel
+echo ""
+echo "@@ Build completed"
+echo ""
+
+cp -r dist /build
+popd
+
+mkdir /build/henson
+cp henson/restart /build/henson/

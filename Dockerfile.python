@@ -4,7 +4,7 @@ ENV \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_INDEX_URL=https://artifactory-content.stripe.build/artifactory/api/pypi/pypi-safe/simple \
     PIP_NO_CACHE_DIR=1
-RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel
+RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel setuptools==57.5.0
 
 WORKDIR /src
 

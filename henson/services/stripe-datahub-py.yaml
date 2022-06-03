@@ -16,5 +16,5 @@ announce:
   slack_channels:
     - datahub-bots
 jenkins:
-  job_name: stripe-private-oss-forks-datahub-py
+  job_name: stripe-private-oss-forks-datahub
   artifact_name: build
