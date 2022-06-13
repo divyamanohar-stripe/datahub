@@ -9,12 +9,30 @@ deploy:
     - pypipusherbox
   autodeploy:
     enabled: true
+    triggers:
+      merges:
+        commits_have_labels: [ "service-datahub-py" ]
+      schedule:
+        cron: "20 TUE" # Deploy Tuesdays at 20:00 UTC
 restart:
   script:
     user: pypipusher
+# TODO: Once we're confident of the stability of the service we should update the announce to cc the relevant runner
+# in case of errors during deploys
 announce:
-  slack_channels:
-    - datahub-bots
+  announce_channels:
+    - channel: datahub-bots
+      # Deployment failed
+      enable_deployment_failed: ENABLED
+      # Create/clear lock
+      enable_create_lock: ENABLED
+      enable_clear_lock: ENABLED
+      # A deployment healthcheck is unhealthy during an active deploy
+      enable_rollout_stage_unhealthy: ENABLED
+      # A scheduled autodeploy will go out, did go out, or was unable to go out
+      enable_autodeploy_scheduled_deployment: ENABLED
+      # Autodeploys are not able to deploy, needs attention
+      enable_autodeploy_not_deploying: ENABLED
 jenkins:
   job_name: stripe-private-oss-forks-datahub
   artifact_name: build

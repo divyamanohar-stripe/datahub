@@ -1,0 +1,13 @@
+---
+responsible_team: schema-and-query
+change_notifications:
+  slack: true
+review_requirements:
+  - assignees:
+      - codeowners-schema-and-query
+    reviewers:
+      - codeowners-schema-and-query
+affected_services:
+  - service: service-datahub-frontend
+  - service: service-datahub-gms
+  - service: service-datahub-py

@@ -36,11 +36,34 @@ deploy:
           healthchecks:
             - consul_health:
                 service_name: datahub-frontend
-# TODO: In a subsequent pass setup autodeploys + more deploy notifications
+  autodeploy:
+    enabled: true
+    triggers:
+      merges:
+        commits_have_labels: [ "service-datahub-frontend" ]
+      schedule:
+        cron: "20 TUE" # Deploy Tuesdays at 20:00 UTC
+# TODO: Once we're confident of the stability of the service we should update the announce to cc the relevant runner
+# in case of errors during deploys
 announce:
   announce_channels:
     - channel: datahub-bots
-# TODO: add links to dashboard & runbooks when we have them
+      # Deployment failed
+      enable_deployment_failed: ENABLED
+      # Create/clear lock
+      enable_create_lock: ENABLED
+      enable_clear_lock: ENABLED
+      # A deployment healthcheck is unhealthy during an active deploy
+      enable_rollout_stage_unhealthy: ENABLED
+      # A scheduled autodeploy will go out, did go out, or was unable to go out
+      enable_autodeploy_scheduled_deployment: ENABLED
+      # Autodeploys are not able to deploy, needs attention
+      enable_autodeploy_not_deploying: ENABLED
+dashboard_urls:
+  - title: DataHub SignalFX dashboard
+    url: https://stripe.signalfx.com/#/dashboard/FTsBp4KAYAA?groupId=FTsBpiMAcAA&configId=FTsBqFNAgAA
+runbook:
+  url: http://go/datahub-runbook
 # http://go/outbound-acls
 inbound_config:
   inbound_listeners:
