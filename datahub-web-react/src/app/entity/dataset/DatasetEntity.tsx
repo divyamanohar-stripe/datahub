@@ -156,7 +156,11 @@ export class DatasetEntity implements Entity<Dataset> {
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataset: GetDatasetQuery) => {
-                            return (dataset?.dataset?.writeRuns?.total || 0) > 0;
+                            return (
+                                (dataset?.dataset?.properties?.customProperties?.some((p) => p.key === 'sla') ||
+                                    false) &&
+                                (dataset?.dataset?.writeRuns?.total || 0) > 0
+                            );
                         },
                     },
                 },

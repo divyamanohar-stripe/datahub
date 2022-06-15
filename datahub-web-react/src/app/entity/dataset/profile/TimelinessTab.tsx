@@ -8,8 +8,8 @@ import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-co
 import { RelationshipDirection } from '../../../../types.generated';
 import { useEntityData } from '../../shared/EntityContext';
 
-type DatasetCustomPropertiesWithSlc = {
-    slc: string;
+type DatasetCustomPropertiesWithSla = {
+    sla: string;
     [key: string]: string;
 };
 
@@ -26,7 +26,7 @@ type Run = RunCustomPropertiesWithExternalUrl & {
     timeSpent: number;
 };
 
-function renderDescriptions(runs: Run[], slcDuration: moment.Duration, runCount: number, setRunCount) {
+function renderDescriptions(runs: Run[], slaDuration: moment.Duration, runCount: number, setRunCount) {
     function renderLatestRunSteps(latestRun: Run) {
         /**
          * Formats time difference to hh:mm:ss text
@@ -76,7 +76,7 @@ function renderDescriptions(runs: Run[], slcDuration: moment.Duration, runCount:
 
         return (
             <Steps current={currentStep}>
-                <Steps.Step title="Scheduled" description={moment(latestRunExecutionDate).toString()} />
+                <Steps.Step title="Scheduled" description={moment.utc(latestRunExecutionDate).toString()} />
                 <Steps.Step title="Waiting to start" description={latestRunWaitingTimeText} />
                 <Steps.Step title="In Progress" description={latestRunProcessingTimeText} />
                 <Steps.Step title="Finished" description={latestRunTimeLeftText} />
@@ -84,67 +84,67 @@ function renderDescriptions(runs: Run[], slcDuration: moment.Duration, runCount:
         );
     }
 
-    function renderOverSlcRate(runsOverSlcCount: number, runsCount: number) {
+    function renderOverSlaRate(runsOverSlaCount: number, runsCount: number) {
         function getTagColor(rate: number) {
             if (rate <= 0) return 'blue';
             if (rate <= 0.1) return 'yellow';
-            return 'tag';
+            return 'red';
         }
 
-        const runsOverSlcRate = runsOverSlcCount / runsCount;
-        const runsOverSlcRateText = runsOverSlcRate.toLocaleString(undefined, {
+        const runsOverSlaRate = runsOverSlaCount / runsCount;
+        const runsOverSlaRateText = runsOverSlaRate.toLocaleString(undefined, {
             style: 'percent',
             minimumFractionDigits: 1,
         });
-        const tagColor = getTagColor(runsOverSlcRate);
+        const tagColor = getTagColor(runsOverSlaRate);
 
-        return <Tag color={tagColor}>{runsOverSlcRateText}</Tag>;
+        return <Tag color={tagColor}>{runsOverSlaRateText}</Tag>;
     }
 
-    function renderOverSlcDelayAverage(runsOverSlc: Run[]) {
+    function renderOverSlaDelayAverage(runsOverSla: Run[]) {
         function getTagColor(delayedHours: number) {
             if (delayedHours <= 0) return 'blue';
             if (delayedHours <= 4) return 'yellow';
             return 'red';
         }
 
-        const runsOverSlcDelayedHours = moment.duration(runsOverSlc.reduce((acc, e) => acc - e.timeLeft, 0)).asHours();
-        const runsOverSlcAverageDelay =
-            runsOverSlcDelayedHours === 0 ? '0' : (runsOverSlcDelayedHours / runsOverSlc.length).toFixed(2);
-        const runsOverSlcAverageDelayText = `${runsOverSlcAverageDelay} hours`;
-        const tagColor = getTagColor(runsOverSlcDelayedHours);
+        const runsOverSlaDelayedHours = moment.duration(runsOverSla.reduce((acc, e) => acc - e.timeLeft, 0)).asHours();
+        const runsOverSlaAverageDelay =
+            runsOverSlaDelayedHours === 0 ? '0' : (runsOverSlaDelayedHours / runsOverSla.length).toFixed(2);
+        const runsOverSlaAverageDelayText = `${runsOverSlaAverageDelay} hours`;
+        const tagColor = getTagColor(runsOverSlaDelayedHours);
 
-        return <Tag color={tagColor}>{runsOverSlcAverageDelayText}</Tag>;
+        return <Tag color={tagColor}>{runsOverSlaAverageDelayText}</Tag>;
     }
 
-    const slcText = `${slcDuration.asHours().toFixed(0)} hours`;
+    const slaText = `${slaDuration.asHours().toFixed(2)} hours`;
     const runsCount = runs.length;
-    const runsOverSlc = runs.filter((r) => {
+    const runsOverSla = runs.filter((r) => {
         return r.timeLeft < 0;
     });
-    const runsOverSlcCount = runsOverSlc.length;
+    const runsOverSlaCount = runsOverSla.length;
 
     return (
         <Descriptions title="" bordered>
             <Descriptions.Item label="Latest run" span={3}>
                 {renderLatestRunSteps(runs[0])}
             </Descriptions.Item>
-            <Descriptions.Item label="SLC">{slcText}</Descriptions.Item>
+            <Descriptions.Item label="SLA">{slaText}</Descriptions.Item>
             <Descriptions.Item label="Show last N runs">
                 <InputNumber min={1} max={99} value={runCount} onChange={setRunCount} />
             </Descriptions.Item>
             <Descriptions.Item label="Runs collected">{runsCount}</Descriptions.Item>
-            <Descriptions.Item label="Runs over SLC">{runsOverSlcCount}</Descriptions.Item>
-            <Descriptions.Item label="Runs over SLC rate">
-                {renderOverSlcRate(runsOverSlcCount, runsCount)}
+            <Descriptions.Item label="Runs over SLA">{runsOverSlaCount}</Descriptions.Item>
+            <Descriptions.Item label="Runs over SLA rate">
+                {renderOverSlaRate(runsOverSlaCount, runsCount)}
             </Descriptions.Item>
-            <Descriptions.Item label="Delay average">{renderOverSlcDelayAverage(runsOverSlc)}</Descriptions.Item>
+            <Descriptions.Item label="Delay average">{renderOverSlaDelayAverage(runsOverSla)}</Descriptions.Item>
         </Descriptions>
     );
 }
 
-function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
-    const slcInHours = slcDuration.asHours();
+function renderLinePlot(runs: Run[], slaDuration: moment.Duration) {
+    const slaInHours = slaDuration.asHours();
 
     const runsPlotData = runs
         .map((r) => ({
@@ -175,14 +175,14 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
         annotations: [
             {
                 type: 'regionFilter',
-                start: ['min', slcInHours] as [string, number],
+                start: ['min', slaInHours] as [string, number],
                 end: ['max', 'max'] as [string, string],
                 color: 'red',
             },
             {
                 type: 'text',
-                position: ['min', slcInHours] as [string, number],
-                content: 'SLC',
+                position: ['min', slaInHours] as [string, number],
+                content: 'SLA',
                 offsetY: -4,
                 style: {
                     textBaseline: 'bottom' as const,
@@ -190,8 +190,8 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
             },
             {
                 type: 'line',
-                start: ['min', slcInHours] as [string, number],
-                end: ['max', slcInHours] as [string, number],
+                start: ['min', slaInHours] as [string, number],
+                end: ['max', slaInHours] as [string, number],
                 style: {
                     stroke: 'red',
                     lineDash: [2, 2],
@@ -210,7 +210,7 @@ function renderLinePlot(runs: Run[], slcDuration: moment.Duration) {
             customContent: (title, items) => {
                 const run = items[0]?.data as Run;
                 const timeLeft = moment.duration(run?.timeLeft).asHours();
-                const dateDom = `<div>Execution date: ${moment(run?.executionDate).toString()}</div>`;
+                const dateDom = `<div>Execution date: ${moment.utc(run?.executionDate).toString()}</div>`;
                 const stateDom = `<div>State: ${run?.state}</div>`;
                 const timeSpentDom = `<div>Time spent: ${moment
                     .duration(run?.timeSpent)
@@ -262,11 +262,11 @@ export const TimelinessTab = () => {
 
     if (isLoadingDataset || isLoadingRuns) return loadingPage;
 
-    const datasetCustomPropertiesWithSlc = datasetQueryResponse?.dataset?.properties?.customProperties?.reduce(
+    const datasetCustomPropertiesWithSla = datasetQueryResponse?.dataset?.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
-    ) as DatasetCustomPropertiesWithSlc;
-    const slcDuration = moment.duration(`PT${datasetCustomPropertiesWithSlc?.slc.toUpperCase()}`);
+    ) as DatasetCustomPropertiesWithSla;
+    const slaDuration = moment.duration(datasetCustomPropertiesWithSla?.sla, 'seconds');
 
     const now = moment(moment.now());
     const runs = runsQueryResponse?.dataset?.runs?.runs
@@ -279,18 +279,18 @@ export const TimelinessTab = () => {
         )
         .map((r) => {
             const endDate: moment.Moment = r.endDate === undefined ? now : moment(r.endDate);
-            const slcTarget: moment.Moment = moment(r.executionDate).add(slcDuration);
+            const slaTarget: moment.Moment = moment(r.executionDate).add(slaDuration);
             return {
                 ...r,
                 timeSpent: endDate.diff(r.executionDate),
-                timeLeft: slcTarget.diff(endDate),
+                timeLeft: slaTarget.diff(endDate),
             };
         }) as Run[];
 
     return (
         <>
-            {renderDescriptions(runs, slcDuration, runCount, setRunCount)}
-            {renderLinePlot(runs, slcDuration)}
+            {renderDescriptions(runs, slaDuration, runCount, setRunCount)}
+            {renderLinePlot(runs, slaDuration)}
         </>
     );
 };
