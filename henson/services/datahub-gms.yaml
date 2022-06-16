@@ -71,6 +71,7 @@ inbound_config:
     - consul_service: datahub-gms
       allowed_clients:
         - host_type: airflow
+        - host_type: airflowbackfill
         - host_type: airflowds
         - host_type: airflowicp
         - host_type: airflowretention
