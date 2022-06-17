@@ -24,7 +24,7 @@ def env_configs(ctx):
         qa_mysql_host = "qa-datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com"
         kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.qa-northwest.consul:9092"
         return {
-            "replicas": 1,
+            "replicas": 5,
             "mysql_host": qa_mysql_host,
             "ebean_datasource_host": qa_mysql_host + ":" + mysql_port,
             "ebean_datasource_url": mysql_datasource_url_template % (qa_mysql_host, mysql_port),
@@ -38,7 +38,7 @@ def env_configs(ctx):
         prod_mysql_host = "datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com"
         kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.northwest.consul:9092"
         return {
-            "replicas": 3,
+            "replicas": 10,
             "mysql_host": prod_mysql_host,
             "ebean_datasource_host": prod_mysql_host + ":" + mysql_port,
             "ebean_datasource_url": mysql_datasource_url_template % (prod_mysql_host, mysql_port),
