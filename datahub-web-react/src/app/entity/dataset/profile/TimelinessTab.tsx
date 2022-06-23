@@ -1,4 +1,4 @@
-import { Line } from '@ant-design/plots';
+import { Column } from '@ant-design/plots';
 import { Descriptions, InputNumber, Steps, Tag } from 'antd';
 import moment from 'moment-timezone';
 import React, { useState } from 'react';
@@ -9,7 +9,8 @@ import { RelationshipDirection } from '../../../../types.generated';
 import { useEntityData } from '../../shared/EntityContext';
 
 type DatasetCustomPropertiesWithSla = {
-    sla: string;
+    finishedBySla: string;
+    startedBySla: string;
     [key: string]: string;
 };
 
@@ -22,28 +23,47 @@ type RunCustomPropertiesWithExternalUrl = {
 };
 
 type Run = RunCustomPropertiesWithExternalUrl & {
-    timeLeft: number;
-    timeSpent: number;
+    timeLeftToEnd: number;
+    timeLeftToStart: number;
+    runDuration: number;
 };
 
-function renderDescriptions(runs: Run[], slaDuration: moment.Duration, runCount: number, setRunCount) {
-    function renderLatestRunSteps(latestRun: Run) {
-        /**
-         * Formats time difference to hh:mm:ss text
-         * @param diff time difference in milliseconds
-         * @returns hh:mm:ss formatted text
-         */
-        function formatTimeDiff(diff: number): string {
-            return Math.floor(moment.duration(diff).asHours()) + moment.utc(diff).format(':mm:ss');
-        }
+function formatDateString(date: string | undefined) {
+    if (date === undefined) {
+        return date;
+    }
+    if (date.includes('.')) {
+        return date.substring(0, date.indexOf('.'));
+    }
+    if (date.includes('+')) {
+        return date.substring(0, date.indexOf('+'));
+    }
+    return date;
+}
 
+function renderDescriptions(
+    runs: Run[],
+    slaDuration: moment.Duration,
+    startSlaDuration: moment.Duration,
+    runCount: number,
+    setRunCount,
+) {
+    function renderLatestRunSteps(latestRun: Run) {
         function formatProcessingTimeText(startDate: string | undefined, endDate: string | undefined): string {
             if (startDate === undefined) {
                 return '';
             }
-            return `Processing time: ${formatTimeDiff(
-                moment(endDate === undefined ? moment.now() : endDate).diff(moment(startDate)),
-            )}`;
+
+            if (endDate === undefined) {
+                return `Running for: ${+moment
+                    .duration(moment(moment.now()).diff(moment(startDate)))
+                    .asMinutes()
+                    .toFixed(2)} mins`;
+            }
+            return `Ran for: ${+moment
+                .duration(moment(endDate).diff(moment(startDate)))
+                .asMinutes()
+                .toFixed(2)} mins`;
         }
 
         const {
@@ -51,7 +71,8 @@ function renderDescriptions(runs: Run[], slaDuration: moment.Duration, runCount:
             state: latestRunState,
             startDate: latestRunStartDate,
             endDate: latestRunEndDate,
-            timeLeft: latestRunTimeLeft,
+            timeLeftToEnd: latestRunTimeLeft,
+            timeLeftToStart: latestStartTimeLeft,
         } = latestRun;
 
         const stateToStepMapping = {
@@ -62,142 +83,235 @@ function renderDescriptions(runs: Run[], slaDuration: moment.Duration, runCount:
             skipped: 3,
         };
 
+        const finishedAtText: string =
+            latestRunEndDate === undefined ? 'Finished' : `Finished at ${formatDateString(latestRunEndDate)}`;
         const currentStep: number = stateToStepMapping[latestRunState] || 0;
-        const latestRunWaitingTimeText = `Waiting time: ${formatTimeDiff(
-            moment(latestRunStartDate === undefined ? moment.now() : latestRunStartDate).diff(
-                moment(latestRunExecutionDate),
-            ),
-        )}`;
+        const latestRunWaitingTimeText =
+            latestRunStartDate === undefined
+                ? 'Waiting to start'
+                : `Started at ${formatDateString(latestRunStartDate)}`;
         const latestRunProcessingTimeText = formatProcessingTimeText(latestRunStartDate, latestRunEndDate);
-        const latestRunTimeLeftText =
-            latestRunTimeLeft >= 0
-                ? `Time left: ${formatTimeDiff(latestRunTimeLeft)}`
-                : `Time delayed: ${formatTimeDiff(-latestRunTimeLeft)}`;
-
+        let latestRunTimeLeftText = '';
+        if (slaDuration.asMinutes() > 0) {
+            latestRunTimeLeftText =
+                latestRunTimeLeft >= 0
+                    ? `Time remaining until end SLA: ${+moment.duration(latestRunTimeLeft).asMinutes().toFixed(2)} mins`
+                    : `Time delayed over end SLA: ${+moment.duration(-latestRunTimeLeft).asMinutes().toFixed(2)} mins`;
+        }
+        let latestStartTimeLeftText = '';
+        if (startSlaDuration.asMinutes() > 0) {
+            latestStartTimeLeftText =
+                latestStartTimeLeft >= 0
+                    ? `\nTime remaining until start SLA: ${+moment
+                          .duration(latestStartTimeLeft)
+                          .asMinutes()
+                          .toFixed(2)} mins`
+                    : `\nTime delayed over start SLA: ${+moment
+                          .duration(-latestStartTimeLeft)
+                          .asMinutes()
+                          .toFixed(2)} mins`;
+        }
         return (
             <Steps current={currentStep}>
-                <Steps.Step title="Scheduled" description={moment.utc(latestRunExecutionDate).toString()} />
-                <Steps.Step title="Waiting to start" description={latestRunWaitingTimeText} />
+                <Steps.Step title="Scheduled" description={formatDateString(latestRunExecutionDate)} />
+                <Steps.Step title={latestRunWaitingTimeText} description={latestStartTimeLeftText} />
                 <Steps.Step title="In Progress" description={latestRunProcessingTimeText} />
-                <Steps.Step title="Finished" description={latestRunTimeLeftText} />
+                <Steps.Step title={finishedAtText} description={latestRunTimeLeftText} />
             </Steps>
         );
     }
 
-    function renderOverSlaRate(runsOverSlaCount: number, runsCount: number) {
-        function getTagColor(rate: number) {
+    function renderOverSlaRate(runsOverSlaCount: number, runsCount: number, sla) {
+        function getTagColor(rate: number, runsOverSlaRateText: string) {
+            if (runsOverSlaRateText === 'N/A') {
+                return 'grey';
+            }
             if (rate <= 0) return 'blue';
             if (rate <= 0.1) return 'yellow';
             return 'red';
         }
 
         const runsOverSlaRate = runsOverSlaCount / runsCount;
-        const runsOverSlaRateText = runsOverSlaRate.toLocaleString(undefined, {
-            style: 'percent',
-            minimumFractionDigits: 1,
-        });
-        const tagColor = getTagColor(runsOverSlaRate);
+        let runsOverSlaRateText = 'N/A';
+        if (sla.asMinutes() > 0) {
+            runsOverSlaRateText = runsOverSlaRate.toLocaleString(undefined, {
+                style: 'percent',
+                minimumFractionDigits: 1,
+            });
+        }
+        const tagColor = getTagColor(runsOverSlaRate, runsOverSlaRateText);
 
         return <Tag color={tagColor}>{runsOverSlaRateText}</Tag>;
     }
 
-    function renderOverSlaDelayAverage(runsOverSla: Run[]) {
-        function getTagColor(delayedHours: number) {
-            if (delayedHours <= 0) return 'blue';
-            if (delayedHours <= 4) return 'yellow';
+    function renderOverSlaDelayAverage(runsOverSla: Run[], sla_type: string) {
+        function getTagColor(delayedMins: number) {
+            if (delayedMins <= 0) return 'blue';
+            if (delayedMins <= 240) return 'yellow';
             return 'red';
         }
+        let runsOverSlaDelayedMins: number;
+        if (sla_type === 'startedBy') {
+            runsOverSlaDelayedMins = moment
+                .duration(runsOverSla.reduce((acc, e) => acc - e.timeLeftToStart, 0))
+                .asMinutes();
+        } else {
+            runsOverSlaDelayedMins = moment
+                .duration(runsOverSla.reduce((acc, e) => acc - e.timeLeftToEnd, 0))
+                .asMinutes();
+        }
 
-        const runsOverSlaDelayedHours = moment.duration(runsOverSla.reduce((acc, e) => acc - e.timeLeft, 0)).asHours();
         const runsOverSlaAverageDelay =
-            runsOverSlaDelayedHours === 0 ? '0' : (runsOverSlaDelayedHours / runsOverSla.length).toFixed(2);
-        const runsOverSlaAverageDelayText = `${runsOverSlaAverageDelay} hours`;
-        const tagColor = getTagColor(runsOverSlaDelayedHours);
+            runsOverSlaDelayedMins === 0 ? '0' : +(runsOverSlaDelayedMins / runsOverSla.length).toFixed(2);
+        const runsOverSlaAverageDelayText = `${runsOverSlaAverageDelay} mins`;
+        const tagColor = getTagColor(runsOverSlaDelayedMins);
 
         return <Tag color={tagColor}>{runsOverSlaAverageDelayText}</Tag>;
     }
 
-    const slaText = `${slaDuration.asHours().toFixed(2)} hours`;
+    const startSlaDurationText =
+        startSlaDuration.asMinutes() > 0 ? `${+startSlaDuration.asMinutes().toFixed(2)} mins` : '-';
+    const endSlaDurationText = slaDuration.asMinutes() > 0 ? `${+slaDuration.asMinutes().toFixed(2)} mins` : '-';
+    const slaText = `${startSlaDurationText} / ${endSlaDurationText}`;
     const runsCount = runs.length;
-    const runsOverSla = runs.filter((r) => {
-        return r.timeLeft < 0;
+    const runsOverEndSla = runs.filter((r) => {
+        return r.timeLeftToEnd < 0;
     });
-    const runsOverSlaCount = runsOverSla.length;
+    const runsOverEndSlaCount = runsOverEndSla.length;
+
+    const runsOverStartSla = runs.filter((r) => {
+        return r.timeLeftToStart < 0;
+    });
+    const runsOverStartSlaCount = runsOverStartSla.length;
 
     return (
         <Descriptions title="" bordered>
             <Descriptions.Item label="Latest run" span={3}>
-                {renderLatestRunSteps(runs[0])}
+                {renderLatestRunSteps(runs[runs.length - 1])}
             </Descriptions.Item>
-            <Descriptions.Item label="SLA">{slaText}</Descriptions.Item>
+            <Descriptions.Item label="Start / End SLAs">{slaText}</Descriptions.Item>
             <Descriptions.Item label="Show last N runs">
                 <InputNumber min={1} max={99} value={runCount} onChange={setRunCount} />
             </Descriptions.Item>
-            <Descriptions.Item label="Runs collected">{runsCount}</Descriptions.Item>
-            <Descriptions.Item label="Runs over SLA">{runsOverSlaCount}</Descriptions.Item>
-            <Descriptions.Item label="Runs over SLA rate">
-                {renderOverSlaRate(runsOverSlaCount, runsCount)}
+            <Descriptions.Item label="Runs collected">{runs.length}</Descriptions.Item>
+            <Descriptions.Item label="Runs finished over SLA">
+                {slaDuration.asMinutes() > 0 ? runsOverEndSlaCount : 'N/A'}
             </Descriptions.Item>
-            <Descriptions.Item label="Delay average">{renderOverSlaDelayAverage(runsOverSla)}</Descriptions.Item>
+            <Descriptions.Item label="Runs finished over SLA rate">
+                {renderOverSlaRate(runsOverEndSlaCount, runsCount, slaDuration)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Completion Delay Average">
+                {slaDuration.asMinutes() > 0 ? renderOverSlaDelayAverage(runsOverEndSla, 'finishedBy') : 'N/A'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Runs started over SLA">
+                {startSlaDuration.asMinutes() > 0 ? runsOverStartSlaCount : 'N/A'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Runs started over SLA rate">
+                {renderOverSlaRate(runsOverStartSlaCount, runsCount, startSlaDuration)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Start Delay Average">
+                {startSlaDuration.asMinutes() > 0 ? renderOverSlaDelayAverage(runsOverStartSla, 'startedBy') : 'N/A'}
+            </Descriptions.Item>
         </Descriptions>
     );
 }
 
-function renderLinePlot(runs: Run[], slaDuration: moment.Duration) {
-    const slaInHours = slaDuration.asHours();
+function renderTimelinessPlot(runs: Run[], slaDuration: moment.Duration, startSlaDuration: moment.Duration) {
+    function getSlaAnnotations(endSlaInMinutes: number, startSlaInMinutes: number) {
+        const annotations: any[] = [];
+        if (endSlaInMinutes > 0) {
+            const endLine = {
+                type: 'line',
+                start: ['start', endSlaInMinutes] as [string, number],
+                end: ['end', endSlaInMinutes] as [string, number],
+                style: {
+                    stroke: 'purple',
+                    lineDash: [2, 2],
+                },
+            };
+            const endText = {
+                type: 'text',
+                position: ['max', endSlaInMinutes] as [string, number],
+                content: 'End SLA',
+                offsetX: -20,
+                style: { textBaseline: 'top' as const },
+            };
+            annotations.push(endText);
+            annotations.push(endLine);
+        }
+        if (startSlaInMinutes > 0) {
+            const startLine = {
+                type: 'line',
+                start: ['start', startSlaInMinutes] as [string, number],
+                end: ['end', startSlaInMinutes] as [string, number],
+                style: {
+                    stroke: 'purple',
+                    lineDash: [2, 2],
+                },
+            };
+            const startText = {
+                type: 'text',
+                position: ['max', startSlaInMinutes] as [string, number],
+                content: 'Start SLA',
+                offsetX: -24,
+                style: { textBaseline: 'top' as const },
+            };
+            annotations.push(startText);
+            annotations.push(startLine);
+        }
+        return annotations;
+    }
 
-    const runsPlotData = runs
-        .map((r) => ({
+    const endSlaInMins = slaDuration.asMinutes();
+    const startSlaInMins = startSlaDuration.asMinutes();
+    const runsPlotData = runs.map((r) => {
+        const executionDate = new Date(r.executionDate);
+        const startDate = new Date(r.startDate!);
+        const endDate = new Date(r.endDate!);
+
+        return {
             ...r,
-            timeSpentInHours: Number(moment.duration(r.timeSpent).asHours().toFixed(2)),
-        }))
-        .reverse();
+            execDate: formatDateString(r.executionDate),
+            values: [
+                (startDate.getTime() - executionDate.getTime()) / 60000,
+                (endDate.getTime() - executionDate.getTime()) / 60000,
+            ],
+        };
+    });
+
+    // mapping of execDate => color based on if job missed any SLA
+    const slaMissData = new Map();
+    runsPlotData.forEach(function (item) {
+        if (
+            (item.endDate !== undefined && endSlaInMins !== 0 && item.values[1] > endSlaInMins) ||
+            (item.startDate !== undefined && startSlaInMins !== 0 && item.values[0] > startSlaInMins)
+        ) {
+            slaMissData.set(item.execDate, 'Crimson');
+        } else {
+            slaMissData.set(item.execDate, 'CornflowerBlue');
+        }
+    });
 
     const config = {
         data: runsPlotData,
         padding: 'auto' as const,
-        xField: 'executionDate',
-        yField: 'timeSpentInHours',
+        xField: 'execDate',
+        yField: 'values',
+        isRange: true,
+        xAxis: {
+            title: {
+                text: 'Execution Date',
+            },
+        },
         yAxis: {
             title: {
-                text: 'Time Spent In Hours',
+                text: 'Time Spent in Minutes',
             },
         },
-        point: {
-            size: 3,
-            shape: 'circle',
-            style: {
-                fill: 'white',
-                stroke: 'blue',
-                lineWidth: 1,
-            },
+        color: (execDate) => {
+            return slaMissData.get(execDate.execDate);
         },
-        annotations: [
-            {
-                type: 'regionFilter',
-                start: ['min', slaInHours] as [string, number],
-                end: ['max', 'max'] as [string, string],
-                color: 'red',
-            },
-            {
-                type: 'text',
-                position: ['min', slaInHours] as [string, number],
-                content: 'SLA',
-                offsetY: -4,
-                style: {
-                    textBaseline: 'bottom' as const,
-                },
-            },
-            {
-                type: 'line',
-                start: ['min', slaInHours] as [string, number],
-                end: ['max', slaInHours] as [string, number],
-                style: {
-                    stroke: 'red',
-                    lineDash: [2, 2],
-                },
-            },
-        ],
+        annotations: getSlaAnnotations(endSlaInMins, startSlaInMins),
         tooltip: {
             showMarkers: false,
             enterable: true,
@@ -209,24 +323,44 @@ function renderLinePlot(runs: Run[], slaDuration: moment.Duration) {
             },
             customContent: (title, items) => {
                 const run = items[0]?.data as Run;
-                const timeLeft = moment.duration(run?.timeLeft).asHours();
-                const dateDom = `<div>Execution date: ${moment.utc(run?.executionDate).toString()}</div>`;
+                const timeLeftToEnd = moment.duration(run?.timeLeftToEnd).asMinutes();
+                const timeLeftToStart = moment.duration(run?.timeLeftToStart).asMinutes();
+                const execDateString = formatDateString(run?.executionDate);
+                const dateDom = `<div>Execution date: ${execDateString}</div>`;
                 const stateDom = `<div>State: ${run?.state}</div>`;
-                const timeSpentDom = `<div>Time spent: ${moment
-                    .duration(run?.timeSpent)
-                    .asHours()
-                    .toFixed(2)} hours</div>`;
-                const timeLeftDom =
-                    timeLeft < 0
-                        ? `<div>Time delayed: ${-timeLeft.toFixed(2)} hours</div>`
-                        : `<div>Time left: ${timeLeft.toFixed(2)} hours</div>`;
-
-                return `<div>${dateDom}${stateDom}${timeSpentDom}${timeLeftDom}<div>Open in <a href="${run?.externalUrl}">Airflow</a></div></div>`;
+                const runDuration = `<div>Task run duration: ${+(run?.runDuration / 60000).toFixed(2)} minutes</div>`;
+                let timeLeftDom = '';
+                if (endSlaInMins !== 0) {
+                    timeLeftDom =
+                        timeLeftToEnd < 0
+                            ? `<div>Time delayed over end SLA: ${+-timeLeftToEnd.toFixed(2)} mins</div>`
+                            : `<div>Time remaining until end SLA: ${+timeLeftToEnd.toFixed(2)} mins</div>`;
+                }
+                let startTimeLeftDom = '';
+                if (startSlaInMins !== 0) {
+                    startTimeLeftDom =
+                        timeLeftToStart < 0
+                            ? `<div>Time delayed over start SLA: ${+-timeLeftToStart.toFixed(2)} mins</div>`
+                            : `<div>Time remaining until start SLA: ${+timeLeftToStart.toFixed(2)} mins</div>`;
+                }
+                let startedAt = '';
+                if (run?.startDate !== undefined) {
+                    startedAt = `<div>Started At: ${formatDateString(run.startDate)}</div>`;
+                }
+                let finishedAt = '';
+                if (run?.endDate !== undefined) {
+                    finishedAt = `<div>Ended At: ${formatDateString(run.endDate)}</div>`;
+                }
+                return `<div>${dateDom}${startedAt}${finishedAt}${runDuration}${stateDom}${timeLeftDom}${startTimeLeftDom}<div>Open in <a href="${run?.externalUrl}">Airflow</a></div></div>`;
             },
         },
     };
 
-    return <Line {...config} />;
+    return (
+        <>
+            <Column {...config} />
+        </>
+    );
 }
 
 const LoadingText = styled.div`
@@ -266,8 +400,9 @@ export const TimelinessTab = () => {
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
     ) as DatasetCustomPropertiesWithSla;
-    const slaDuration = moment.duration(datasetCustomPropertiesWithSla?.sla, 'seconds');
+    const slaDuration = moment.duration(datasetCustomPropertiesWithSla?.finishedBySla, 'seconds');
 
+    const startSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.startedBySla, 'seconds');
     const now = moment(moment.now());
     const runs = runsQueryResponse?.dataset?.runs?.runs
         ?.map(
@@ -279,18 +414,22 @@ export const TimelinessTab = () => {
         )
         .map((r) => {
             const endDate: moment.Moment = r.endDate === undefined ? now : moment(r.endDate);
+            const startDate: moment.Moment = r.startDate === undefined ? now : moment(r.startDate);
             const slaTarget: moment.Moment = moment(r.executionDate).add(slaDuration);
+            const startSlaTarget: moment.Moment = moment(r.executionDate).add(startSlaDuration);
             return {
                 ...r,
-                timeSpent: endDate.diff(r.executionDate),
-                timeLeft: slaTarget.diff(endDate),
+                timeLeftToEnd: slaTarget.diff(endDate),
+                timeLeftToStart: startSlaTarget.diff(startDate),
+                runDuration: endDate.diff(r.startDate),
             };
         }) as Run[];
+    runs.sort((a, b) => (new Date(a.executionDate).getTime() > new Date(b.executionDate).getTime() ? 1 : -1));
 
     return (
         <>
-            {renderDescriptions(runs, slaDuration, runCount, setRunCount)}
-            {renderLinePlot(runs, slaDuration)}
+            {renderDescriptions(runs, slaDuration, startSlaDuration, runCount, setRunCount)}
+            {renderTimelinessPlot(runs, slaDuration, startSlaDuration)}
         </>
     );
 };
