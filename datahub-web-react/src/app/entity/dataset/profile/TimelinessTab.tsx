@@ -18,8 +18,8 @@ type RunCustomPropertiesWithExternalUrl = {
     executionDate: string;
     externalUrl: string;
     state: string;
-    startDate?: string;
-    endDate?: string;
+    startDate: string;
+    endDate: string;
 };
 
 type Run = RunCustomPropertiesWithExternalUrl & {
@@ -50,11 +50,11 @@ function renderDescriptions(
 ) {
     function renderLatestRunSteps(latestRun: Run) {
         function formatProcessingTimeText(startDate: string | undefined, endDate: string | undefined): string {
-            if (startDate === undefined) {
+            if (startDate === 'None') {
                 return '';
             }
 
-            if (endDate === undefined) {
+            if (endDate === 'None') {
                 return `Running for: ${+moment
                     .duration(moment(moment.now()).diff(moment(startDate)))
                     .asMinutes()
@@ -84,12 +84,10 @@ function renderDescriptions(
         };
 
         const finishedAtText: string =
-            latestRunEndDate === undefined ? 'Finished' : `Finished at ${formatDateString(latestRunEndDate)}`;
+            latestRunEndDate === 'None' ? 'Finished' : `Finished at ${formatDateString(latestRunEndDate)}`;
         const currentStep: number = stateToStepMapping[latestRunState] || 0;
         const latestRunWaitingTimeText =
-            latestRunStartDate === undefined
-                ? 'Waiting to start'
-                : `Started at ${formatDateString(latestRunStartDate)}`;
+            latestRunStartDate === 'None' ? 'Waiting to start' : `Started at ${formatDateString(latestRunStartDate)}`;
         const latestRunProcessingTimeText = formatProcessingTimeText(latestRunStartDate, latestRunEndDate);
         let latestRunTimeLeftText = '';
         if (slaDuration.asMinutes() > 0) {
@@ -262,20 +260,33 @@ function renderTimelinessPlot(runs: Run[], slaDuration: moment.Duration, startSl
         return annotations;
     }
 
+    function getPlotValues(startDateString: string, endDateString: string, executionDate: Date, runDuration: number) {
+        if (startDateString !== 'None' && endDateString !== 'None') {
+            const startDate = new Date(startDateString);
+            const endDate = new Date(endDateString);
+            return [
+                (startDate.getTime() - executionDate.getTime()) / 60000,
+                (endDate.getTime() - executionDate.getTime()) / 60000,
+            ];
+        }
+        if (startDateString !== 'None') {
+            const startDate = new Date(startDateString);
+            return [
+                (startDate.getTime() - executionDate.getTime()) / 60000,
+                (startDate.getTime() - executionDate.getTime()) / 60000 + runDuration / 60000,
+            ];
+        }
+        return null;
+    }
+
     const endSlaInMins = slaDuration.asMinutes();
     const startSlaInMins = startSlaDuration.asMinutes();
     const runsPlotData = runs.map((r) => {
         const executionDate = new Date(r.executionDate);
-        const startDate = new Date(r.startDate!);
-        const endDate = new Date(r.endDate!);
-
         return {
             ...r,
             execDate: formatDateString(r.executionDate),
-            values: [
-                (startDate.getTime() - executionDate.getTime()) / 60000,
-                (endDate.getTime() - executionDate.getTime()) / 60000,
-            ],
+            values: getPlotValues(r.startDate, r.endDate, executionDate, r.runDuration),
         };
     });
 
@@ -283,10 +294,15 @@ function renderTimelinessPlot(runs: Run[], slaDuration: moment.Duration, startSl
     const slaMissData = new Map();
     runsPlotData.forEach(function (item) {
         if (
-            (item.endDate !== undefined && endSlaInMins !== 0 && item.values[1] > endSlaInMins) ||
-            (item.startDate !== undefined && startSlaInMins !== 0 && item.values[0] > startSlaInMins)
+            (item.endDate !== 'None' && endSlaInMins !== 0 && item.values !== null && item.values[1] > endSlaInMins) ||
+            (item.startDate !== 'None' &&
+                startSlaInMins !== 0 &&
+                item.values !== null &&
+                item.values[0] > startSlaInMins)
         ) {
             slaMissData.set(item.execDate, 'Crimson');
+        } else if (item.state === 'running' || item.endDate === 'None') {
+            slaMissData.set(item.execDate, 'Grey');
         } else {
             slaMissData.set(item.execDate, 'CornflowerBlue');
         }
@@ -344,11 +360,11 @@ function renderTimelinessPlot(runs: Run[], slaDuration: moment.Duration, startSl
                             : `<div>Time remaining until start SLA: ${+timeLeftToStart.toFixed(2)} mins</div>`;
                 }
                 let startedAt = '';
-                if (run?.startDate !== undefined) {
+                if (run !== undefined && run.startDate !== 'None') {
                     startedAt = `<div>Started At: ${formatDateString(run.startDate)}</div>`;
                 }
                 let finishedAt = '';
-                if (run?.endDate !== undefined) {
+                if (run !== undefined && run.endDate !== 'None') {
                     finishedAt = `<div>Ended At: ${formatDateString(run.endDate)}</div>`;
                 }
                 return `<div>${dateDom}${startedAt}${finishedAt}${runDuration}${stateDom}${timeLeftDom}${startTimeLeftDom}<div>Open in <a href="${run?.externalUrl}">Airflow</a></div></div>`;
@@ -403,7 +419,7 @@ export const TimelinessTab = () => {
     const slaDuration = moment.duration(datasetCustomPropertiesWithSla?.finishedBySla, 'seconds');
 
     const startSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.startedBySla, 'seconds');
-    const now = moment(moment.now());
+    const now = moment.utc();
     const runs = runsQueryResponse?.dataset?.runs?.runs
         ?.map(
             (run) =>
@@ -413,8 +429,8 @@ export const TimelinessTab = () => {
                 } as RunCustomPropertiesWithExternalUrl),
         )
         .map((r) => {
-            const endDate: moment.Moment = r.endDate === undefined ? now : moment(r.endDate);
-            const startDate: moment.Moment = r.startDate === undefined ? now : moment(r.startDate);
+            const endDate: moment.Moment = r.endDate === 'None' ? now : moment(r.endDate);
+            const startDate: moment.Moment = r.startDate === 'None' ? now : moment(r.startDate);
             const slaTarget: moment.Moment = moment(r.executionDate).add(slaDuration);
             const startSlaTarget: moment.Moment = moment(r.executionDate).add(startSlaDuration);
             return {
