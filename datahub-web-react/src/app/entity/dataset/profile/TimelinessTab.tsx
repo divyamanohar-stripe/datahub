@@ -1,7 +1,7 @@
 import { Column } from '@ant-design/plots';
 import { Descriptions, InputNumber, Steps, Tag } from 'antd';
 import moment from 'moment-timezone';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useGetDatasetQuery, useGetDatasetRunsQuery } from '../../../../graphql/dataset.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
@@ -106,6 +106,7 @@ function renderDescriptions(
     warnStartSlaDuration: moment.Duration,
     runCount: number,
     setRunCount,
+    nRunRef,
 ) {
     function renderLatestRunSteps(latestRun: Run) {
         function formatProcessingTimeText(startDate: string | undefined, endDate: string | undefined): string {
@@ -294,7 +295,17 @@ function renderDescriptions(
                 {errorSlaText} / {warnSlaText}
             </Descriptions.Item>
             <Descriptions.Item label="Show last N runs">
-                <InputNumber min={1} max={99} value={runCount} onChange={setRunCount} />
+                <InputNumber
+                    ref={nRunRef}
+                    min={1}
+                    max={99}
+                    value={runCount}
+                    onPressEnter={() => {
+                        const myVal = +nRunRef.current!.value;
+                        setRunCount(myVal > 0 ? myVal : 20);
+                    }}
+                    onStep={setRunCount}
+                />
             </Descriptions.Item>
             <Descriptions.Item label="Runs collected">{runs.length}</Descriptions.Item>
             <Descriptions.Item
@@ -654,6 +665,7 @@ const loadingPage = (
 export const TimelinessTab = () => {
     // @mutable
     const [runCount, setRunCount] = useState(20);
+    const nRunRef: React.MutableRefObject<HTMLInputElement | null> = useRef(null);
 
     const { urn } = useEntityData();
     const { loading: isLoadingDataset, data: datasetQueryResponse } = useGetDatasetQuery({
@@ -711,6 +723,7 @@ export const TimelinessTab = () => {
                 warnStartSlaDuration,
                 runCount,
                 setRunCount,
+                nRunRef,
             )}
             {renderTimelinessPlot(runs, errorSlaDuration, errorStartSlaDuration, warnSlaDuration, warnStartSlaDuration)}
         </>
