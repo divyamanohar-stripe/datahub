@@ -389,9 +389,10 @@ function renderTimelinessPlot(
         errorStartSlaInMinutes: number,
         warnEndSlaInMinutes: number,
         warnStartSlaInMinutes: number,
+        minY: number,
     ) {
         const annotations: any[] = [];
-        if (errorEndSlaInMinutes > 0) {
+        if (errorEndSlaInMinutes > minY) {
             const errorEndLine = {
                 type: 'line',
                 start: ['start', errorEndSlaInMinutes] as [string, number],
@@ -411,7 +412,7 @@ function renderTimelinessPlot(
             annotations.push(errorEndLine);
             annotations.push(errorEndText);
         }
-        if (errorStartSlaInMinutes > 0) {
+        if (errorStartSlaInMinutes > minY) {
             const errorStartLine = {
                 type: 'line',
                 start: ['start', errorStartSlaInMinutes] as [string, number],
@@ -431,7 +432,7 @@ function renderTimelinessPlot(
             annotations.push(errorStartLine);
             annotations.push(errorStartText);
         }
-        if (warnEndSlaInMinutes > 0) {
+        if (warnEndSlaInMinutes > minY) {
             const warnEndLine = {
                 type: 'line',
                 start: ['start', warnEndSlaInMinutes] as [string, number],
@@ -451,7 +452,7 @@ function renderTimelinessPlot(
             annotations.push(warnEndLine);
             annotations.push(warnEndText);
         }
-        if (warnStartSlaInMinutes > 0) {
+        if (warnStartSlaInMinutes > minY) {
             const warnStartLine = {
                 type: 'line',
                 start: ['start', warnStartSlaInMinutes] as [string, number],
@@ -568,7 +569,13 @@ function renderTimelinessPlot(
         color: (execDate) => {
             return slaMissData.get(execDate.execDate);
         },
-        annotations: getSlaAnnotations(errorEndSlaInMins, errorStartSlaInMins, warnEndSlaInMins, warnStartSlaInMins),
+        annotations: getSlaAnnotations(
+            errorEndSlaInMins,
+            errorStartSlaInMins,
+            warnEndSlaInMins,
+            warnStartSlaInMins,
+            minY,
+        ),
         tooltip: {
             showMarkers: false,
             enterable: true,
