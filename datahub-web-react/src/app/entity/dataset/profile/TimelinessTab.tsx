@@ -538,6 +538,15 @@ function renderTimelinessPlot(
         }
     });
 
+    function getYs(index: number) {
+        return runsPlotData.map((r) => (r.values !== null ? r.values[index] : 0));
+    }
+    const minVal = Math.floor(Math.min(...getYs(0)));
+    const maxVal = Math.floor(Math.max(...getYs(1)));
+    const diff = Math.ceil(maxVal * 0.01);
+    const minY = Math.floor(minVal - diff > 0 ? minVal - diff : 0);
+    const maxY = Math.ceil(maxVal + diff);
+
     const config = {
         data: runsPlotData,
         padding: 'auto' as const,
@@ -553,6 +562,8 @@ function renderTimelinessPlot(
             title: {
                 text: 'Time Spent in Minutes',
             },
+            minLimit: minY,
+            maxLimit: maxY,
         },
         color: (execDate) => {
             return slaMissData.get(execDate.execDate);
