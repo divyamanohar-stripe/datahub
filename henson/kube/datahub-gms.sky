@@ -203,7 +203,12 @@ def _service(ctx, replicas, suffix = ""):
     # details on this: https://skycfg.corp.stripe.com/rollouts
     # these numbers allow us to have sufficient number of healthy instances
     # in each of our deployment stages
-    strategy = rolling_update_strategy("50%", "50%"),
+    strategy = rolling_update_strategy(
+        # max_unavailable must be less than 1/6th the number of total pods to ensure
+        # uptime availability across AZs during deployment events (ir-aqua-factorial)
+        max_unavailable = "16%" if replicas > 6 else 1,
+        max_surge = "50%"
+    ),
     shared_msp = True,
   )
   return [deploy]
