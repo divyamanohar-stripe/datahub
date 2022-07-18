@@ -3,6 +3,7 @@ import { Domain, EntityType, GlobalTags, Owner, SearchInsight } from '../../../.
 import DefaultPreviewCard from '../../../preview/DefaultPreviewCard';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
+import { IconStyleType } from '../../Entity';
 
 export const Preview = ({
     urn,
@@ -10,6 +11,7 @@ export const Preview = ({
     description,
     platformName,
     platformLogo,
+    platformInstanceId,
     owners,
     domain,
     globalTags,
@@ -21,6 +23,7 @@ export const Preview = ({
     description?: string | null;
     platformName: string;
     platformLogo?: string | null;
+    platformInstanceId?: string;
     owners?: Array<Owner> | null;
     domain?: Domain | null;
     globalTags?: GlobalTags | null;
@@ -35,8 +38,10 @@ export const Preview = ({
             name={name}
             description={description || ''}
             type="Data Task"
+            typeIcon={entityRegistry.getIcon(EntityType.DataJob, 14, IconStyleType.ACCENT)}
             platform={capitalizedPlatform}
             logoUrl={platformLogo || ''}
+            platformInstanceId={platformInstanceId}
             owners={owners}
             tags={globalTags || undefined}
             domain={domain}

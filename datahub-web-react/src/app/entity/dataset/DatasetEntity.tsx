@@ -25,8 +25,9 @@ import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
 import { GenericEntityProperties } from '../shared/types';
 import { Preview } from './preview/Preview';
 import { OperationsTab } from './profile/OperationsTab';
+import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
+import { SidebarSiblingsSection } from '../shared/containers/profile/sidebar/SidebarSiblingsSection';
 import { TimelinessTab } from './profile/TimelinessTab';
-import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
 
 const SUBTYPES = {
     VIEW: 'view',
@@ -84,6 +85,7 @@ export class DatasetEntity implements Entity<Dataset> {
             useEntityQuery={useGetDatasetQuery}
             useUpdateQuery={useUpdateDatasetMutation}
             getOverrideProperties={this.getOverridePropertiesFromEntity}
+            headerDropdownItems={new Set([EntityMenuItems.COPY_URL, EntityMenuItems.UPDATE_DEPRECATION])}
             tabs={[
                 {
                     name: 'Schema',
@@ -146,7 +148,9 @@ export class DatasetEntity implements Entity<Dataset> {
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataset: GetDatasetQuery) => {
-                            return (dataset?.dataset?.assertions?.total || 0) > 0;
+                            return (
+                                (dataset?.dataset?.assertions?.total || 0) > 0 || dataset?.dataset?.testResults !== null
+                            );
                         },
                     },
                 },
@@ -190,6 +194,13 @@ export class DatasetEntity implements Entity<Dataset> {
             sidebarSections={[
                 {
                     component: SidebarAboutSection,
+                },
+                {
+                    component: SidebarSiblingsSection,
+                    display: {
+                        visible: (_, dataset: GetDatasetQuery) =>
+                            (dataset?.dataset?.siblings?.siblings?.length || 0) > 0,
+                    },
                 },
                 {
                     component: SidebarViewDefinitionSection,
@@ -254,10 +265,11 @@ export class DatasetEntity implements Entity<Dataset> {
                 description={data.editableProperties?.description || data.properties?.description}
                 platformName={data.platform.properties?.displayName || data.platform.name}
                 platformLogo={data.platform.properties?.logoUrl}
+                platformInstanceId={data.dataPlatformInstance?.instanceId}
                 owners={data.ownership?.owners}
                 globalTags={data.globalTags}
                 glossaryTerms={data.glossaryTerms}
-                domain={data.domain}
+                domain={data.domain?.domain}
                 container={data.container}
             />
         );
@@ -265,6 +277,7 @@ export class DatasetEntity implements Entity<Dataset> {
 
     renderSearch = (result: SearchResult) => {
         const data = result.entity as Dataset;
+        const genericProperties = this.getGenericEntityProperties(data);
         return (
             <Preview
                 urn={data.urn}
@@ -273,12 +286,18 @@ export class DatasetEntity implements Entity<Dataset> {
                 description={data.editableProperties?.description || data.properties?.description}
                 platformName={data.platform.properties?.displayName || data.platform.name}
                 platformLogo={data.platform.properties?.logoUrl}
+                platformInstanceId={data.dataPlatformInstance?.instanceId}
+                platformNames={genericProperties?.siblingPlatforms?.map(
+                    (platform) => platform.properties?.displayName || platform.name,
+                )}
+                platformLogos={genericProperties?.siblingPlatforms?.map((platform) => platform.properties?.logoUrl)}
                 owners={data.ownership?.owners}
                 globalTags={data.globalTags}
-                domain={data.domain}
+                domain={data.domain?.domain}
                 glossaryTerms={data.glossaryTerms}
                 subtype={data.subTypes?.typeNames?.[0]}
                 container={data.container}
+                parentContainers={data.parentContainers}
                 snippet={
                     // Add match highlights only if all the matched fields are in the FIELDS_TO_HIGHLIGHT
                     result.matchedFields.length > 0 &&
@@ -298,7 +317,7 @@ export class DatasetEntity implements Entity<Dataset> {
         return {
             urn: entity?.urn,
             name: entity?.properties?.name || entity.name,
-            expandedName: entity?.properties?.qualifiedName || entity.name,
+            expandedName: entity?.properties?.qualifiedName || entity?.properties?.name || entity.name,
             type: EntityType.Dataset,
             subtype: entity?.subTypes?.typeNames?.[0] || undefined,
             icon: entity?.platform?.properties?.logoUrl || undefined,
@@ -307,7 +326,7 @@ export class DatasetEntity implements Entity<Dataset> {
     };
 
     displayName = (data: Dataset) => {
-        return data?.properties?.name || data.name;
+        return data?.properties?.name || data.name || data.urn;
     };
 
     platformLogoUrl = (data: Dataset) => {

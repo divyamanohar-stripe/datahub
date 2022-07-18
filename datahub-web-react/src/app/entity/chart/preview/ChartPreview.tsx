@@ -8,16 +8,19 @@ import {
     GlossaryTerms,
     Owner,
     SearchInsight,
+    ParentContainersResult,
 } from '../../../../types.generated';
 import DefaultPreviewCard from '../../../preview/DefaultPreviewCard';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
+import { IconStyleType } from '../../Entity';
 
 export const ChartPreview = ({
     urn,
     name,
     description,
     platform,
+    platformInstanceId,
     access,
     owners,
     tags,
@@ -26,9 +29,11 @@ export const ChartPreview = ({
     container,
     insights,
     logoUrl,
+    parentContainers,
 }: {
     urn: string;
     platform: string;
+    platformInstanceId?: string;
     name?: string;
     description?: string | null;
     access?: AccessLevel | null;
@@ -39,6 +44,7 @@ export const ChartPreview = ({
     container?: Container | null;
     insights?: Array<SearchInsight> | null;
     logoUrl?: string | null;
+    parentContainers?: ParentContainersResult | null;
 }): JSX.Element => {
     const entityRegistry = useEntityRegistry();
     const capitalizedPlatform = capitalizeFirstLetter(platform);
@@ -49,8 +55,10 @@ export const ChartPreview = ({
             name={name || ''}
             description={description || ''}
             type="Chart"
+            typeIcon={entityRegistry.getIcon(EntityType.Chart, 14, IconStyleType.ACCENT)}
             logoUrl={logoUrl || ''}
             platform={capitalizedPlatform}
+            platformInstanceId={platformInstanceId}
             qualifier={access}
             tags={tags}
             owners={owners}
@@ -58,6 +66,7 @@ export const ChartPreview = ({
             domain={domain}
             container={container || undefined}
             insights={insights}
+            parentContainers={parentContainers}
         />
     );
 };
