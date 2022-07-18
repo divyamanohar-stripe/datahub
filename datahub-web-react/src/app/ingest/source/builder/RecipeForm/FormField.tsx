@@ -64,7 +64,8 @@ function ListField({ field, removeMargin }: ListFieldProps) {
                         </Tooltip>
                     </Label>
                     {fields.map((item) => (
-                        <Form.Item key={item.fieldKey} style={{ marginBottom: '10px' }}>
+                        // stripe: workaround error in usage of FormListFieldData.fieldKey
+                        <Form.Item key={item.key} style={{ marginBottom: '10px' }}>
                             <Form.Item {...item} noStyle>
                                 <Input style={{ width: '80%' }} />
                             </Form.Item>
