@@ -75,7 +75,10 @@ function TermItem(props: Props) {
                 </TermLink>
             )}
             {isSelecting && (
-                <NameWrapper showSelectStyles={!!selectTerm} onClick={handleSelectTerm}>
+                <NameWrapper
+                    /* eslint-disable react/jsx-no-bind */ showSelectStyles={!!selectTerm}
+                    onClick={handleSelectTerm}
+                >
                     {entityRegistry.getDisplayName(term.type, isOnEntityPage ? entityData : term)}
                 </NameWrapper>
             )}

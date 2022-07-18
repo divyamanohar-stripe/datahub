@@ -73,7 +73,10 @@ function MoveGlossaryEntityModal(props: Props) {
                     <Button onClick={onClose} type="text">
                         Cancel
                     </Button>
-                    <Button onClick={moveGlossaryEntity} disabled={!createButtonEnabled}>
+                    <Button
+                        /* eslint-disable react/jsx-no-bind */ onClick={moveGlossaryEntity}
+                        disabled={!createButtonEnabled}
+                    >
                         Move
                     </Button>
                 </>

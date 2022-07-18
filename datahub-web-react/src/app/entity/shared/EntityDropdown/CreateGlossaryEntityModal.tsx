@@ -79,7 +79,10 @@ function CreateGlossaryEntityModal(props: Props) {
                     <Button onClick={onClose} type="text">
                         Cancel
                     </Button>
-                    <Button onClick={createGlossaryEntity} disabled={createButtonDisabled}>
+                    <Button
+                        /* eslint-disable react/jsx-no-bind */ onClick={createGlossaryEntity}
+                        disabled={createButtonDisabled}
+                    >
                         Create
                     </Button>
                 </>

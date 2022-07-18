@@ -98,6 +98,7 @@ function RecipeForm(props: Props) {
 
     return (
         <Form
+            /* eslint-disable react/jsx-no-bind */
             layout="vertical"
             initialValues={getInitialValues(displayRecipe, allFields)}
             onFinish={onClickNext}

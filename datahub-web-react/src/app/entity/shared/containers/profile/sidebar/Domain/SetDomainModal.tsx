@@ -166,6 +166,7 @@ export const SetDomainModal = ({ onCloseModal, refetch }: Props) => {
             <Form component={false}>
                 <Form.Item>
                     <Select
+                        /* eslint-disable react/jsx-no-bind */
                         autoFocus
                         defaultOpen
                         filterOption={false}

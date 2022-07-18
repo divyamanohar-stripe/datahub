@@ -116,7 +116,10 @@ function NodeItem(props: Props) {
                     </NodeLink>
                 )}
                 {isSelecting && (
-                    <NameWrapper showSelectStyles={!!selectNode} onClick={handleSelectNode}>
+                    <NameWrapper
+                        /* eslint-disable react/jsx-no-bind */ showSelectStyles={!!selectNode}
+                        onClick={handleSelectNode}
+                    >
                         <StyledFolderOutlined />
                         {entityRegistry.getDisplayName(node.type, isOnEntityPage ? entityData : node)}
                     </NameWrapper>

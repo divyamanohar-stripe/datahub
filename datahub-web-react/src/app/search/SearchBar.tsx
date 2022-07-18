@@ -326,6 +326,7 @@ export const SearchBar = ({
                 }}
             >
                 <StyledSearchBar
+                    /* eslint-disable react/jsx-no-bind */
                     placeholder={placeholderText}
                     onPressEnter={() => {
                         // e.stopPropagation();

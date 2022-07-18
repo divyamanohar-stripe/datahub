@@ -341,6 +341,7 @@ export default function AddTagsTermsModal({
         >
             <ClickOutside onClickOutside={() => setIsFocusedOnInput(false)}>
                 <TagSelect
+                    /* eslint-disable react/jsx-no-bind */
                     autoFocus
                     defaultOpen
                     mode="multiple"

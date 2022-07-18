@@ -321,6 +321,7 @@ export const EntityProfile = <T, U>({
                                 <HeaderAndTabsFlex>
                                     <Header>
                                         <EntityHeader
+                                            /* eslint-disable react/jsx-no-bind */
                                             headerDropdownItems={headerDropdownItems}
                                             isNameEditable={isNameEditable}
                                             refreshBrowser={refreshBrowser}

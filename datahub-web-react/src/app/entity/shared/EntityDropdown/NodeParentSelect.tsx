@@ -87,6 +87,7 @@ function NodeParentSelect(props: Props) {
     return (
         <ClickOutside onClickOutside={() => setIsFocusedOnInput(false)}>
             <Select
+                /* eslint-disable react/jsx-no-bind */
                 showSearch
                 allowClear
                 filterOption={false}

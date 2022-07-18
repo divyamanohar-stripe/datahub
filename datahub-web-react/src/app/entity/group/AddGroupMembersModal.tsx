@@ -170,6 +170,7 @@ export const AddGroupMembersModal = ({ urn, visible, onCloseModal, onSubmit }: P
                             setInputValue(value.trim());
                         }}
                         tagRender={tagRender}
+                        /* eslint-disable react/jsx-no-bind */
                         onBlur={handleBlur}
                         value={selectedMembers}
                     >

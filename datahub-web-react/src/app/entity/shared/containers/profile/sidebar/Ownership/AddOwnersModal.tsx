@@ -233,6 +233,7 @@ export const AddOwnersModal = ({ urn, type, hideOwnerType, defaultOwnerType, onC
                     <Typography.Paragraph>Find a user or group</Typography.Paragraph>
                     <Form.Item name="owner">
                         <SelectInput
+                            /* eslint-disable react/jsx-no-bind */
                             labelInValue
                             autoFocus
                             defaultOpen

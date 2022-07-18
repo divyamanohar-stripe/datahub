@@ -163,7 +163,7 @@ function AddRelatedTermsModal(props: Props) {
                     <Button onClick={onClose} type="text">
                         Cancel
                     </Button>
-                    <Button onClick={addTerms} disabled={!selectedUrns.length}>
+                    <Button /* eslint-disable react/jsx-no-bind */ onClick={addTerms} disabled={!selectedUrns.length}>
                         Add
                     </Button>
                 </>
