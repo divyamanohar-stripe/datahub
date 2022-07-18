@@ -28,6 +28,7 @@ import { OperationsTab } from './profile/OperationsTab';
 import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
 import { SidebarSiblingsSection } from '../shared/containers/profile/sidebar/SidebarSiblingsSection';
 import { TimelinessTab } from './profile/TimelinessTab';
+import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
 
 const SUBTYPES = {
     VIEW: 'view',
