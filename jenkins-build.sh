@@ -35,6 +35,7 @@ echo Building datahub.
 
 ./gradlew :metadata-service:war:build
 
+# We build the web-react target as well as otherwise we hit NPEs trying to read resources in the frontend
 # Skip yarn tests temporarily till we resolve: https://jira.corp.stripe.com/browse/SCHMAQUERY-1551
 ./gradlew :datahub-web-react:build -x yarnTest && ./gradlew :datahub-frontend:dist -x yarnTest
 
