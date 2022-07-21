@@ -3,10 +3,12 @@ import { Domain, EntityType, GlobalTags, Owner, SearchInsight } from '../../../.
 import DefaultPreviewCard from '../../../preview/DefaultPreviewCard';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
+import { IconStyleType } from '../../Entity';
 
 export const Preview = ({
     urn,
     name,
+    platformInstanceId,
     description,
     platformName,
     platformLogo,
@@ -18,6 +20,7 @@ export const Preview = ({
 }: {
     urn: string;
     name: string;
+    platformInstanceId?: string;
     description?: string | null;
     platformName: string;
     platformLogo?: string | null;
@@ -34,7 +37,9 @@ export const Preview = ({
             url={entityRegistry.getEntityUrl(EntityType.DataFlow, urn)}
             name={name}
             description={description || ''}
+            platformInstanceId={platformInstanceId}
             type="Data Pipeline"
+            typeIcon={entityRegistry.getIcon(EntityType.DataFlow, 14, IconStyleType.ACCENT)}
             platform={capitalizedPlatform}
             logoUrl={platformLogo || ''}
             owners={owners}

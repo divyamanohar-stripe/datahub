@@ -5,13 +5,21 @@ import styled from 'styled-components';
 import { BookOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { useEntityRegistry } from '../../useEntityRegistry';
-import { Domain, EntityType, GlobalTags, GlossaryTerms, SubResourceType } from '../../../types.generated';
-import AddTagTermModal from './AddTagTermModal';
+import {
+    Domain,
+    EntityType,
+    GlobalTags,
+    GlossaryTermAssociation,
+    GlossaryTerms,
+    SubResourceType,
+    TagAssociation,
+} from '../../../types.generated';
 import { StyledTag } from '../../entity/shared/components/styled/StyledTag';
-import { EMPTY_MESSAGES } from '../../entity/shared/constants';
+import { EMPTY_MESSAGES, ANTD_GRAY } from '../../entity/shared/constants';
 import { useRemoveTagMutation, useRemoveTermMutation } from '../../../graphql/mutations.generated';
 import { DomainLink } from './DomainLink';
 import { TagProfileDrawer } from './TagProfileDrawer';
+import AddTagsTermsModal from './AddTagsTermsModal';
 
 type Props = {
     uneditableTags?: GlobalTags | null;
@@ -32,10 +40,6 @@ type Props = {
     refetch?: () => Promise<any>;
 };
 
-const TagWrapper = styled.div`
-    margin-bottom: -8px;
-`;
-
 const TermLink = styled(Link)`
     display: inline-block;
     margin-bottom: 8px;
@@ -50,6 +54,11 @@ const NoElementButton = styled(Button)`
     :not(:last-child) {
         margin-right: 8px;
     }
+`;
+
+const TagText = styled.span`
+    color: ${ANTD_GRAY[7]};
+    margin: 0 7px 0 0;
 `;
 
 export default function TagTermGroup({
@@ -83,19 +92,19 @@ export default function TagTermGroup({
     const [tagProfileDrawerVisible, setTagProfileDrawerVisible] = useState(false);
     const [addTagUrn, setAddTagUrn] = useState('');
 
-    const removeTag = (urnToRemove: string) => {
+    const removeTag = (tagAssociationToRemove: TagAssociation) => {
+        const tagToRemove = tagAssociationToRemove.tag;
         onOpenModal?.();
-        const tagToRemove = editableTags?.tags?.find((tag) => tag.tag.urn === urnToRemove);
         Modal.confirm({
-            title: `Do you want to remove ${tagToRemove?.tag.name} tag?`,
-            content: `Are you sure you want to remove the ${tagToRemove?.tag.name} tag?`,
+            title: `Do you want to remove ${tagToRemove?.name} tag?`,
+            content: `Are you sure you want to remove the ${tagToRemove?.name} tag?`,
             onOk() {
-                if (entityUrn) {
+                if (tagAssociationToRemove.associatedUrn || entityUrn) {
                     removeTagMutation({
                         variables: {
                             input: {
-                                tagUrn: urnToRemove,
-                                resourceUrn: entityUrn,
+                                tagUrn: tagToRemove.urn,
+                                resourceUrn: tagAssociationToRemove.associatedUrn || entityUrn || '',
                                 subResource: entitySubresource,
                                 subResourceType: entitySubresource ? SubResourceType.DatasetField : null,
                             },
@@ -120,19 +129,19 @@ export default function TagTermGroup({
         });
     };
 
-    const removeTerm = (urnToRemove: string) => {
+    const removeTerm = (termToRemove: GlossaryTermAssociation) => {
         onOpenModal?.();
-        const termToRemove = editableGlossaryTerms?.terms?.find((term) => term.term.urn === urnToRemove);
+        const termName = termToRemove && entityRegistry.getDisplayName(termToRemove.term.type, termToRemove.term);
         Modal.confirm({
-            title: `Do you want to remove ${termToRemove?.term.name} term?`,
-            content: `Are you sure you want to remove the ${termToRemove?.term.name} term?`,
+            title: `Do you want to remove ${termName} term?`,
+            content: `Are you sure you want to remove the ${termName} term?`,
             onOk() {
-                if (entityUrn) {
+                if (termToRemove.associatedUrn || entityUrn) {
                     removeTermMutation({
                         variables: {
                             input: {
-                                termUrn: urnToRemove,
-                                resourceUrn: entityUrn,
+                                termUrn: termToRemove.term.urn,
+                                resourceUrn: termToRemove.associatedUrn || entityUrn || '',
                                 subResource: entitySubresource,
                                 subResourceType: entitySubresource ? SubResourceType.DatasetField : null,
                             },
@@ -169,25 +178,42 @@ export default function TagTermGroup({
     };
 
     return (
-        <TagWrapper>
+        <>
             {domain && (
                 <DomainLink urn={domain.urn} name={entityRegistry.getDisplayName(EntityType.Domain, domain) || ''} />
             )}
-            {uneditableGlossaryTerms?.terms?.map((term) => (
-                <TermLink to={entityRegistry.getEntityUrl(EntityType.GlossaryTerm, term.term.urn)} key={term.term.urn}>
-                    <Tag closable={false}>
-                        <BookOutlined style={{ marginRight: '3%' }} />
-                        {entityRegistry.getDisplayName(EntityType.GlossaryTerm, term.term)}
-                    </Tag>
-                </TermLink>
-            ))}
+            {uneditableGlossaryTerms?.terms?.map((term) => {
+                renderedTags += 1;
+                if (maxShow && renderedTags === maxShow + 1)
+                    return (
+                        <TagText>
+                            {uneditableGlossaryTerms?.terms
+                                ? `+${uneditableGlossaryTerms?.terms?.length - maxShow}`
+                                : null}
+                        </TagText>
+                    );
+                if (maxShow && renderedTags > maxShow) return null;
+
+                return (
+                    <TermLink
+                        to={entityRegistry.getEntityUrl(EntityType.GlossaryTerm, term.term.urn)}
+                        key={term.term.urn}
+                    >
+                        <Tag closable={false} style={{ cursor: 'pointer' }}>
+                            <BookOutlined style={{ marginRight: '3%' }} />
+                            {entityRegistry.getDisplayName(EntityType.GlossaryTerm, term.term)}
+                        </Tag>
+                    </TermLink>
+                );
+            })}
             {editableGlossaryTerms?.terms?.map((term) => (
                 <TermLink to={entityRegistry.getEntityUrl(EntityType.GlossaryTerm, term.term.urn)} key={term.term.urn}>
                     <Tag
+                        style={{ cursor: 'pointer' }}
                         closable={canRemove}
                         onClose={(e) => {
                             e.preventDefault();
-                            removeTerm(term.term.urn);
+                            removeTerm(term);
                         }}
                     >
                         <BookOutlined style={{ marginRight: '3%' }} />
@@ -198,10 +224,16 @@ export default function TagTermGroup({
             {/* uneditable tags are provided by ingestion pipelines exclusively */}
             {uneditableTags?.tags?.map((tag) => {
                 renderedTags += 1;
+                if (maxShow && renderedTags === maxShow + 1)
+                    return (
+                        <TagText>{uneditableTags?.tags ? `+${uneditableTags?.tags?.length - maxShow}` : null}</TagText>
+                    );
                 if (maxShow && renderedTags > maxShow) return null;
+
                 return (
                     <TagLink key={tag?.tag?.urn}>
                         <StyledTag
+                            style={{ cursor: 'pointer' }}
                             onClick={() => showTagProfileDrawer(tag?.tag?.urn)}
                             $colorHash={tag?.tag?.urn}
                             $color={tag?.tag?.properties?.colorHex}
@@ -226,7 +258,7 @@ export default function TagTermGroup({
                             closable={canRemove}
                             onClose={(e) => {
                                 e.preventDefault();
-                                removeTag(tag?.tag?.urn);
+                                removeTag(tag);
                             }}
                         >
                             {tag?.tag?.name}
@@ -261,7 +293,7 @@ export default function TagTermGroup({
                     {...buttonProps}
                 >
                     <PlusOutlined />
-                    <span>Add Tag</span>
+                    <span>Add Tags</span>
                 </NoElementButton>
             )}
             {canAddTerm &&
@@ -275,16 +307,14 @@ export default function TagTermGroup({
                         {...buttonProps}
                     >
                         <PlusOutlined />
-                        <span>Add Term</span>
+                        <span>Add Terms</span>
                     </NoElementButton>
                 )}
             {showAddModal && !!entityUrn && !!entityType && (
-                <AddTagTermModal
+                <AddTagsTermsModal
                     type={addModalType}
-                    globalTags={editableTags}
-                    glossaryTerms={editableGlossaryTerms}
                     visible
-                    onClose={() => {
+                    onCloseModal={() => {
                         onOpenModal?.();
                         setShowAddModal(false);
                         refetch?.();
@@ -294,6 +324,6 @@ export default function TagTermGroup({
                     entitySubresource={entitySubresource}
                 />
             )}
-        </TagWrapper>
+        </>
     );
 }

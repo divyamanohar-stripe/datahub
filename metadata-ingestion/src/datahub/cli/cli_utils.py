@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import os.path
 import sys
 import typing
@@ -15,7 +16,7 @@ from requests.models import Response
 from requests.sessions import Session
 
 from datahub.emitter.mce_builder import Aspect
-from datahub.emitter.rest_emitter import _make_curl_command
+from datahub.emitter.request_helper import _make_curl_command
 from datahub.emitter.serialization_helper import post_json_transform
 from datahub.metadata.schema_classes import (
     AssertionRunEventClass,
@@ -62,9 +63,20 @@ DEFAULT_GMS_HOST = "http://localhost:8080"
 CONDENSED_DATAHUB_CONFIG_PATH = "~/.datahubenv"
 DATAHUB_CONFIG_PATH = os.path.expanduser(CONDENSED_DATAHUB_CONFIG_PATH)
 
+DATAHUB_ROOT_FOLDER = os.path.expanduser("~/.datahub")
+
 ENV_SKIP_CONFIG = "DATAHUB_SKIP_CONFIG"
+ENV_METADATA_HOST_URL = "DATAHUB_GMS_URL"
 ENV_METADATA_HOST = "DATAHUB_GMS_HOST"
+ENV_METADATA_PORT = "DATAHUB_GMS_PORT"
+ENV_METADATA_PROTOCOL = "DATAHUB_GMS_PROTOCOL"
+ENV_METADATA_HOST_DEPRECATED = "GMS_HOST"
+ENV_METADATA_PORT_DEPRECATED = "GMS_PORT"
 ENV_METADATA_TOKEN = "DATAHUB_GMS_TOKEN"
+ENV_DATAHUB_SYSTEM_CLIENT_ID = "DATAHUB_SYSTEM_CLIENT_ID"
+ENV_DATAHUB_SYSTEM_CLIENT_SECRET = "DATAHUB_SYSTEM_CLIENT_SECRET"
+
+config_override: Dict = {}
 
 
 class GmsConfig(BaseModel):
@@ -74,6 +86,13 @@ class GmsConfig(BaseModel):
 
 class DatahubConfig(BaseModel):
     gms: GmsConfig
+
+
+def set_env_variables_override_config(url: str, token: Optional[str]) -> None:
+    """Should be used to override the config when using rest emitter"""
+    config_override[ENV_METADATA_HOST_URL] = url
+    if token is not None:
+        config_override[ENV_METADATA_TOKEN] = token
 
 
 def write_datahub_config(host: str, token: Optional[str]) -> None:
@@ -120,12 +139,30 @@ def get_details_from_config():
             gms_token = gms_config.token
             return gms_host, gms_token
         except yaml.YAMLError as exc:
-            click.secho(f"{DATAHUB_CONFIG_PATH} malformatted, error: {exc}", bold=True)
+            click.secho(f"{DATAHUB_CONFIG_PATH} malformed, error: {exc}", bold=True)
     return None, None
 
 
 def get_details_from_env() -> Tuple[Optional[str], Optional[str]]:
-    return os.environ.get(ENV_METADATA_HOST), os.environ.get(ENV_METADATA_TOKEN)
+    host = os.environ.get(ENV_METADATA_HOST) or os.environ.get(
+        ENV_METADATA_HOST_DEPRECATED
+    )
+    port = os.environ.get(ENV_METADATA_PORT) or os.environ.get(
+        ENV_METADATA_PORT_DEPRECATED
+    )
+    token = os.environ.get(ENV_METADATA_TOKEN)
+    protocol = os.environ.get(ENV_METADATA_PROTOCOL, "http")
+    url = os.environ.get(ENV_METADATA_HOST_URL)
+    if port is not None:
+        url = f"{protocol}://{host}:{port}"
+        return url, token
+    # The reason for using host as URL is backward compatibility
+    # If port is not being used we assume someone is using host env var as URL
+    if url is None and host is not None:
+        log.warning(
+            f"Do not use {ENV_METADATA_HOST} as URL. Use {ENV_METADATA_HOST_URL} instead"
+        )
+    return url or host, token
 
 
 def first_non_null(ls: List[Optional[str]]) -> Optional[str]:
@@ -137,22 +174,20 @@ def guess_entity_type(urn: str) -> str:
     return urn.split(":")[2]
 
 
-def get_token():
-    _, gms_token_env = get_details_from_env()
-    if should_skip_config():
-        gms_token = gms_token_env
-    else:
-        ensure_datahub_config()
-        _, gms_token_conf = get_details_from_config()
-        gms_token = first_non_null([gms_token_env, gms_token_conf])
-    return gms_token
+def get_system_auth() -> Optional[str]:
+    system_client_id = os.environ.get(ENV_DATAHUB_SYSTEM_CLIENT_ID)
+    system_client_secret = os.environ.get(ENV_DATAHUB_SYSTEM_CLIENT_SECRET)
+    if system_client_id is not None and system_client_secret is not None:
+        return f"Basic {system_client_id}:{system_client_secret}"
+    return None
 
 
-def get_session_and_host():
-    session = requests.Session()
-
+def get_url_and_token():
     gms_host_env, gms_token_env = get_details_from_env()
-    if should_skip_config():
+    if len(config_override.keys()) > 0:
+        gms_host = config_override.get(ENV_METADATA_HOST_URL)
+        gms_token = config_override.get(ENV_METADATA_TOKEN)
+    elif should_skip_config():
         gms_host = gms_host_env
         gms_token = gms_token_env
     else:
@@ -160,10 +195,21 @@ def get_session_and_host():
         gms_host_conf, gms_token_conf = get_details_from_config()
         gms_host = first_non_null([gms_host_env, gms_host_conf])
         gms_token = first_non_null([gms_token_env, gms_token_conf])
+    return gms_host, gms_token
+
+
+def get_token():
+    return get_url_and_token()[1]
+
+
+def get_session_and_host():
+    session = requests.Session()
+
+    gms_host, gms_token = get_url_and_token()
 
     if gms_host is None or gms_host.strip() == "":
         log.error(
-            f"GMS Host is not set. Use datahub init command or set {ENV_METADATA_HOST} env var"
+            f"GMS Host is not set. Use datahub init command or set {ENV_METADATA_HOST_URL} env var"
         )
         return None, None
 
@@ -183,13 +229,13 @@ def get_session_and_host():
 
 def test_connection():
     (session, host) = get_session_and_host()
-    url = host + "/config"
+    url = f"{host}/config"
     response = session.get(url)
     response.raise_for_status()
 
 
 def test_connectivity_complain_exit(operation_name: str) -> None:
-    """Test connectivty to metadata-service, log operation name and exit"""
+    """Test connectivity to metadata-service, log operation name and exit"""
     # First test connectivity
     try:
         test_connection()
@@ -231,6 +277,21 @@ def parse_run_restli_response(response: requests.Response) -> dict:
     return summary
 
 
+def format_aspect_summaries(summaries: list) -> typing.List[typing.List[str]]:
+    local_timezone = datetime.now().astimezone().tzinfo
+    return [
+        [
+            row.get("urn"),
+            row.get("aspectName"),
+            datetime.fromtimestamp(row.get("timestamp") / 1000).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            + f" ({local_timezone})",
+        ]
+        for row in summaries
+    ]
+
+
 def post_rollback_endpoint(
     payload_obj: dict,
     path: str,
@@ -255,19 +316,7 @@ def post_rollback_endpoint(
     if len(rows) == 0:
         click.secho(f"No entities found. Payload used: {payload}", fg="yellow")
 
-    local_timezone = datetime.now().astimezone().tzinfo
-    structured_rolled_back_results = [
-        [
-            row.get("urn"),
-            row.get("aspectName"),
-            datetime.fromtimestamp(row.get("timestamp") / 1000).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            + f" ({local_timezone})",
-        ]
-        for row in rolled_back_aspects
-    ]
-
+    structured_rolled_back_results = format_aspect_summaries(rolled_back_aspects)
     return (
         structured_rolled_back_results,
         entities_affected,
@@ -278,15 +327,28 @@ def post_rollback_endpoint(
     )
 
 
+def post_delete_references_endpoint(
+    payload_obj: dict,
+    path: str,
+    cached_session_host: Optional[Tuple[Session, str]] = None,
+) -> Tuple[int, List[Dict]]:
+    session, gms_host = cached_session_host or get_session_and_host()
+    url = gms_host + path
+
+    payload = json.dumps(payload_obj)
+    response = session.post(url, payload)
+    summary = parse_run_restli_response(response)
+    reference_count = summary.get("total", 0)
+    related_aspects = summary.get("relatedAspects", [])
+    return reference_count, related_aspects
+
+
 def post_delete_endpoint(
     payload_obj: dict,
     path: str,
     cached_session_host: Optional[Tuple[Session, str]] = None,
 ) -> typing.Tuple[str, int]:
-    if not cached_session_host:
-        session, gms_host = get_session_and_host()
-    else:
-        session, gms_host = cached_session_host
+    session, gms_host = cached_session_host or get_session_and_host()
     url = gms_host + path
 
     return post_delete_endpoint_with_session_and_url(session, url, payload_obj)
@@ -319,9 +381,9 @@ def get_urns_by_filter(
     endpoint: str = "/entities?action=search"
     url = gms_host + endpoint
     filter_criteria = []
-    if env:
-        filter_criteria.append({"field": "origin", "value": env, "condition": "EQUAL"})
     entity_type_lower = entity_type.lower()
+    if env and entity_type_lower != "container":
+        filter_criteria.append({"field": "origin", "value": env, "condition": "EQUAL"})
     if (
         platform is not None
         and entity_type_lower == "dataset"
@@ -336,9 +398,7 @@ def get_urns_by_filter(
                 "condition": "EQUAL",
             }
         )
-    if platform is not None and (
-        entity_type_lower == "chart" or entity_type_lower == "dashboard"
-    ):
+    if platform is not None and entity_type_lower in {"chart", "dashboard"}:
         filter_criteria.append(
             {
                 "field": "tool",
@@ -446,10 +506,7 @@ def batch_get_ids(
     session, gms_host = get_session_and_host()
     endpoint: str = "/entitiesV2"
     url = gms_host + endpoint
-    ids_to_get = []
-    for id in ids:
-        ids_to_get.append(Urn.url_encode(id))
-
+    ids_to_get = [Urn.url_encode(id) for id in ids]
     response = session.get(
         f"{url}?ids=List({','.join(ids_to_get)})",
     )
@@ -506,11 +563,7 @@ def get_entity(
     aspect: Optional[List] = None,
     cached_session_host: Optional[Tuple[Session, str]] = None,
 ) -> Dict:
-    if not cached_session_host:
-        session, gms_host = get_session_and_host()
-    else:
-        session, gms_host = cached_session_host
-
+    session, gms_host = cached_session_host or get_session_and_host()
     if urn.startswith("urn%3A"):
         # we assume the urn is already encoded
         encoded_urn: str = urn
@@ -522,10 +575,11 @@ def get_entity(
         )
     endpoint: str = f"/entitiesV2/{encoded_urn}"
 
-    if aspect:
-        endpoint = endpoint + "?aspects=List(" + ",".join(aspect) + ")"
+    if aspect and len(aspect):
+        endpoint = f"{endpoint}?aspects=List(" + ",".join(aspect) + ")"
 
     response = session.get(gms_host + endpoint)
+    response.raise_for_status()
     return response.json()
 
 
@@ -535,12 +589,8 @@ def post_entity(
     aspect_name: str,
     aspect_value: Dict,
     cached_session_host: Optional[Tuple[Session, str]] = None,
-) -> Dict:
-    if not cached_session_host:
-        session, gms_host = get_session_and_host()
-    else:
-        session, gms_host = cached_session_host
-
+) -> int:
+    session, gms_host = cached_session_host or get_session_and_host()
     endpoint: str = "/aspects/?action=ingestProposal"
 
     proposal = {
@@ -637,10 +687,7 @@ def get_latest_timeseries_aspect_values(
     timeseries_aspect_name: str,
     cached_session_host: Optional[Tuple[Session, str]],
 ) -> Dict:
-    if not cached_session_host:
-        session, gms_host = get_session_and_host()
-    else:
-        session, gms_host = cached_session_host
+    session, gms_host = cached_session_host or get_session_and_host()
     query_body = {
         "urn": entity_urn,
         "entity": guess_entity_type(entity_urn),
@@ -659,7 +706,7 @@ def get_latest_timeseries_aspect_values(
 
 def get_aspects_for_entity(
     entity_urn: str,
-    aspects: List[str],
+    aspects: List[str] = [],
     typed: bool = False,
     cached_session_host: Optional[Tuple[Session, str]] = None,
 ) -> Dict[str, Union[dict, DictWrapper]]:
@@ -691,14 +738,9 @@ def get_aspects_for_entity(
                 aspect_value["aspect"]["value"] = json.loads(
                     aspect_value["aspect"]["value"]
                 )
-                aspect_list.update(
-                    # Follow the convention used for non-timeseries aspects.
-                    {
-                        aspect_cls.RECORD_SCHEMA.fullname.replace(
-                            "pegasus2avro.", ""
-                        ): aspect_value
-                    }
-                )
+                aspect_list[
+                    aspect_cls.RECORD_SCHEMA.fullname.replace("pegasus2avro.", "")
+                ] = aspect_value
 
     aspect_map: Dict[str, Union[dict, DictWrapper]] = {}
     for a in aspect_list.values():
@@ -722,4 +764,4 @@ def get_aspects_for_entity(
     if aspects:
         return {k: v for (k, v) in aspect_map.items() if k in aspects}
     else:
-        return {k: v for (k, v) in aspect_map.items()}
+        return dict(aspect_map)

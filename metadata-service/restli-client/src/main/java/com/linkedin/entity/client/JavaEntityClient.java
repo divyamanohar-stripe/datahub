@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.linkedin.aspect.GetTimeseriesAspectValuesResponse;
 import com.linkedin.common.AuditStamp;
+import com.linkedin.common.VersionedUrn;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.data.DataMap;
 import com.linkedin.data.template.RecordTemplate;
@@ -17,6 +18,7 @@ import com.linkedin.metadata.aspect.EnvelopedAspect;
 import com.linkedin.metadata.aspect.EnvelopedAspectArray;
 import com.linkedin.metadata.aspect.VersionedAspect;
 import com.linkedin.metadata.browse.BrowseResult;
+import com.linkedin.metadata.entity.DeleteEntityService;
 import com.linkedin.metadata.entity.EntityService;
 import com.linkedin.metadata.event.EventProducer;
 import com.linkedin.metadata.graph.LineageDirection;
@@ -32,6 +34,7 @@ import com.linkedin.metadata.search.LineageSearchResult;
 import com.linkedin.metadata.search.LineageSearchService;
 import com.linkedin.metadata.search.SearchResult;
 import com.linkedin.metadata.search.SearchService;
+import com.linkedin.metadata.search.client.CachingEntitySearchService;
 import com.linkedin.metadata.timeseries.TimeseriesAspectService;
 import com.linkedin.mxe.MetadataChangeProposal;
 import com.linkedin.mxe.PlatformEvent;
@@ -62,11 +65,13 @@ public class JavaEntityClient implements EntityClient {
     private final Clock _clock = Clock.systemUTC();
 
     private final EntityService _entityService;
-    private final EventProducer _eventProducer;
+    private final DeleteEntityService _deleteEntityService;
     private final EntitySearchService _entitySearchService;
+    private final CachingEntitySearchService _cachingEntitySearchService;
     private final SearchService _searchService;
-    private final TimeseriesAspectService _timeseriesAspectService;
     private final LineageSearchService _lineageSearchService;
+    private final TimeseriesAspectService _timeseriesAspectService;
+    private final EventProducer _eventProducer;
 
     @Nullable
     public EntityResponse getV2(
@@ -99,15 +104,28 @@ public class JavaEntityClient implements EntityClient {
     }
 
     @Nonnull
+    public Map<Urn, EntityResponse> batchGetVersionedV2(
+        @Nonnull String entityName,
+        @Nonnull final Set<VersionedUrn> versionedUrns,
+        @Nullable final Set<String> aspectNames,
+        @Nonnull final Authentication authentication) throws RemoteInvocationException, URISyntaxException {
+        final Set<String> projectedAspects = aspectNames == null
+            ? _entityService.getEntityAspectNames(entityName)
+            : aspectNames;
+        return _entityService.getEntitiesVersionedV2(versionedUrns, projectedAspects);
+    }
+
+    @Nonnull
     public Map<Urn, Entity> batchGet(@Nonnull final Set<Urn> urns, @Nonnull final Authentication authentication) {
       return _entityService.getEntities(urns, ImmutableSet.of());
     }
 
     /**
-     * Gets browse snapshot of a given path
+     * Gets autocomplete results
      *
+     * @param entityType the type of entity to autocomplete against
      * @param query search query
-     * @param field field of the dataset
+     * @param field field of the dataset to autocomplete against
      * @param requestFilters autocomplete filters
      * @param limit max number of autocomplete results
      * @throws RemoteInvocationException
@@ -120,12 +138,13 @@ public class JavaEntityClient implements EntityClient {
         @Nonnull int limit,
         @Nullable String field,
         @Nonnull final Authentication authentication) throws RemoteInvocationException {
-      return _entitySearchService.autoComplete(entityType, query, field, newFilter(requestFilters), limit);
+      return _cachingEntitySearchService.autoComplete(entityType, query, field, newFilter(requestFilters), limit, null);
     }
 
-    /**;
+    /**
      * Gets autocomplete results
      *
+     * @param entityType the type of entity to autocomplete against
      * @param query search query
      * @param requestFilters autocomplete filters
      * @param limit max number of autocomplete results
@@ -138,7 +157,7 @@ public class JavaEntityClient implements EntityClient {
         @Nonnull Map<String, String> requestFilters,
         @Nonnull int limit,
         @Nonnull final Authentication authentication) throws RemoteInvocationException {
-        return _entitySearchService.autoComplete(entityType, query, "", newFilter(requestFilters), limit);
+        return _cachingEntitySearchService.autoComplete(entityType, query, "", newFilter(requestFilters), limit, null);
     }
 
     /**
@@ -195,7 +214,6 @@ public class JavaEntityClient implements EntityClient {
         AuditStamp auditStamp = new AuditStamp();
         auditStamp.setActor(Urn.createFromString(authentication.getActor().toUrnStr()));
         auditStamp.setTime(Clock.systemUTC().millis());
-
       _entityService.ingestEntities(entities.stream().collect(Collectors.toList()), auditStamp, ImmutableList.of());
     }
 
@@ -223,6 +241,8 @@ public class JavaEntityClient implements EntityClient {
     }
 
     /**
+     * Deprecated! Use 'filter' or 'search' instead.
+     *
      * Filters for entities matching to a given query and filters
      *
      * @param requestFilters search filters
@@ -231,6 +251,7 @@ public class JavaEntityClient implements EntityClient {
      * @return a set of list results
      * @throws RemoteInvocationException
      */
+    @Deprecated
     @Nonnull
     public ListResult list(
         @Nonnull String entity,
@@ -248,6 +269,7 @@ public class JavaEntityClient implements EntityClient {
      *
      * @param input search query
      * @param filter search filters
+     * @param sortCriterion sort criterion
      * @param start start offset for search results
      * @param count max number of search results requested
      * @return Snapshot key
@@ -258,11 +280,12 @@ public class JavaEntityClient implements EntityClient {
         @Nonnull String entity,
         @Nonnull String input,
         @Nullable Filter filter,
+        @Nullable SortCriterion sortCriterion,
         int start,
         int count,
         @Nonnull final Authentication authentication)
         throws RemoteInvocationException {
-        return _entitySearchService.search(entity, input, filter, null, start, count);
+        return _entitySearchService.search(entity, input, filter, sortCriterion, start, count);
     }
 
     /**
@@ -290,10 +313,10 @@ public class JavaEntityClient implements EntityClient {
     @Nonnull
     @Override
     public LineageSearchResult searchAcrossLineage(@Nonnull Urn sourceUrn, @Nonnull LineageDirection direction,
-        @Nonnull List<String> entities, @Nullable String input, @Nullable Filter filter,
+        @Nonnull List<String> entities, @Nullable String input, @Nullable Integer maxHops, @Nullable Filter filter,
         @Nullable SortCriterion sortCriterion, int start, int count, @Nonnull final Authentication authentication)
         throws RemoteInvocationException {
-        return _lineageSearchService.searchAcrossLineage(sourceUrn, direction, entities, input, filter,
+        return _lineageSearchService.searchAcrossLineage(sourceUrn, direction, entities, input, maxHops, filter,
             sortCriterion, start, count);
     }
 
@@ -335,11 +358,23 @@ public class JavaEntityClient implements EntityClient {
         _entityService.deleteUrn(urn);
     }
 
+    @Override
+    public void deleteEntityReferences(@Nonnull Urn urn, @Nonnull Authentication authentication)
+        throws RemoteInvocationException {
+        _deleteEntityService.deleteReferencesTo(urn, false);
+    }
+
     @Nonnull
     @Override
     public SearchResult filter(@Nonnull String entity, @Nonnull Filter filter, @Nullable SortCriterion sortCriterion,
         int start, int count, @Nonnull final Authentication authentication) throws RemoteInvocationException {
         return _entitySearchService.filter(entity, filter, sortCriterion, start, count);
+    }
+
+    @Nonnull
+    @Override
+    public boolean exists(@Nonnull Urn urn, @Nonnull final Authentication authentication) throws RemoteInvocationException {
+        return _entityService.exists(urn);
     }
 
     @SneakyThrows

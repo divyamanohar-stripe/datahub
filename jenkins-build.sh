@@ -35,8 +35,9 @@ echo Building datahub.
 
 ./gradlew :metadata-service:war:build
 
+# We build the web-react target as well as otherwise we hit NPEs trying to read resources in the frontend
 # Skip yarn tests temporarily till we resolve: https://jira.corp.stripe.com/browse/SCHMAQUERY-1551
-./gradlew :datahub-frontend:dist -x yarnTest
+./gradlew :datahub-web-react:build -x yarnTest && ./gradlew :datahub-frontend:dist -x yarnTest
 
 # Metadata service also requires some jetty related jars
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190813/jetty-runner-9.4.20.v20190813.jar --output /build/jetty-runner.jar

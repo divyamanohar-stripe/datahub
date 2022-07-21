@@ -9,6 +9,10 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.metadata.ElasticTestUtils;
 import com.linkedin.metadata.models.registry.EntityRegistry;
 import com.linkedin.metadata.models.registry.SnapshotEntityRegistry;
+import com.linkedin.metadata.search.aggregator.AllEntitiesSearchAggregator;
+import com.linkedin.metadata.search.cache.CachingAllEntitiesSearchAggregator;
+import com.linkedin.metadata.search.cache.EntityDocCountCache;
+import com.linkedin.metadata.search.client.CachingEntitySearchService;
 import com.linkedin.metadata.search.elasticsearch.ElasticSearchService;
 import com.linkedin.metadata.search.elasticsearch.ElasticSearchServiceTest;
 import com.linkedin.metadata.search.elasticsearch.indexbuilder.EntityIndexBuilders;
@@ -19,16 +23,17 @@ import com.linkedin.metadata.search.elasticsearch.update.ESWriteDAO;
 import com.linkedin.metadata.search.ranker.SimpleRanker;
 import com.linkedin.metadata.utils.elasticsearch.IndexConvention;
 import com.linkedin.metadata.utils.elasticsearch.IndexConventionImpl;
-import java.util.Collections;
-import javax.annotation.Nonnull;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testng.annotations.AfterTest;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
+
+import javax.annotation.Nonnull;
+import java.util.Collections;
 
 import static com.linkedin.metadata.DockerTestUtils.checkContainerEngine;
 import static com.linkedin.metadata.ElasticSearchTestUtils.syncAfterWrite;
@@ -48,7 +53,7 @@ public class SearchServiceTest {
 
   private static final String ENTITY_NAME = "testEntity";
 
-  @BeforeTest
+  @BeforeClass
   public void setup() {
     _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
     _indexConvention = new IndexConventionImpl(null);
@@ -64,8 +69,24 @@ public class SearchServiceTest {
   }
 
   private void resetSearchService() {
-    _searchService =
-        new SearchService(_entityRegistry, _elasticSearchService, new SimpleRanker(), _cacheManager, 100, true);
+    CachingEntitySearchService cachingEntitySearchService = new CachingEntitySearchService(
+        _cacheManager,
+        _elasticSearchService,
+        100,
+        true);
+    _searchService = new SearchService(
+      new EntityDocCountCache(_entityRegistry, _elasticSearchService),
+      cachingEntitySearchService,
+      new CachingAllEntitiesSearchAggregator(
+          _cacheManager,
+          new AllEntitiesSearchAggregator(
+              _entityRegistry,
+              _elasticSearchService,
+              cachingEntitySearchService,
+              new SimpleRanker()),
+          100,
+          true),
+      new SimpleRanker());
   }
 
   @BeforeMethod
@@ -91,7 +112,7 @@ public class SearchServiceTest {
     resetSearchService();
   }
 
-  @AfterTest
+  @AfterClass
   public void tearDown() {
     _elasticsearchContainer.stop();
   }

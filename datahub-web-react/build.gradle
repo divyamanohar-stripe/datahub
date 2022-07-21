@@ -86,7 +86,7 @@ clean {
   delete 'build'
   delete 'just'
   delete 'src/types.generated.ts'
-  delete 'src/graphql/*.generated.ts'
+  delete fileTree(dir: 'src/graphql', include: '*.generated.ts')
 }
 
 configurations {
@@ -97,6 +97,14 @@ distZip {
   dependsOn yarnBuild
   baseName 'datahub-web-react'
   from 'dist'
+}
+
+task copyAssets {
+  dependsOn distZip
+  copy {
+    from 'dist'
+    into '../datahub-frontend/public/'
+  }
 }
 
 if (!gradle.startParameter.taskNames.any { it in ["idea"] }) {
