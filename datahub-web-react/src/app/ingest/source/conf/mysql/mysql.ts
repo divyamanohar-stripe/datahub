@@ -1,6 +1,8 @@
 import { SourceConfig } from '../types';
 import mysqlLogo from '../../../../../images/mysqllogo-2.png';
 
+const baseUrl = window.location.origin;
+
 const placeholderRecipe = `\
 source: 
     type: mysql
@@ -21,13 +23,18 @@ source:
         # Profiling
         profiling:
             enabled: false
-`;
+sink: 
+    type: datahub-rest 
+    config: 
+        server: "${baseUrl}/api/gms"
+        # Add a secret in secrets Tab
+        token: "\${GMS_TOKEN}"`;
 
 const mysqlConfig: SourceConfig = {
     type: 'mysql',
     placeholderRecipe,
     displayName: 'MySQL',
-    docsUrl: 'https://datahubproject.io/docs/generated/ingestion/sources/mysql/',
+    docsUrl: 'https://datahubproject.io/docs/metadata-ingestion/source_docs/mysql/',
     logoUrl: mysqlLogo,
 };
 

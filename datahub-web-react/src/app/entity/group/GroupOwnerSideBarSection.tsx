@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { EntityType, Ownership } from '../../../types.generated';
 import { ExpandedOwner } from '../shared/components/styled/ExpandedOwner';
-import { AddOwnersModal } from '../shared/containers/profile/sidebar/Ownership/AddOwnersModal';
+import { AddOwnerModal } from '../shared/containers/profile/sidebar/Ownership/AddOwnerModal';
 import { DisplayCount, GroupSectionTitle, GroupSectionHeader } from '../shared/SidebarStyledComponents';
 
 const TITLE = 'Owners';
@@ -40,27 +40,26 @@ export default function GroupOwnerSideBarSection({ urn, ownership, refetch }: Pr
                 {ownersEmpty && (
                     <AddOwnerButton onClick={() => setShowAddModal(true)}>
                         <PlusOutlined />
-                        Add Owners
+                        Add Owner
                     </AddOwnerButton>
                 )}
                 {!ownersEmpty && (
                     <AddOwnerButton type="text" style={{ padding: 0 }} onClick={() => setShowAddModal(true)}>
                         <PlusOutlined />
-                        Add Owners
+                        Add Owner
                     </AddOwnerButton>
                 )}
             </SectionWrapper>
-            {showAddModal && (
-                <AddOwnersModal
-                    urn={urn}
-                    hideOwnerType
-                    type={EntityType.CorpGroup}
-                    refetch={refetch}
-                    onCloseModal={() => {
-                        setShowAddModal(false);
-                    }}
-                />
-            )}
+            <AddOwnerModal
+                urn={urn}
+                hideOwnerType
+                type={EntityType.CorpGroup}
+                visible={showAddModal}
+                refetch={refetch}
+                onClose={() => {
+                    setShowAddModal(false);
+                }}
+            />
         </>
     );
 }

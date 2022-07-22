@@ -2,34 +2,30 @@ package com.linkedin.metadata.timeline.differ;
 
 import com.datahub.util.RecordUtils;
 import com.github.fge.jsonpatch.JsonPatch;
-import com.linkedin.common.AuditStamp;
-import com.linkedin.common.urn.Urn;
 import com.linkedin.dataset.EditableDatasetProperties;
-import com.linkedin.metadata.entity.EntityAspect;
+import com.linkedin.metadata.entity.ebean.EbeanAspectV2;
 import com.linkedin.metadata.timeline.data.ChangeCategory;
 import com.linkedin.metadata.timeline.data.ChangeEvent;
 import com.linkedin.metadata.timeline.data.ChangeOperation;
 import com.linkedin.metadata.timeline.data.ChangeTransaction;
 import com.linkedin.metadata.timeline.data.SemanticChangeType;
-
-import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static com.linkedin.metadata.Constants.EDITABLE_DATASET_PROPERTIES_ASPECT_NAME;
+import static com.linkedin.metadata.Constants.*;
 
 
-public class EditableDatasetPropertiesDiffer implements AspectDiffer<EditableDatasetProperties> {
+public class EditableDatasetPropertiesDiffer implements Differ {
   public static final String DESCRIPTION_ADDED = "Documentation for '%s' has been added: '%s'.";
   public static final String DESCRIPTION_REMOVED = "Documentation for '%s' has been removed: '%s'.";
   public static final String DESCRIPTION_CHANGED = "Documentation of '%s' has been changed from '%s' to '%s'.";
 
   private static List<ChangeEvent> computeDiffs(EditableDatasetProperties baseDatasetProperties,
-      EditableDatasetProperties targetDatasetProperties, String entityUrn, AuditStamp auditStamp) {
+      EditableDatasetProperties targetDatasetProperties, String entityUrn) {
     List<ChangeEvent> changeEvents = new ArrayList<>();
     ChangeEvent descriptionChangeEvent =
-        getDescriptionChangeEvent(baseDatasetProperties, targetDatasetProperties, entityUrn, auditStamp);
+        getDescriptionChangeEvent(baseDatasetProperties, targetDatasetProperties, entityUrn);
     if (descriptionChangeEvent != null) {
       changeEvents.add(descriptionChangeEvent);
     }
@@ -37,52 +33,49 @@ public class EditableDatasetPropertiesDiffer implements AspectDiffer<EditableDat
   }
 
   private static ChangeEvent getDescriptionChangeEvent(EditableDatasetProperties baseDatasetProperties,
-      EditableDatasetProperties targetDatasetProperties, String entityUrn, AuditStamp auditStamp) {
+      EditableDatasetProperties targetDatasetProperties, String entityUrn) {
     String baseDescription = (baseDatasetProperties != null) ? baseDatasetProperties.getDescription() : null;
     String targetDescription = (targetDatasetProperties != null) ? targetDatasetProperties.getDescription() : null;
     if (baseDescription == null && targetDescription != null) {
       // Description added
       return ChangeEvent.builder()
-          .entityUrn(entityUrn)
+          .target(entityUrn)
           .category(ChangeCategory.DOCUMENTATION)
-          .operation(ChangeOperation.ADD)
+          .changeType(ChangeOperation.ADD)
           .semVerChange(SemanticChangeType.MINOR)
           .description(String.format(DESCRIPTION_ADDED, entityUrn, targetDescription))
-          .auditStamp(auditStamp)
           .build();
     } else if (baseDescription != null && targetDescription == null) {
       // Description removed.
       return ChangeEvent.builder()
-          .entityUrn(entityUrn)
+          .target(entityUrn)
           .category(ChangeCategory.DOCUMENTATION)
-          .operation(ChangeOperation.REMOVE)
+          .changeType(ChangeOperation.REMOVE)
           .semVerChange(SemanticChangeType.MINOR)
           .description(String.format(DESCRIPTION_REMOVED, entityUrn, baseDescription))
-          .auditStamp(auditStamp)
           .build();
     } else if (baseDescription != null && targetDescription != null && !baseDescription.equals(targetDescription)) {
       // Description has been modified.
       return ChangeEvent.builder()
-          .entityUrn(entityUrn)
+          .target(entityUrn)
           .category(ChangeCategory.DOCUMENTATION)
-          .operation(ChangeOperation.MODIFY)
+          .changeType(ChangeOperation.MODIFY)
           .semVerChange(SemanticChangeType.MINOR)
           .description(String.format(DESCRIPTION_CHANGED, entityUrn, baseDescription, targetDescription))
-          .auditStamp(auditStamp)
           .build();
     }
     return null;
   }
 
-  private static EditableDatasetProperties getEditableDatasetPropertiesFromAspect(EntityAspect entityAspect) {
-    if (entityAspect != null && entityAspect.getMetadata() != null) {
-      return RecordUtils.toRecordTemplate(EditableDatasetProperties.class, entityAspect.getMetadata());
+  private static EditableDatasetProperties getEditableDatasetPropertiesFromAspect(EbeanAspectV2 ebeanAspectV2) {
+    if (ebeanAspectV2 != null && ebeanAspectV2.getMetadata() != null) {
+      return RecordUtils.toRecordTemplate(EditableDatasetProperties.class, ebeanAspectV2.getMetadata());
     }
     return null;
   }
 
   @Override
-  public ChangeTransaction getSemanticDiff(EntityAspect previousValue, EntityAspect currentValue,
+  public ChangeTransaction getSemanticDiff(EbeanAspectV2 previousValue, EbeanAspectV2 currentValue,
       ChangeCategory element, JsonPatch rawDiff, boolean rawDiffsRequested) {
     if (!previousValue.getAspect().equals(EDITABLE_DATASET_PROPERTIES_ASPECT_NAME) || !currentValue.getAspect()
         .equals(EDITABLE_DATASET_PROPERTIES_ASPECT_NAME)) {
@@ -93,7 +86,7 @@ public class EditableDatasetPropertiesDiffer implements AspectDiffer<EditableDat
     if (element == ChangeCategory.DOCUMENTATION) {
       EditableDatasetProperties baseDatasetProperties = getEditableDatasetPropertiesFromAspect(previousValue);
       EditableDatasetProperties targetDatasetProperties = getEditableDatasetPropertiesFromAspect(currentValue);
-      changeEvents.addAll(computeDiffs(baseDatasetProperties, targetDatasetProperties, currentValue.getUrn(), null));
+      changeEvents.addAll(computeDiffs(baseDatasetProperties, targetDatasetProperties, currentValue.getUrn()));
     }
 
     // Assess the highest change at the transaction(schema) level.
@@ -111,16 +104,5 @@ public class EditableDatasetPropertiesDiffer implements AspectDiffer<EditableDat
         .rawDiff(rawDiffsRequested ? rawDiff : null)
         .actor(currentValue.getCreatedBy())
         .build();
-  }
-
-  @Override
-  public List<ChangeEvent> getChangeEvents(
-      @Nonnull Urn urn,
-      @Nonnull String entity,
-      @Nonnull String aspect,
-      @Nonnull Aspect<EditableDatasetProperties> from,
-      @Nonnull Aspect<EditableDatasetProperties> to,
-      @Nonnull AuditStamp auditStamp) {
-    return computeDiffs(from.getValue(), to.getValue(), urn.toString(), auditStamp);
   }
 }

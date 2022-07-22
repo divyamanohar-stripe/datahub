@@ -6,8 +6,6 @@ import { IconStyleType } from '../entity/Entity';
 import { Domain, EntityType } from '../../types.generated';
 import { useEntityRegistry } from '../useEntityRegistry';
 import AvatarsGroup from '../shared/avatar/AvatarsGroup';
-import EntityDropdown from '../entity/shared/EntityDropdown';
-import { EntityMenuItems } from '../entity/shared/EntityDropdown/EntityDropdown';
 
 const DomainItemContainer = styled.div`
     display: flex;
@@ -30,10 +28,9 @@ const DomainNameContainer = styled.div`
 
 type Props = {
     domain: Domain;
-    onDelete?: () => void;
 };
 
-export default function DomainListItem({ domain, onDelete }: Props) {
+export default function DomainListItem({ domain }: Props) {
     const entityRegistry = useEntityRegistry();
     const displayName = entityRegistry.getDisplayName(EntityType.Domain, domain);
     const logoIcon = entityRegistry.getIcon(EntityType.Domain, 12, IconStyleType.ACCENT);
@@ -57,14 +54,6 @@ export default function DomainListItem({ domain, onDelete }: Props) {
                 {owners && owners.length > 0 && (
                     <AvatarsGroup size={24} owners={owners} entityRegistry={entityRegistry} maxCount={4} />
                 )}
-                <EntityDropdown
-                    urn={domain.urn}
-                    entityType={EntityType.Domain}
-                    entityData={domain}
-                    menuItems={new Set([EntityMenuItems.DELETE])}
-                    size={20}
-                    onDeleteEntity={onDelete}
-                />
             </DomainItemContainer>
         </List.Item>
     );

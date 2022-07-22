@@ -1,4 +1,4 @@
-import { Divider, message, Space, Button, Typography, Row, Col } from 'antd';
+import { Divider, message, Space, Button, Typography } from 'antd';
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { EditOutlined, MailOutlined, SlackOutlined } from '@ant-design/icons';
@@ -48,21 +48,20 @@ const TITLES = {
     editGroup: 'Edit Group',
 };
 
-const GroupNameHeader = styled(Row)`
+const GroupNameHeader = styled.div`
     font-size: 20px;
     line-height: 28px;
     color: #262626;
     margin: 16px 16px 8px 8px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: left;
     min-height: 100px;
 `;
 
 const GroupName = styled.div`
+    margin-left: 12px;
     max-width: 260px;
-    word-wrap: break-word;
-    width: 140px;
 `;
 
 /**
@@ -121,18 +120,14 @@ export default function GroupInfoSidebar({ sideBarData, refetch }: Props) {
             <SideBar>
                 <SideBarSubSection className={canEditGroup ? '' : 'fullView'}>
                     <GroupNameHeader>
-                        <Col>
-                            <CustomAvatar
-                                useDefaultAvatar={false}
-                                size={64}
-                                photoUrl={photoUrl}
-                                name={avatarName}
-                                style={AVATAR_STYLE}
-                            />
-                        </Col>
-                        <Col>
-                            <GroupName>{name}</GroupName>
-                        </Col>
+                        <CustomAvatar
+                            useDefaultAvatar={false}
+                            size={64}
+                            photoUrl={photoUrl}
+                            name={avatarName}
+                            style={AVATAR_STYLE}
+                        />
+                        <GroupName>{name}</GroupName>
                     </GroupNameHeader>
                     <Divider className="divider-infoSection" />
                     <SocialDetails>

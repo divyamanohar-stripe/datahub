@@ -1,14 +1,9 @@
 package com.linkedin.gms.factory.auth;
 
-import com.datahub.authentication.Authentication;
 import com.datahub.authorization.AuthorizerConfiguration;
-import com.datahub.authorization.AuthorizerContext;
 import com.datahub.authorization.DataHubAuthorizer;
 import com.datahub.authorization.Authorizer;
 import com.datahub.authorization.AuthorizerChain;
-import com.datahub.authorization.DefaultResourceSpecResolver;
-import com.datahub.authorization.ResourceSpecResolver;
-import com.linkedin.entity.client.JavaEntityClient;
 import com.linkedin.gms.factory.config.ConfigurationProvider;
 import com.linkedin.gms.factory.spring.YamlPropertySourceFactory;
 import java.util.ArrayList;
@@ -36,36 +31,20 @@ public class AuthorizerChainFactory {
 
   @Autowired
   @Qualifier("dataHubAuthorizer")
-  private DataHubAuthorizer dataHubAuthorizer;
-
-  @Autowired
-  @Qualifier("systemAuthentication")
-  private Authentication systemAuthentication;
-
-  @Autowired
-  @Qualifier("javaEntityClient")
-  private JavaEntityClient entityClient;
+  private DataHubAuthorizer _dataHubAuthorizer;
 
   @Bean(name = "authorizerChain")
   @Scope("singleton")
   @Nonnull
   protected AuthorizerChain getInstance() {
-    // Init authorizer context
-    final AuthorizerContext ctx = initAuthorizerContext();
     // Extract + initialize customer authorizers from application configs.
-    final List<Authorizer> authorizers = new ArrayList<>(initCustomAuthorizers(ctx));
+    final List<Authorizer> authorizers = new ArrayList<>(initCustomAuthorizers());
     // Add the DataHub core policies-based Authorizer - this one should always be enabled.
-    this.dataHubAuthorizer.init(Collections.emptyMap(), ctx);
-    authorizers.add(this.dataHubAuthorizer);
+    authorizers.add(this._dataHubAuthorizer);
     return new AuthorizerChain(authorizers);
   }
 
-  private AuthorizerContext initAuthorizerContext() {
-    final ResourceSpecResolver resolver = new DefaultResourceSpecResolver(systemAuthentication, entityClient);
-    return new AuthorizerContext(resolver);
-  }
-
-  private List<Authorizer> initCustomAuthorizers(AuthorizerContext ctx) {
+  private List<Authorizer> initCustomAuthorizers() {
     final List<Authorizer> customAuthorizers = new ArrayList<>();
 
     if (this.configurationProvider.getAuthorization().getAuthorizers() != null) {
@@ -92,7 +71,7 @@ public class AuthorizerChainFactory {
         // Else construct an instance of the class, each class should have an empty constructor.
         try {
           final Authorizer authorizerInstance = clazz.newInstance();
-          authorizerInstance.init(configs, ctx);
+          authorizerInstance.init(configs);
           customAuthorizers.add(authorizerInstance);
         } catch (Exception e) {
           throw new RuntimeException(String.format("Failed to instantiate custom Authorizer with class name %s", clazz.getCanonicalName()), e);

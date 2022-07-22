@@ -14,8 +14,6 @@ import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Owners
 import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
 import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
-import GlossaryEntitiesPath from '../../glossary/GlossaryEntitiesPath';
-import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
 
 /**
  * Definition of the DataHub Dataset entity.
@@ -50,7 +48,7 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
 
     isLineageEnabled = () => false;
 
-    getPathName = () => 'glossaryTerm';
+    getPathName = () => 'glossary';
 
     getCollectionName = () => 'Glossary Terms';
 
@@ -62,24 +60,14 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
                 urn={urn}
                 entityType={EntityType.GlossaryTerm}
                 useEntityQuery={useGetGlossaryTermQuery as any}
-                headerDropdownItems={
-                    new Set([
-                        EntityMenuItems.COPY_URL,
-                        EntityMenuItems.UPDATE_DEPRECATION,
-                        EntityMenuItems.MOVE,
-                        EntityMenuItems.DELETE,
-                    ])
-                }
-                displayGlossaryBrowser
-                isNameEditable
                 tabs={[
-                    {
-                        name: 'Documentation',
-                        component: DocumentationTab,
-                    },
                     {
                         name: 'Related Entities',
                         component: GlossaryRelatedEntity,
+                    },
+                    {
+                        name: 'Documentation',
+                        component: DocumentationTab,
                     },
                     {
                         name: 'Schema',
@@ -112,7 +100,6 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
                     },
                 ]}
                 getOverrideProperties={this.getOverridePropertiesFromEntity}
-                customNavBar={<GlossaryEntitiesPath />}
             />
         );
     };

@@ -30,7 +30,6 @@ import { MLModelEntity } from './app/entity/mlModel/MLModelEntity';
 import { MLModelGroupEntity } from './app/entity/mlModelGroup/MLModelGroupEntity';
 import { DomainEntity } from './app/entity/domain/DomainEntity';
 import { ContainerEntity } from './app/entity/container/ContainerEntity';
-import GlossaryNodeEntity from './app/entity/glossaryNode/GlossaryNodeEntity';
 
 /*
     Construct Apollo Client
@@ -49,7 +48,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
     if (graphQLErrors && graphQLErrors.length) {
         const firstError = graphQLErrors[0];
         const { extensions } = firstError;
-        console.error(firstError);
+        console.log(firstError);
         const errorCode = extensions && (extensions.code as number);
         // Fallback in case the calling component does not handle.
         message.error(`${firstError.message} (code ${errorCode})`, 3);
@@ -98,7 +97,6 @@ const App: React.VFC = () => {
         register.register(new MLModelGroupEntity());
         register.register(new DomainEntity());
         register.register(new ContainerEntity());
-        register.register(new GlossaryNodeEntity());
         return register;
     }, []);
 

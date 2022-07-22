@@ -7,7 +7,6 @@ import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.UsageStatsKey;
 import com.linkedin.datahub.graphql.VersionedAspectKey;
 import com.linkedin.datahub.graphql.authorization.AuthorizationUtils;
-import com.linkedin.datahub.graphql.types.LoadableType;
 import com.linkedin.metadata.authorization.PoliciesConfig;
 import com.linkedin.r2.RemoteInvocationException;
 import com.linkedin.usage.UsageClient;
@@ -22,21 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
-public class UsageType implements LoadableType<com.linkedin.datahub.graphql.generated.UsageQueryResult, UsageStatsKey> {
+public class UsageType {
   private final UsageClient _usageClient;
 
   public UsageType(final UsageClient usageClient) {
     _usageClient = usageClient;
-  }
-
-  @Override
-  public Class<com.linkedin.datahub.graphql.generated.UsageQueryResult> objectClass() {
-    return com.linkedin.datahub.graphql.generated.UsageQueryResult.class;
-  }
-
-  @Override
-  public String name() {
-    return UsageType.class.getSimpleName();
   }
 
   /**

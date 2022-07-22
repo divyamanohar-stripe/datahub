@@ -1,11 +1,8 @@
 package com.linkedin.gms.factory.common;
 
 import com.linkedin.gms.factory.spring.YamlPropertySourceFactory;
-import com.linkedin.metadata.utils.metrics.MetricUtils;
 import io.ebean.config.ServerConfig;
 import io.ebean.datasource.DataSourceConfig;
-import io.ebean.datasource.DataSourcePoolListener;
-import java.sql.Connection;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -45,48 +42,25 @@ public class LocalEbeanServerConfigFactory {
   @Value("${ebean.leakTimeMinutes:15}")
   private Integer ebeanLeakTimeMinutes;
 
-  @Value("${ebean.waitTimeoutMillis:1000}")
-  private Integer ebeanWaitTimeoutMillis;
-
   @Value("${ebean.autoCreateDdl:false}")
   private Boolean ebeanAutoCreate;
 
-  private DataSourcePoolListener getListenerToTrackCounts(String metricName) {
-    final String counterName = "ebeans_connection_pool_size_" + metricName;
-    return new DataSourcePoolListener() {
-      @Override
-      public void onAfterBorrowConnection(Connection connection) {
-        MetricUtils.counter(counterName).inc();
-      }
-
-      @Override
-      public void onBeforeReturnConnection(Connection connection) {
-        MetricUtils.counter(counterName).dec();
-      }
-    };
-  }
-
-  private DataSourceConfig buildDataSourceConfig(String dataSourceUrl, String dataSourceType) {
+  @Bean(name = "gmsEbeanServiceConfig")
+  protected ServerConfig createInstance() {
     DataSourceConfig dataSourceConfig = new DataSourceConfig();
     dataSourceConfig.setUsername(ebeanDatasourceUsername);
     dataSourceConfig.setPassword(ebeanDatasourcePassword);
-    dataSourceConfig.setUrl(dataSourceUrl);
+    dataSourceConfig.setUrl(ebeanDatasourceUrl);
     dataSourceConfig.setDriver(ebeanDatasourceDriver);
     dataSourceConfig.setMinConnections(ebeanMinConnections);
     dataSourceConfig.setMaxConnections(ebeanMaxConnections);
     dataSourceConfig.setMaxInactiveTimeSecs(ebeanMaxInactiveTimeSecs);
     dataSourceConfig.setMaxAgeMinutes(ebeanMaxAgeMinutes);
     dataSourceConfig.setLeakTimeMinutes(ebeanLeakTimeMinutes);
-    dataSourceConfig.setWaitTimeoutMillis(ebeanWaitTimeoutMillis);
-    dataSourceConfig.setListener(getListenerToTrackCounts(dataSourceType));
-    return dataSourceConfig;
-  }
 
-  @Bean(name = "gmsEbeanServiceConfig")
-  protected ServerConfig createInstance() {
     ServerConfig serverConfig = new ServerConfig();
     serverConfig.setName("gmsEbeanServiceConfig");
-    serverConfig.setDataSourceConfig(buildDataSourceConfig(ebeanDatasourceUrl, "main"));
+    serverConfig.setDataSourceConfig(dataSourceConfig);
     serverConfig.setDdlGenerate(ebeanAutoCreate);
     serverConfig.setDdlRun(ebeanAutoCreate);
     return serverConfig;

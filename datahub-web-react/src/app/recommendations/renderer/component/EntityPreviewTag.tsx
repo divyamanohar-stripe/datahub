@@ -2,7 +2,6 @@ import React from 'react';
 import { Image, Tag } from 'antd';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
-import { Maybe } from 'graphql/jsutils/Maybe';
 
 const EntityTag = styled(Tag)`
     margin: 4px;
@@ -38,38 +37,20 @@ type Props = {
     displayName: string;
     url: string;
     platformLogoUrl?: string;
-    platformLogoUrls?: Maybe<string>[];
     logoComponent?: React.ReactNode;
     onClick?: () => void;
 };
 
-export const EntityPreviewTag = ({
-    displayName,
-    url,
-    platformLogoUrl,
-    platformLogoUrls,
-    logoComponent,
-    onClick,
-}: Props) => {
+export const EntityPreviewTag = ({ displayName, url, platformLogoUrl, logoComponent, onClick }: Props) => {
     return (
         <Link to={url} onClick={onClick}>
             <EntityTag>
                 <TitleContainer>
                     <IconContainer>
-                        {(!!platformLogoUrl && !platformLogoUrls && (
-                            <PlatformLogo preview={false} src={platformLogoUrl} alt="none" />
-                        )) ||
-                            (!!platformLogoUrls &&
-                                platformLogoUrls.slice(0, 2).map((platformLogoUrlsEntry) => (
-                                    <>
-                                        <PlatformLogo preview={false} src={platformLogoUrlsEntry || ''} alt="none" />
-                                    </>
-                                ))) ||
+                        {(platformLogoUrl && <PlatformLogo preview={false} src={platformLogoUrl} alt="none" />) ||
                             logoComponent}
                     </IconContainer>
-                    <DisplayNameContainer>
-                        <span className="test-mini-preview-class">{displayName}</span>
-                    </DisplayNameContainer>
+                    <DisplayNameContainer>{displayName}</DisplayNameContainer>
                 </TitleContainer>
             </EntityTag>
         </Link>

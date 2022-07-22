@@ -1,18 +1,10 @@
+import { Image, Tooltip, Typography } from 'antd';
 import React, { ReactNode } from 'react';
-import { Tooltip, Typography } from 'antd';
+import { FolderOpenOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 
-import {
-    GlobalTags,
-    Owner,
-    GlossaryTerms,
-    SearchInsight,
-    Container,
-    Domain,
-    ParentContainersResult,
-    Maybe,
-} from '../../types.generated';
+import { GlobalTags, Owner, GlossaryTerms, SearchInsight, Container, EntityType, Domain } from '../../types.generated';
 import { useEntityRegistry } from '../useEntityRegistry';
 
 import AvatarsGroup from '../shared/avatar/AvatarsGroup';
@@ -21,9 +13,10 @@ import { ANTD_GRAY } from '../entity/shared/constants';
 import NoMarkdownViewer from '../entity/shared/components/styled/StripMarkdownText';
 import { getNumberWithOrdinal } from '../entity/shared/utils';
 import { useEntityData } from '../entity/shared/EntityContext';
-import PlatformContentView from '../entity/shared/containers/profile/header/PlatformContent/PlatformContentView';
-import { useParentContainersTruncation } from '../entity/shared/containers/profile/header/PlatformContent/PlatformContentContainer';
-import EntityCount from '../entity/shared/containers/profile/header/EntityCount';
+
+const LogoContainer = styled.div`
+    padding-right: 8px;
+`;
 
 const PreviewContainer = styled.div`
     display: flex;
@@ -32,22 +25,27 @@ const PreviewContainer = styled.div`
     align-items: center;
 `;
 
-const PreviewWrapper = styled.div`
-    width: 100%;
+const PlatformInfo = styled.div`
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    height: 24px;
 `;
 
 const TitleContainer = styled.div`
-    margin-bottom: 5px;
+    margin-bottom: 0px;
     line-height: 30px;
+`;
 
-    .entityCount {
-        margin-bottom: 2px;
-    }
+const PreviewImage = styled(Image)`
+    max-height: 18px;
+    width: auto;
+    object-fit: contain;
+    margin-right: 8px;
+    background-color: transparent;
 `;
 
 const EntityTitle = styled(Typography.Text)<{ $titleSizePx?: number }>`
-    display: block;
-
     &&& {
         margin-right 8px;
         font-size: ${(props) => props.$titleSizePx || 16}px;
@@ -63,6 +61,13 @@ const PlatformText = styled(Typography.Text)`
     color: ${ANTD_GRAY[7]};
 `;
 
+const EntityCountText = styled(Typography.Text)`
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: 400;
+    color: ${ANTD_GRAY[7]};
+`;
+
 const PlatformDivider = styled.div`
     display: inline-block;
     padding-left: 10px;
@@ -73,25 +78,19 @@ const PlatformDivider = styled.div`
 `;
 
 const DescriptionContainer = styled.div`
+    margin-top: 5px;
     color: ${ANTD_GRAY[7]};
-    margin-bottom: 8px;
 `;
 
 const AvatarContainer = styled.div`
+    margin-top: 12px;
     margin-right: 32px;
 `;
 
 const TagContainer = styled.div`
-    display: inline-flex;
+    display: inline-block;
     margin-left: 0px;
-    margin-top: 3px;
-    flex-wrap: wrap;
-`;
-
-const TagSeparator = styled.div`
-    margin: 2px 8px 0 0;
-    height: 17px;
-    border-right: 1px solid #cccccc;
+    margin-top: -2px;
 `;
 
 const InsightContainer = styled.div`
@@ -109,6 +108,24 @@ const InsightIconContainer = styled.span`
     margin-right: 4px;
 `;
 
+const TypeIcon = styled.span`
+    margin-right: 8px;
+`;
+
+const ContainerText = styled(Typography.Text)`
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: 400;
+    color: ${ANTD_GRAY[9]};
+`;
+
+const ContainerIcon = styled(FolderOpenOutlined)`
+    &&& {
+        font-size: 12px;
+        margin-right: 4px;
+    }
+`;
+
 interface Props {
     name: string;
     logoUrl?: string;
@@ -118,9 +135,6 @@ interface Props {
     type?: string;
     typeIcon?: JSX.Element;
     platform?: string;
-    platformInstanceId?: string;
-    platforms?: Maybe<string | undefined>[];
-    logoUrls?: Maybe<string | undefined>[];
     qualifier?: string | null;
     tags?: GlobalTags;
     owners?: Array<Owner> | null;
@@ -136,7 +150,6 @@ interface Props {
     // this is provided by the impact analysis view. it is used to display
     // how the listed node is connected to the source node
     degree?: number;
-    parentContainers?: ParentContainersResult | null;
 }
 
 export default function DefaultPreviewCard({
@@ -148,7 +161,6 @@ export default function DefaultPreviewCard({
     type,
     typeIcon,
     platform,
-    platformInstanceId,
     // TODO(Gabe): support qualifier in the new preview card
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     qualifier,
@@ -164,9 +176,6 @@ export default function DefaultPreviewCard({
     dataTestID,
     onClick,
     degree,
-    parentContainers,
-    platforms,
-    logoUrls,
 }: Props) {
     // sometimes these lists will be rendered inside an entity container (for example, in the case of impact analysis)
     // in those cases, we may want to enrich the preview w/ context about the container entity
@@ -180,61 +189,71 @@ export default function DefaultPreviewCard({
             </>
         )) || []),
     ];
-    const hasGlossaryTerms = !!glossaryTerms?.terms?.length;
-    const hasTags = !!tags?.tags?.length;
     if (snippet) {
         insightViews.push(snippet);
     }
-
-    const { parentContainersRef, areContainersTruncated } = useParentContainersTruncation(container);
-
     return (
         <PreviewContainer data-testid={dataTestID}>
-            <PreviewWrapper>
+            <div>
                 <TitleContainer>
                     <Link to={url}>
-                        <PlatformContentView
-                            platformName={platform}
-                            platformLogoUrl={logoUrl}
-                            platformNames={platforms}
-                            platformLogoUrls={logoUrls}
-                            entityLogoComponent={logoComponent}
-                            instanceId={platformInstanceId}
-                            typeIcon={typeIcon}
-                            entityType={type}
-                            parentContainers={parentContainers?.containers}
-                            parentContainersRef={parentContainersRef}
-                            areContainersTruncated={areContainersTruncated}
-                        />
+                        <PlatformInfo>
+                            {(logoUrl && <PreviewImage preview={false} src={logoUrl} alt={platform || ''} />) || (
+                                <LogoContainer>{logoComponent}</LogoContainer>
+                            )}
+                            {platform && <PlatformText>{platform}</PlatformText>}
+                            {(logoUrl || logoComponent || platform) && <PlatformDivider />}
+                            {typeIcon && <TypeIcon>{typeIcon}</TypeIcon>}
+                            <PlatformText>{type}</PlatformText>
+                            {container && (
+                                <Link to={entityRegistry.getEntityUrl(EntityType.Container, container?.urn)}>
+                                    <PlatformDivider />
+                                    <ContainerIcon
+                                        style={{
+                                            color: ANTD_GRAY[9],
+                                        }}
+                                    />
+                                    <ContainerText>
+                                        {entityRegistry.getDisplayName(EntityType.Container, container)}
+                                    </ContainerText>
+                                </Link>
+                            )}
+                            {entityCount && entityCount > 0 ? (
+                                <>
+                                    <PlatformDivider />
+                                    <EntityCountText>{entityCount.toLocaleString()} entities</EntityCountText>
+                                </>
+                            ) : null}
+                            {degree !== undefined && degree !== null && (
+                                <span>
+                                    <PlatformDivider />
+                                    <Tooltip
+                                        title={`This entity is a ${getNumberWithOrdinal(degree)} degree connection to ${
+                                            entityData?.name || 'the source entity'
+                                        }`}
+                                    >
+                                        <PlatformText>{getNumberWithOrdinal(degree)}</PlatformText>
+                                    </Tooltip>
+                                </span>
+                            )}
+                        </PlatformInfo>
                         <EntityTitle onClick={onClick} $titleSizePx={titleSizePx}>
                             {name || ' '}
                         </EntityTitle>
-                        {degree !== undefined && degree !== null && (
-                            <Tooltip
-                                title={`This entity is a ${getNumberWithOrdinal(degree)} degree connection to ${
-                                    entityData?.name || 'the source entity'
-                                }`}
-                            >
-                                <PlatformText>{getNumberWithOrdinal(degree)}</PlatformText>
-                            </Tooltip>
-                        )}
-                        {!!degree && entityCount && <PlatformDivider />}
-                        <EntityCount entityCount={entityCount} />
                     </Link>
+                    <TagContainer>
+                        <TagTermGroup
+                            domain={domain}
+                            uneditableGlossaryTerms={glossaryTerms}
+                            uneditableTags={tags}
+                            maxShow={3}
+                        />
+                    </TagContainer>
                 </TitleContainer>
                 {description && description.length > 0 && (
                     <DescriptionContainer>
-                        <NoMarkdownViewer limit={250}>{description}</NoMarkdownViewer>
+                        <NoMarkdownViewer limit={200}>{description}</NoMarkdownViewer>
                     </DescriptionContainer>
-                )}
-                {(domain || hasGlossaryTerms || hasTags) && (
-                    <TagContainer>
-                        {domain && <TagTermGroup domain={domain} maxShow={3} />}
-                        {domain && hasGlossaryTerms && <TagSeparator />}
-                        {hasGlossaryTerms && <TagTermGroup uneditableGlossaryTerms={glossaryTerms} maxShow={3} />}
-                        {((hasGlossaryTerms && hasTags) || (domain && hasTags)) && <TagSeparator />}
-                        {hasTags && <TagTermGroup uneditableTags={tags} maxShow={3} />}
-                    </TagContainer>
                 )}
                 {owners && owners.length > 0 && (
                     <AvatarContainer>
@@ -251,7 +270,7 @@ export default function DefaultPreviewCard({
                         ))}
                     </InsightContainer>
                 )}
-            </PreviewWrapper>
+            </div>
         </PreviewContainer>
     );
 }

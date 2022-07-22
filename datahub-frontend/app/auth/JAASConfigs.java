@@ -11,7 +11,9 @@ public class JAASConfigs {
     private Boolean _isEnabled = true;
 
     public JAASConfigs(final com.typesafe.config.Config configs) {
-        if (configs.hasPath(JAAS_ENABLED_CONFIG_PATH) && !configs.getBoolean(JAAS_ENABLED_CONFIG_PATH)) {
+        if (configs.hasPath(JAAS_ENABLED_CONFIG_PATH)
+                && Boolean.FALSE.equals(
+                        Boolean.parseBoolean(configs.getValue(JAAS_ENABLED_CONFIG_PATH).toString()))) {
             _isEnabled = false;
         }
     }

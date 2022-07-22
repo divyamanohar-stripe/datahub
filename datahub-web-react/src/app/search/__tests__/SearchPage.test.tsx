@@ -26,6 +26,7 @@ describe('SearchPage', () => {
     });
 
     it('renders the selected filters as checked', async () => {
+        const promise = Promise.resolve();
         const { getByTestId, queryByTestId } = render(
             <MockedProvider
                 mocks={mocks}
@@ -43,16 +44,21 @@ describe('SearchPage', () => {
             </MockedProvider>,
         );
 
-        await waitFor(() => expect(queryByTestId('facet-entity-DATASET')).toBeInTheDocument());
+        await waitFor(() => expect(queryByTestId('facet-platform-kafka')).toBeInTheDocument());
 
-        const datasetEntityBox = getByTestId('facet-entity-DATASET');
-        expect(datasetEntityBox).toHaveProperty('checked', true);
+        const kafkaPlatformBox = getByTestId('facet-platform-kafka');
+        expect(kafkaPlatformBox).toHaveProperty('checked', true);
 
-        const chartEntityBox = getByTestId('facet-entity-CHART');
-        expect(chartEntityBox).toHaveProperty('checked', false);
+        const hdfsPlatformBox = getByTestId('facet-platform-hdfs');
+        expect(hdfsPlatformBox).toHaveProperty('checked', false);
+
+        const prodOriginBox = getByTestId('facet-origin-PROD');
+        expect(prodOriginBox).toHaveProperty('checked', false);
+        await act(() => promise);
     });
 
     it('renders multiple checked filters at once', async () => {
+        const promise = Promise.resolve();
         const { getByTestId, queryByTestId } = render(
             <MockedProvider
                 mocks={mocks}
@@ -70,19 +76,17 @@ describe('SearchPage', () => {
             </MockedProvider>,
         );
 
-        await waitFor(() => expect(queryByTestId('facet-entity-DATASET')).toBeInTheDocument());
+        await waitFor(() => expect(queryByTestId('facet-platform-kafka')).toBeInTheDocument());
 
-        const datasetEntityBox = getByTestId('facet-entity-DATASET');
-        expect(datasetEntityBox).toHaveProperty('checked', true);
+        const kafkaPlatformBox = getByTestId('facet-platform-kafka');
+        expect(kafkaPlatformBox).toHaveProperty('checked', true);
 
-        const expandButton = getByTestId('expand-facet-platform');
-        act(() => {
-            fireEvent.click(expandButton);
-        });
-
-        await waitFor(() => expect(queryByTestId('facet-platform-hdfs')).toBeInTheDocument());
         const hdfsPlatformBox = getByTestId('facet-platform-hdfs');
         expect(hdfsPlatformBox).toHaveProperty('checked', true);
+
+        const prodOriginBox = getByTestId('facet-origin-PROD');
+        expect(prodOriginBox).toHaveProperty('checked', false);
+        await act(() => promise);
     });
 
     it('clicking a filter selects a new filter', async () => {
@@ -104,24 +108,24 @@ describe('SearchPage', () => {
             </MockedProvider>,
         );
 
-        await waitFor(() => expect(queryByTestId('facet-entity-DATASET')).toBeInTheDocument());
+        await waitFor(() => expect(queryByTestId('facet-platform-kafka')).toBeInTheDocument());
 
-        const datasetEntityBox = getByTestId('facet-entity-DATASET');
-        expect(datasetEntityBox).toHaveProperty('checked', true);
+        const kafkaPlatformBox = getByTestId('facet-platform-kafka');
+        expect(kafkaPlatformBox).toHaveProperty('checked', true);
 
-        const chartEntityBox = getByTestId('facet-entity-CHART');
-        expect(chartEntityBox).toHaveProperty('checked', false);
+        const hdfsPlatformBox = getByTestId('facet-platform-hdfs');
+        expect(hdfsPlatformBox).toHaveProperty('checked', false);
         act(() => {
-            fireEvent.click(chartEntityBox);
+            fireEvent.click(hdfsPlatformBox);
         });
 
-        await waitFor(() => expect(queryByTestId('facet-entity-DATASET')).toBeInTheDocument());
+        await waitFor(() => expect(queryByTestId('facet-platform-kafka')).toBeInTheDocument());
 
-        const datasetEntityBox2 = getByTestId('facet-entity-DATASET');
-        expect(datasetEntityBox2).toHaveProperty('checked', true);
+        const kafkaPlatformBox2 = getByTestId('facet-platform-kafka');
+        expect(kafkaPlatformBox2).toHaveProperty('checked', true);
 
-        const chartEntityBox2 = getByTestId('facet-entity-CHART');
-        expect(chartEntityBox2).toHaveProperty('checked', true);
+        const hdfsPlatformBox2 = getByTestId('facet-platform-hdfs');
+        expect(hdfsPlatformBox2).toHaveProperty('checked', true);
         await act(() => promise);
     });
 });

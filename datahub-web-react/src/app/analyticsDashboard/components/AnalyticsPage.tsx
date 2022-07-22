@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Alert, Divider, Input, Select } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+
+import { SearchablePage } from '../../search/SearchablePage';
 import { ChartGroup } from './ChartGroup';
 import { useGetAnalyticsChartsQuery, useGetMetadataAnalyticsChartsQuery } from '../../../graphql/analytics.generated';
 import { useGetHighlightsQuery } from '../../../graphql/highlights.generated';
@@ -83,7 +85,7 @@ export const AnalyticsPage = () => {
     });
 
     return (
-        <>
+        <SearchablePage>
             <HighlightGroup>
                 {highlightLoading && (
                     <Message type="loading" content="Loading Highlights..." style={{ marginTop: '10%' }} />
@@ -177,6 +179,6 @@ export const AnalyticsPage = () => {
                             </>
                         ))}
             </>
-        </>
+        </SearchablePage>
     );
 };

@@ -1,9 +1,8 @@
 import React, { SVGProps, useEffect, useMemo, useState } from 'react';
-import { PlusOutlined, MinusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
-import { Button, Switch, Tooltip } from 'antd';
+import { Button, Switch } from 'antd';
 import { ProvidedZoom, TransformMatrix } from '@vx/zoom/lib/types';
-import { useHistory, useLocation } from 'react-router-dom';
 
 import LineageTree from './LineageTree';
 import constructTree from './utils/constructTree';
@@ -11,8 +10,6 @@ import { Direction, EntityAndType, EntitySelectParams, FetchedEntity } from './t
 import { useEntityRegistry } from '../useEntityRegistry';
 import { ANTD_GRAY } from '../entity/shared/constants';
 import { LineageExplorerContext } from './utils/LineageExplorerContext';
-import { useIsSeparateSiblingsMode } from '../entity/shared/siblingUtils';
-import { navigateToLineageUrl } from './utils/navigateToLineageUrl';
 
 const ZoomContainer = styled.div`
     position: relative;
@@ -35,8 +32,11 @@ const DisplayControls = styled.div`
     box-shadow: 0px 0px 4px 0px #0000001a;
 `;
 
+const ControlsTitle = styled.div`
+    margin-bottom: 12px;
+`;
+
 const ControlsSwitch = styled(Switch)`
-    margin-top: 12px;
     margin-right: 8px;
 `;
 
@@ -62,17 +62,13 @@ const RootSvg = styled.svg<{ isDragging: boolean } & SVGProps<SVGSVGElement>>`
     }
 `;
 
-const ControlLabel = styled.span`
-    vertical-align: sub;
-`;
-
 type Props = {
     margin: { top: number; right: number; bottom: number; left: number };
     entityAndType?: EntityAndType | null;
     fetchedEntities: { [x: string]: FetchedEntity };
     onEntityClick: (EntitySelectParams) => void;
     onEntityCenter: (EntitySelectParams) => void;
-    onLineageExpand: (data: EntityAndType) => void;
+    onLineageExpand: (LineageExpandParams) => void;
     selectedEntity?: EntitySelectParams;
     zoom: ProvidedZoom & {
         transformMatrix: TransformMatrix;
@@ -81,11 +77,6 @@ type Props = {
     width: number;
     height: number;
 };
-
-const HelpIcon = styled(QuestionCircleOutlined)`
-    color: ${ANTD_GRAY[7]};
-    padding-left: 4px;
-`;
 
 export default function LineageVizInsideZoom({
     zoom,
@@ -100,13 +91,10 @@ export default function LineageVizInsideZoom({
     height,
 }: Props) {
     const [draggedNodes, setDraggedNodes] = useState<Record<string, { x: number; y: number }>>({});
-    const history = useHistory();
-    const location = useLocation();
 
     const [hoveredEntity, setHoveredEntity] = useState<EntitySelectParams | undefined>(undefined);
     const [isDraggingNode, setIsDraggingNode] = useState(false);
     const [showExpandedTitles, setShowExpandedTitles] = useState(false);
-    const isHideSiblingMode = useIsSeparateSiblingsMode();
 
     const entityRegistry = useEntityRegistry();
 
@@ -143,34 +131,12 @@ export default function LineageVizInsideZoom({
                     </Button>
                 </ZoomControls>
                 <DisplayControls>
-                    <div>Controls</div>
-                    <div>
-                        <ControlsSwitch
-                            checked={showExpandedTitles}
-                            onChange={(checked) => setShowExpandedTitles(checked)}
-                        />{' '}
-                        <ControlLabel>Show Full Titles</ControlLabel>
-                    </div>
-                    <div>
-                        <ControlsSwitch
-                            data-testid="compress-lineage-toggle"
-                            checked={!isHideSiblingMode}
-                            onChange={(checked) => {
-                                navigateToLineageUrl({
-                                    location,
-                                    history,
-                                    isLineageMode: true,
-                                    isHideSiblingMode: !checked,
-                                });
-                            }}
-                        />{' '}
-                        <ControlLabel>
-                            Compress Lineage{' '}
-                            <Tooltip title="Collapses related entities into a single lineage node" placement="topRight">
-                                <HelpIcon />
-                            </Tooltip>
-                        </ControlLabel>
-                    </div>
+                    <ControlsTitle>Controls</ControlsTitle>
+                    <ControlsSwitch
+                        checked={showExpandedTitles}
+                        onChange={(checked) => setShowExpandedTitles(checked)}
+                    />{' '}
+                    Show Full Titles
                 </DisplayControls>
                 <RootSvg
                     width={width}

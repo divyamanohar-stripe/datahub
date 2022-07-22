@@ -7,8 +7,6 @@ import { getBrowserId } from '../browserId';
 
 const appName = 'datahub-react';
 
-export const THIRD_PARTY_LOGGING_KEY = 'enableThirdPartyLogging';
-
 const analytics = Analytics({
     app: appName,
     plugins: plugins.filter((plugin) => plugin.isEnabled).map((plugin) => plugin.plugin),
@@ -16,19 +14,8 @@ const analytics = Analytics({
 
 const { NODE_ENV } = process.env;
 
-export function getMergedTrackingOptions(options?: any) {
-    const isThirdPartyLoggingEnabled = JSON.parse(localStorage.getItem(THIRD_PARTY_LOGGING_KEY) || 'false');
-    return {
-        ...options,
-        plugins: {
-            mixpanel: isThirdPartyLoggingEnabled,
-            amplitude: isThirdPartyLoggingEnabled,
-            googleAnalytics: isThirdPartyLoggingEnabled,
-        },
-    };
-}
-
 export default {
+    ...analytics,
     page: (data?: PageData, options?: any, callback?: (...params: any[]) => any) => {
         const modifiedData = {
             ...data,
@@ -42,8 +29,7 @@ export default {
         if (NODE_ENV === 'test') {
             return null;
         }
-        const trackingOptions = getMergedTrackingOptions(options);
-        return analytics.page(modifiedData, trackingOptions, callback);
+        return analytics.page(modifiedData, options, callback);
     },
     event: (event: Event, options?: any, callback?: (...params: any[]) => any): Promise<any> => {
         const eventTypeName = EventType[event.type];
@@ -59,11 +45,6 @@ export default {
         if (NODE_ENV === 'test') {
             return Promise.resolve();
         }
-        const trackingOptions = getMergedTrackingOptions(options);
-        return analytics.track(eventTypeName, modifiedEvent, trackingOptions, callback);
-    },
-    identify: (userId: string, traits?: any, options?: any, callback?: ((...params: any[]) => any) | undefined) => {
-        const trackingOptions = getMergedTrackingOptions(options);
-        return analytics.identify(userId, traits, trackingOptions, callback);
+        return analytics.track(eventTypeName, modifiedEvent, options, callback);
     },
 };

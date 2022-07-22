@@ -12,9 +12,6 @@ fragment assertionDetails on Assertion {
             logoUrl
         }
     }
-    dataPlatformInstance {
-        ...dataPlatformInstanceFields
-    }
     info {
         type
         datasetAssertion {

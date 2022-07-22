@@ -10,10 +10,7 @@
                         "displayName": null,
                         "email": "simpons-group",
                         "admins": [],
-                        "members": [
-                            "urn:li:corpuser:hsimpson",
-                            "urn:li:corpuser:lsimpson"
-                        ],
+                        "members": [],
                         "groups": [],
                         "description": null
                     }
@@ -72,7 +69,7 @@
                         "email": "hsimpson",
                         "title": "Mr. Everything",
                         "managerUrn": "urn:li:corpuser:bsimpson",
-                        "departmentId": 1001,
+                        "departmentId": null,
                         "departmentName": "1001",
                         "firstName": "Homer",
                         "lastName": "Simpson",

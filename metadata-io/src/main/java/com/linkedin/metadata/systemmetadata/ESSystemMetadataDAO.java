@@ -90,7 +90,10 @@ public class ESSystemMetadataDAO {
     return null;
   }
 
-  public BulkByScrollResponse deleteByUrnAspect(@Nonnull final String urn, @Nonnull final String aspect) {
+  public BulkByScrollResponse deleteByUrnAspect(
+      @Nonnull final String urn,
+      @Nonnull final String aspect
+  ) {
     BoolQueryBuilder finalQuery = QueryBuilders.boolQuery();
     finalQuery.must(QueryBuilders.termQuery("urn", urn));
     finalQuery.must(QueryBuilders.termQuery("aspect", aspect));
@@ -111,7 +114,7 @@ public class ESSystemMetadataDAO {
     return null;
   }
 
-  public SearchResponse findByParams(Map<String, String> searchParams, boolean includeSoftDeleted, int from, int size) {
+  public SearchResponse findByParams(Map<String, String> searchParams, boolean includeSoftDeleted) {
     SearchRequest searchRequest = new SearchRequest();
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -128,8 +131,8 @@ public class ESSystemMetadataDAO {
 
     searchSourceBuilder.query(finalQuery);
 
-    searchSourceBuilder.from(from);
-    searchSourceBuilder.size(size);
+    // this is the max page size elastic will return
+    searchSourceBuilder.size(10000);
 
     searchRequest.source(searchSourceBuilder);
 
@@ -144,16 +147,15 @@ public class ESSystemMetadataDAO {
     return null;
   }
 
-  public SearchResponse findByRegistry(String registryName, String registryVersion, boolean includeSoftDeleted,
-      int from, int size) {
+  public SearchResponse findByRegistry(String registryName, String registryVersion, boolean includeSoftDeleted) {
     Map<String, String> params = new HashMap<>();
     params.put("registryName", registryName);
     params.put("registryVersion", registryVersion);
-    return findByParams(params, includeSoftDeleted, from, size);
+    return findByParams(params, includeSoftDeleted);
   }
 
-  public SearchResponse findByRunId(String runId, boolean includeSoftDeleted, int from, int size) {
-    return findByParams(Collections.singletonMap("runId", runId), includeSoftDeleted, from, size);
+  public SearchResponse findByRunId(String runId, boolean includeSoftDeleted) {
+    return findByParams(Collections.singletonMap("runId", runId), includeSoftDeleted);
   }
 
   public SearchResponse findRuns(Integer pageOffset, Integer pageSize) {

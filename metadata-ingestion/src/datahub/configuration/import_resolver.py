@@ -8,7 +8,9 @@ T = TypeVar("T")
 
 
 def _pydantic_resolver(v: Union[T, str]) -> T:
-    return import_path(v) if isinstance(v, str) else v
+    if isinstance(v, str):
+        return import_path(v)
+    return v
 
 
 def pydantic_resolve_key(field: str) -> classmethod:

@@ -60,8 +60,7 @@
       "actors":{
         "resourceOwners":false,
         "allUsers":true,
-        "allGroups":false,
-        "users":[]
+        "allGroups":false
       },
       "privileges":[
         "MANAGE_POLICIES",
@@ -70,10 +69,7 @@
         "MANAGE_USERS_AND_GROUPS",
         "VIEW_ANALYTICS",
         "GENERATE_PERSONAL_ACCESS_TOKENS",
-        "MANAGE_DOMAINS",
-        "MANAGE_TESTS",
-        "MANAGE_GLOSSARIES",
-        "MANAGE_TAGS"
+        "MANAGE_DOMAINS"
       ],
       "displayName":"All Users - All Platform Privileges",
       "description":"Grants full platform privileges to ALL users of DataHub. Change this policy to alter that behavior.",

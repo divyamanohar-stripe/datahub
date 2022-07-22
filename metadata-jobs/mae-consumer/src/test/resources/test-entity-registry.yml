@@ -13,5 +13,3 @@ entities:
       - dataHubExecutionRequestInput
       - dataHubExecutionRequestSignal
       - dataHubExecutionRequestResult
-events:
-  - name: entityChangeEvent

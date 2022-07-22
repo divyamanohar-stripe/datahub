@@ -18,25 +18,24 @@ import java.util.function.Function;
  *  for the provided {@link LoadableType} under the name provided by {@link LoadableType#name()}
  *
  * @param <T> the generated GraphQL POJO corresponding to the resolved type.
- * @param <K> the key type for the DataLoader
  */
-public class LoadableTypeResolver<T, K> implements DataFetcher<CompletableFuture<T>> {
+public class LoadableTypeResolver<T> implements DataFetcher<CompletableFuture<T>> {
 
-    private final LoadableType<T, K> _loadableType;
-    private final Function<DataFetchingEnvironment, K> _keyProvider;
+    private final LoadableType<T> _loadableType;
+    private final Function<DataFetchingEnvironment, String> _urnProvider;
 
-    public LoadableTypeResolver(final LoadableType<T, K> loadableType, final Function<DataFetchingEnvironment, K> keyProvider) {
+    public LoadableTypeResolver(final LoadableType<T> loadableType, final Function<DataFetchingEnvironment, String> urnProvider) {
         _loadableType = loadableType;
-        _keyProvider = keyProvider;
+        _urnProvider = urnProvider;
     }
 
     @Override
     public CompletableFuture<T> get(DataFetchingEnvironment environment) {
-        final K key = _keyProvider.apply(environment);
-        if (key == null) {
+        final String urn = _urnProvider.apply(environment);
+        if (urn == null) {
             return null;
         }
-        final DataLoader<K, T> loader = environment.getDataLoaderRegistry().getDataLoader(_loadableType.name());
-        return loader.load(key);
+        final DataLoader<String, T> loader = environment.getDataLoaderRegistry().getDataLoader(_loadableType.name());
+        return loader.load(urn);
     }
 }

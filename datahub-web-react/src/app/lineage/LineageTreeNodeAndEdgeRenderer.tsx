@@ -4,7 +4,7 @@ import { curveBasis } from '@vx/curve';
 import { LinePath } from '@vx/shape';
 import { TransformMatrix } from '@vx/zoom/lib/types';
 
-import { NodeData, Direction, EntitySelectParams, TreeProps, VizNode, VizEdge, EntityAndType } from './types';
+import { NodeData, Direction, EntitySelectParams, TreeProps, VizNode, VizEdge } from './types';
 import LineageEntityNode from './LineageEntityNode';
 import { ANTD_GRAY } from '../entity/shared/constants';
 
@@ -15,7 +15,7 @@ type Props = {
     };
     onEntityClick: (EntitySelectParams) => void;
     onEntityCenter: (EntitySelectParams) => void;
-    onLineageExpand: (data: EntityAndType) => void;
+    onLineageExpand: (LineageExpandParams) => void;
     selectedEntity?: EntitySelectParams;
     hoveredEntity?: EntitySelectParams;
     setHoveredEntity: (EntitySelectParams) => void;

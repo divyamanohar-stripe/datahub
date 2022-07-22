@@ -5,7 +5,6 @@ import { Button, Tag } from 'antd';
 import { useHistory } from 'react-router-dom';
 import { RecommendationContent, GlossaryTerm } from '../../../../types.generated';
 import { navigateToSearchUrl } from '../../../search/utils/navigateToSearchUrl';
-import { useEntityRegistry } from '../../../useEntityRegistry';
 
 const TermSearchListContainer = styled.div`
     display: flex;
@@ -40,7 +39,6 @@ type Props = {
 
 export const GlossaryTermSearchList = ({ content, onClick }: Props) => {
     const history = useHistory();
-    const entityRegistry = useEntityRegistry();
 
     const terms: Array<GlossaryTerm> = content
         .map((cnt) => cnt.entity)
@@ -67,7 +65,7 @@ export const GlossaryTermSearchList = ({ content, onClick }: Props) => {
                     <TermButton type="link" key={term.urn} onClick={() => onClickTerm(term, index)}>
                         <Tag closable={false}>
                             <StyledBook />
-                            {entityRegistry.getDisplayName(term.type, term)}
+                            {term.name}
                         </Tag>
                     </TermButton>
                 </TermContainer>

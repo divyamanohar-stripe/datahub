@@ -1,10 +1,10 @@
 package com.linkedin.datahub.graphql.types.common.mappers;
 
-import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.generated.CorpUser;
 import com.linkedin.datahub.graphql.generated.CorpGroup;
 import com.linkedin.datahub.graphql.generated.Owner;
 import com.linkedin.datahub.graphql.generated.OwnershipType;
+import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 
 import javax.annotation.Nonnull;
 
@@ -13,15 +13,16 @@ import javax.annotation.Nonnull;
  *
  * To be replaced by auto-generated mappers implementations
  */
-public class OwnerMapper {
+public class OwnerMapper implements ModelMapper<com.linkedin.common.Owner, Owner> {
 
     public static final OwnerMapper INSTANCE = new OwnerMapper();
 
-    public static Owner map(@Nonnull final com.linkedin.common.Owner owner, @Nonnull final Urn entityUrn) {
-        return INSTANCE.apply(owner, entityUrn);
+    public static Owner map(@Nonnull final com.linkedin.common.Owner owner) {
+        return INSTANCE.apply(owner);
     }
 
-    public Owner apply(@Nonnull final com.linkedin.common.Owner owner, @Nonnull final Urn entityUrn) {
+    @Override
+    public Owner apply(@Nonnull final com.linkedin.common.Owner owner) {
         final Owner result = new Owner();
         result.setType(Enum.valueOf(OwnershipType.class, owner.getType().toString()));
         if (owner.getOwner().getEntityType().equals("corpuser")) {
@@ -36,7 +37,6 @@ public class OwnerMapper {
         if (owner.hasSource()) {
             result.setSource(OwnershipSourceMapper.map(owner.getSource()));
         }
-        result.setAssociatedUrn(entityUrn.toString());
         return result;
     }
 }

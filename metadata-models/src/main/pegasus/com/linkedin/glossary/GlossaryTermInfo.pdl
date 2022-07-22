@@ -31,15 +31,6 @@ record GlossaryTermInfo includes CustomProperties {
   /**
    * Parent node of the glossary term
    */
-  @Relationship = {
-    "name": "IsPartOf",
-    "entityTypes": [ "glossaryNode" ],
-  }
-  @Searchable = {
-    "fieldName": "parentNode",
-    "fieldType": "URN",
-    "hasValuesFieldName": "hasParentNode"
-  }
   parentNode: optional GlossaryNodeUrn
 
   /**

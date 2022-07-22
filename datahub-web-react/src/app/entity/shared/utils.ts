@@ -1,11 +1,3 @@
-import { GenericEntityProperties } from './types';
-
-export function dictToQueryStringParams(params: Record<string, string | boolean>) {
-    return Object.keys(params)
-        .map((key) => `${key}=${params[key]}`)
-        .join('&');
-}
-
 export function urlEncodeUrn(urn: string) {
     return (
         urn &&
@@ -66,10 +58,4 @@ export const singularizeCollectionName = (collectionName: string): string => {
     return collectionName;
 };
 
-export function getPlatformName(entityData: GenericEntityProperties | null) {
-    return entityData?.platform?.properties?.displayName || entityData?.platform?.name;
-}
-
 export const EDITED_DESCRIPTIONS_CACHE_NAME = 'editedDescriptions';
-
-export const FORBIDDEN_URN_CHARS_REGEX = /.*[(),\\].*/;

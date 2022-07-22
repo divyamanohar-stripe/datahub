@@ -36,9 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -61,28 +58,15 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 public class SearchRequestHandler {
 
   private static final Map<EntitySpec, SearchRequestHandler> REQUEST_HANDLER_BY_ENTITY_NAME = new ConcurrentHashMap<>();
-  private static final String REMOVED = "removed";
-  private static final int DEFAULT_MAX_TERM_BUCKET_SIZE = 20;
 
   private final EntitySpec _entitySpec;
   private final Set<String> _facetFields;
   private final Set<String> _defaultQueryFieldNames;
   private final Map<String, String> _filtersToDisplayName;
-  private final Configs _configs;
-
-
-  @Data
-  @AllArgsConstructor
-  @Getter
-  public static class Configs {
-    private final int maxTermBucketSize;
-  }
+  private final int _maxTermBucketSize = 100;
+  private static final String REMOVED = "removed";
 
   private SearchRequestHandler(@Nonnull EntitySpec entitySpec) {
-    this(entitySpec, new Configs(DEFAULT_MAX_TERM_BUCKET_SIZE));
-  }
-
-  private SearchRequestHandler(@Nonnull EntitySpec entitySpec, @Nonnull Configs configs) {
     _entitySpec = entitySpec;
     _facetFields = getFacetFields();
     _defaultQueryFieldNames = getDefaultQueryFieldNames();
@@ -91,15 +75,10 @@ public class SearchRequestHandler {
         .filter(spec -> spec.getSearchableAnnotation().isAddToFilters())
         .collect(Collectors.toMap(spec -> spec.getSearchableAnnotation().getFieldName(),
             spec -> spec.getSearchableAnnotation().getFilterName()));
-    _configs = configs;
   }
 
   public static SearchRequestHandler getBuilder(@Nonnull EntitySpec entitySpec) {
     return REQUEST_HANDLER_BY_ENTITY_NAME.computeIfAbsent(entitySpec, k -> new SearchRequestHandler(entitySpec));
-  }
-
-  public static SearchRequestHandler getBuilder(@Nonnull EntitySpec entitySpec, @Nonnull Configs configs) {
-    return REQUEST_HANDLER_BY_ENTITY_NAME.computeIfAbsent(entitySpec, k -> new SearchRequestHandler(entitySpec, configs));
   }
 
   private Set<String> getFacetFields() {
@@ -226,7 +205,7 @@ public class SearchRequestHandler {
     for (String facet : _facetFields) {
       // All facet fields must have subField keyword
       AggregationBuilder aggBuilder =
-          AggregationBuilders.terms(facet).field(facet + ESUtils.KEYWORD_SUFFIX).size(_configs.getMaxTermBucketSize());
+          AggregationBuilders.terms(facet).field(facet + ESUtils.KEYWORD_SUFFIX).size(_maxTermBucketSize);
       aggregationBuilders.add(aggBuilder);
     }
     return aggregationBuilders;

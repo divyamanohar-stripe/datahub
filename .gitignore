@@ -11,11 +11,8 @@
 *gma-create-all.sql
 *gma-drop-all.sql
 
-# Pegasus, Avro, & other schemas
+# Pegasus & Avro
 **/src/mainGenerated*
-**/src/generatedJsonSchema
-**/metadata-io/generated
-**/metadata-integration/java/datahub-client/generated
 **/src/testGenerated*
 metadata-events/mxe-registration/src/main/resources/**/*.avsc
 
@@ -45,12 +42,8 @@ MANIFEST
 **/spark-lineage/metastore_db/
 **/spark-lineage/**/derby.log
 **/spark-lineage/**/hive/
-**/spark-lineage/**/out*.csv/
-**/spark-lineage/coalesce-test/
-
-#VS Code
+**/spark-lineage/**/out.csv/
 .vscode
-.devcontainer
 
 #spark smoke test
 smoke-test/spark-smoke-test/docker/workspace/
@@ -68,6 +61,3 @@ metadata-ingestion/generated/**
 docs/generated/
 tmp*
 temp*
-
-# frontend assets
-datahub-frontend/public/**

@@ -1,12 +1,12 @@
 import React from 'react';
 import styled from 'styled-components';
-import { List, Tag, Typography } from 'antd';
+import { Button, List, message, Modal, Tag, Typography } from 'antd';
 import { Link } from 'react-router-dom';
+import { DeleteOutlined } from '@ant-design/icons';
 import { CorpGroup, EntityType } from '../../../types.generated';
 import CustomAvatar from '../../shared/avatar/CustomAvatar';
 import { useEntityRegistry } from '../../useEntityRegistry';
-import EntityDropdown from '../../entity/shared/EntityDropdown';
-import { EntityMenuItems } from '../../entity/shared/EntityDropdown/EntityDropdown';
+import { useRemoveGroupMutation } from '../../../graphql/group.generated';
 
 type Props = {
     group: CorpGroup;
@@ -30,6 +30,38 @@ const GroupHeaderContainer = styled.div`
 export default function GroupListItem({ group, onDelete }: Props) {
     const entityRegistry = useEntityRegistry();
     const displayName = entityRegistry.getDisplayName(EntityType.CorpGroup, group);
+
+    const [removeGroupMutation] = useRemoveGroupMutation();
+
+    const onRemoveGroup = async (urn: string) => {
+        try {
+            await removeGroupMutation({
+                variables: { urn },
+            });
+            message.success({ content: 'Removed group.', duration: 2 });
+        } catch (e: unknown) {
+            message.destroy();
+            if (e instanceof Error) {
+                message.error({ content: `Failed to remove group: \n ${e.message || ''}`, duration: 3 });
+            }
+        }
+        onDelete?.();
+    };
+
+    const handleRemoveGroup = (urn: string) => {
+        Modal.confirm({
+            title: `Confirm Group Removal`,
+            content: `Are you sure you want to remove this group?`,
+            onOk() {
+                onRemoveGroup(urn);
+            },
+            onCancel() {},
+            okText: 'Yes',
+            maskClosable: true,
+            closable: true,
+        });
+    };
+
     return (
         <List.Item>
             <GroupItemContainer>
@@ -47,14 +79,11 @@ export default function GroupListItem({ group, onDelete }: Props) {
                         <Tag>{(group as any).memberCount?.total || 0} members</Tag>
                     </GroupHeaderContainer>
                 </Link>
-                <EntityDropdown
-                    urn={group.urn}
-                    entityType={EntityType.CorpGroup}
-                    entityData={group}
-                    menuItems={new Set([EntityMenuItems.DELETE])}
-                    size={20}
-                    onDeleteEntity={onDelete}
-                />
+                <div>
+                    <Button onClick={() => handleRemoveGroup(group.urn)} type="text" shape="circle" danger>
+                        <DeleteOutlined />
+                    </Button>
+                </div>
             </GroupItemContainer>
         </List.Item>
     );

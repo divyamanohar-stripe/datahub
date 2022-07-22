@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, TypeVar, Union
+from typing import Any, Dict, List, TypeVar
 
 from typing_extensions import Protocol
 
@@ -27,12 +27,6 @@ def calculate_percentiles(
         min(i, size - 1) for i in percentile_indices
     ]  # in case of rounding errors
 
-    return {p: data_sorted[i] for p, i in zip(percentiles, percentile_indices)}
+    values = {p: data_sorted[i] for p, i in zip(percentiles, percentile_indices)}
 
-
-def discretize(statistic: Union[float, int]) -> int:
-    """Convert to nearest power of 2 to discretize"""
-    if statistic == 0:
-        return 0
-    else:
-        return 2 ** int(math.log2(statistic))
+    return values

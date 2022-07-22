@@ -2,7 +2,6 @@ query getUser($urn: String!, $groupsCount: Int!) {
     corpUser(urn: $urn) {
         urn
         username
-        isNativeUser
         info {
             active
             displayName
@@ -91,7 +90,6 @@ query listUsers($input: ListUsersInput!) {
         users {
             urn
             username
-            isNativeUser
             info {
                 active
                 displayName
@@ -126,22 +124,3 @@ mutation updateCorpUserProperties($urn: String!, $input: CorpUserUpdateInput!) {
         urn
     }
 }
-
-mutation createNativeUserInviteToken {
-    createNativeUserInviteToken {
-        inviteToken
-    }
-}
-
-query getNativeUserInviteToken {
-    getNativeUserInviteToken {
-        inviteToken
-    }
-}
-
-mutation createNativeUserResetToken($input: CreateNativeUserResetTokenInput!)  {
-    createNativeUserResetToken(input: $input) {
-        resetToken
-    }
-}
-

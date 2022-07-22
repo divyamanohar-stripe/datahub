@@ -2,32 +2,29 @@ package com.linkedin.metadata.timeline.differ;
 
 import com.datahub.util.RecordUtils;
 import com.github.fge.jsonpatch.JsonPatch;
-import com.linkedin.common.AuditStamp;
 import com.linkedin.common.GlobalTags;
 import com.linkedin.common.TagAssociation;
 import com.linkedin.common.TagAssociationArray;
 import com.linkedin.common.urn.Urn;
-import com.linkedin.metadata.entity.EntityAspect;
+import com.linkedin.metadata.entity.ebean.EbeanAspectV2;
 import com.linkedin.metadata.timeline.data.ChangeCategory;
 import com.linkedin.metadata.timeline.data.ChangeEvent;
 import com.linkedin.metadata.timeline.data.ChangeOperation;
 import com.linkedin.metadata.timeline.data.ChangeTransaction;
 import com.linkedin.metadata.timeline.data.SemanticChangeType;
-import com.linkedin.metadata.timeline.data.entity.TagChangeEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import javax.annotation.Nonnull;
 
-import static com.linkedin.metadata.Constants.GLOBAL_TAGS_ASPECT_NAME;
+import static com.linkedin.metadata.Constants.*;
 
 
-public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
+public class GlobalTagsDiffer implements Differ {
   private static final String TAG_ADDED_FORMAT = "Tag '%s' added to entity '%s'.";
   private static final String TAG_REMOVED_FORMAT = "Tag '%s' removed from entity '%s'.";
 
   public static List<ChangeEvent> computeDiffs(GlobalTags baseGlobalTags, GlobalTags targetGlobalTags,
-      String entityUrn, AuditStamp auditStamp) {
+      String entityUrn) {
     sortGlobalTagsByTagUrn(baseGlobalTags);
     sortGlobalTagsByTagUrn(targetGlobalTags);
     List<ChangeEvent> changeEvents = new ArrayList<>();
@@ -46,28 +43,24 @@ public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
         ++targetTagIdx;
       } else if (comparison < 0) {
         // Tag got removed.
-        changeEvents.add(TagChangeEvent.entityTagChangeEventBuilder()
-            .modifier(baseTagAssociation.getTag().toString())
-            .entityUrn(entityUrn)
+        changeEvents.add(ChangeEvent.builder()
+            .elementId(baseTagAssociation.getTag().toString())
+            .target(entityUrn)
             .category(ChangeCategory.TAG)
-            .operation(ChangeOperation.REMOVE)
+            .changeType(ChangeOperation.REMOVE)
             .semVerChange(SemanticChangeType.MINOR)
             .description(String.format(TAG_REMOVED_FORMAT, baseTagAssociation.getTag().getId(), entityUrn))
-            .tagUrn(baseTagAssociation.getTag())
-            .auditStamp(auditStamp)
             .build());
         ++baseTagIdx;
       } else {
         // Tag got added.
-        changeEvents.add(TagChangeEvent.entityTagChangeEventBuilder()
-            .modifier(targetTagAssociation.getTag().toString())
-            .entityUrn(entityUrn)
+        changeEvents.add(ChangeEvent.builder()
+            .elementId(targetTagAssociation.getTag().toString())
+            .target(entityUrn)
             .category(ChangeCategory.TAG)
-            .operation(ChangeOperation.ADD)
+            .changeType(ChangeOperation.ADD)
             .semVerChange(SemanticChangeType.MINOR)
             .description(String.format(TAG_ADDED_FORMAT, targetTagAssociation.getTag().getId(), entityUrn))
-            .tagUrn(targetTagAssociation.getTag())
-            .auditStamp(auditStamp)
             .build());
         ++targetTagIdx;
       }
@@ -76,30 +69,26 @@ public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
     while (baseTagIdx < baseTags.size()) {
       // Handle removed tags.
       TagAssociation baseTagAssociation = baseTags.get(baseTagIdx);
-      changeEvents.add(TagChangeEvent.entityTagChangeEventBuilder()
-          .modifier(baseTagAssociation.getTag().toString())
-          .entityUrn(entityUrn)
+      changeEvents.add(ChangeEvent.builder()
+          .elementId(baseTagAssociation.getTag().toString())
+          .target(entityUrn)
           .category(ChangeCategory.TAG)
-          .operation(ChangeOperation.REMOVE)
+          .changeType(ChangeOperation.REMOVE)
           .semVerChange(SemanticChangeType.MINOR)
           .description(String.format(TAG_REMOVED_FORMAT, baseTagAssociation.getTag().getId(), entityUrn))
-          .tagUrn(baseTagAssociation.getTag())
-          .auditStamp(auditStamp)
           .build());
       ++baseTagIdx;
     }
     while (targetTagIdx < targetTags.size()) {
       // Handle newly added tags.
       TagAssociation targetTagAssociation = targetTags.get(targetTagIdx);
-      changeEvents.add(TagChangeEvent.entityTagChangeEventBuilder()
-          .modifier(targetTagAssociation.getTag().toString())
-          .entityUrn(entityUrn)
+      changeEvents.add(ChangeEvent.builder()
+          .elementId(targetTagAssociation.getTag().toString())
+          .target(entityUrn)
           .category(ChangeCategory.TAG)
-          .operation(ChangeOperation.ADD)
+          .changeType(ChangeOperation.ADD)
           .semVerChange(SemanticChangeType.MINOR)
           .description(String.format(TAG_ADDED_FORMAT, targetTagAssociation.getTag().getId(), entityUrn))
-          .tagUrn(targetTagAssociation.getTag())
-          .auditStamp(auditStamp)
           .build());
       ++targetTagIdx;
     }
@@ -115,15 +104,15 @@ public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
     globalTags.setTags(new TagAssociationArray(tags));
   }
 
-  private static GlobalTags getGlobalTagsFromAspect(EntityAspect entityAspect) {
-    if (entityAspect != null && entityAspect.getMetadata() != null) {
-      return RecordUtils.toRecordTemplate(GlobalTags.class, entityAspect.getMetadata());
+  private static GlobalTags getGlobalTagsFromAspect(EbeanAspectV2 ebeanAspectV2) {
+    if (ebeanAspectV2 != null && ebeanAspectV2.getMetadata() != null) {
+      return RecordUtils.toRecordTemplate(GlobalTags.class, ebeanAspectV2.getMetadata());
     }
     return null;
   }
 
   @Override
-  public ChangeTransaction getSemanticDiff(EntityAspect previousValue, EntityAspect currentValue,
+  public ChangeTransaction getSemanticDiff(EbeanAspectV2 previousValue, EbeanAspectV2 currentValue,
       ChangeCategory element, JsonPatch rawDiff, boolean rawDiffsRequested) {
     if (!previousValue.getAspect().equals(GLOBAL_TAGS_ASPECT_NAME) || !currentValue.getAspect()
         .equals(GLOBAL_TAGS_ASPECT_NAME)) {
@@ -134,7 +123,7 @@ public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
     GlobalTags targetGlobalTags = getGlobalTagsFromAspect(currentValue);
     List<ChangeEvent> changeEvents = new ArrayList<>();
     if (element == ChangeCategory.TAG) {
-      changeEvents.addAll(computeDiffs(baseGlobalTags, targetGlobalTags, currentValue.getUrn(), null));
+      changeEvents.addAll(computeDiffs(baseGlobalTags, targetGlobalTags, currentValue.getUrn()));
     }
 
     // Assess the highest change at the transaction(schema) level.
@@ -152,16 +141,5 @@ public class GlobalTagsDiffer implements AspectDiffer<GlobalTags> {
         .rawDiff(rawDiffsRequested ? rawDiff : null)
         .actor(currentValue.getCreatedBy())
         .build();
-  }
-
-  @Override
-  public List<ChangeEvent> getChangeEvents(
-      @Nonnull Urn urn,
-      @Nonnull String entity,
-      @Nonnull String aspect,
-      @Nonnull Aspect<GlobalTags> from,
-      @Nonnull Aspect<GlobalTags> to,
-      @Nonnull AuditStamp auditStamp) {
-    return computeDiffs(from.getValue(), to.getValue(), urn.toString(), auditStamp);
   }
 }

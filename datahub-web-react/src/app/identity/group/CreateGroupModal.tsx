@@ -5,11 +5,12 @@ import { useEnterKeyListener } from '../../shared/useEnterKeyListener';
 import { groupIdTextValidation } from '../../shared/textUtil';
 
 type Props = {
+    visible: boolean;
     onClose: () => void;
     onCreate: (name: string, description: string) => void;
 };
 
-export default function CreateGroupModal({ onClose, onCreate }: Props) {
+export default function CreateGroupModal({ visible, onClose, onCreate }: Props) {
     const [stagedName, setStagedName] = useState('');
     const [stagedDescription, setStagedDescription] = useState('');
     const [stagedId, setStagedId] = useState<string | undefined>(undefined);
@@ -51,7 +52,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
     return (
         <Modal
             title="Create new group"
-            visible
+            visible={visible}
             onCancel={onClose}
             footer={
                 <>

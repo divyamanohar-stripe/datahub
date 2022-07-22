@@ -4,12 +4,15 @@ import com.linkedin.datahub.graphql.exception.DataHubDataFetcherExceptionHandler
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
-import graphql.execution.instrumentation.tracing.TracingInstrumentation;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.RuntimeWiring;
 import graphql.schema.idl.SchemaGenerator;
 import graphql.schema.idl.SchemaParser;
 import graphql.schema.idl.TypeDefinitionRegistry;
+import org.dataloader.DataLoader;
+import org.dataloader.DataLoaderRegistry;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,12 +20,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import org.dataloader.DataLoader;
-import org.dataloader.DataLoaderRegistry;
 
-import static graphql.schema.idl.RuntimeWiring.*;
+import static graphql.schema.idl.RuntimeWiring.newRuntimeWiring;
 
 /**
  * Simple wrapper around a {@link GraphQL} instance providing APIs for building an engine and executing
@@ -62,7 +61,6 @@ public class GraphQLEngine {
          */
         _graphQL = new GraphQL.Builder(graphQLSchema)
             .defaultDataFetcherExceptionHandler(new DataHubDataFetcherExceptionHandler())
-            .instrumentation(new TracingInstrumentation())
             .build();
     }
 

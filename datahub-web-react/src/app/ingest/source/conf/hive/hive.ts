@@ -1,6 +1,8 @@
 import { SourceConfig } from '../types';
 import hiveLogo from '../../../../../images/hivelogo.png';
 
+const baseUrl = window.location.origin;
+
 const placeholderRecipe = `\
 source: 
     type: hive
@@ -13,13 +15,19 @@ source:
         # Add secret in Secrets Tab with relevant names for each variable
         username: "\${HIVE_USERNAME}" # Your Hive username, e.g. admin
         password: "\${HIVE_PASSWORD}"# Your Hive password, e.g. password_01
-`;
+
+sink: 
+    type: datahub-rest
+    config: 
+        server: "${baseUrl}/api/gms"
+        # Add a secret in secrets Tab
+        token: "\${GMS_TOKEN}"`;
 
 const hiveConfig: SourceConfig = {
     type: 'hive',
     placeholderRecipe,
     displayName: 'Hive',
-    docsUrl: 'https://datahubproject.io/docs/generated/ingestion/sources/hive/',
+    docsUrl: 'https://datahubproject.io/docs/metadata-ingestion/source_docs/hive/',
     logoUrl: hiveLogo,
 };
 

@@ -10,8 +10,6 @@ import { ReactComponent as LoadingSvg } from '../../../../../../images/datahub-l
 const SearchBody = styled.div`
     display: flex;
     flex-direction: row;
-    flex: 1 1 auto;
-    overflow-y: hidden;
 `;
 
 const PaginationInfo = styled(Typography.Text)`
@@ -19,9 +17,7 @@ const PaginationInfo = styled(Typography.Text)`
 `;
 
 const FiltersContainer = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    display: block;
     max-width: 260px;
     min-width: 260px;
     border-right: 1px solid;
@@ -30,9 +26,7 @@ const FiltersContainer = styled.div`
 
 const ResultContainer = styled.div`
     flex: 1;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 20px;
 `;
 
 const PaginationInfoContainer = styled.div`
@@ -48,7 +42,6 @@ const PaginationInfoContainer = styled.div`
 const FiltersHeader = styled.div`
     font-size: 14px;
     font-weight: 600;
-    flex: 0 0 auto;
 
     padding-left: 20px;
     padding-right: 20px;
@@ -68,8 +61,6 @@ const StyledPagination = styled(Pagination)`
 
 const SearchFilterContainer = styled.div`
     padding-top: 10px;
-    flex: 1 1 auto;
-    overflow: hidden;
 `;
 
 const LoadingText = styled.div`
@@ -82,7 +73,6 @@ const LoadingContainer = styled.div`
     padding-bottom: 40px;
     width: 100%;
     text-align: center;
-    flex: 1;
 `;
 
 interface Props {

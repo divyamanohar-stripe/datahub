@@ -1,22 +1,23 @@
 package com.linkedin.datahub.graphql.types.dataset.mappers;
 
-import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.generated.SchemaField;
 import com.linkedin.datahub.graphql.generated.SchemaFieldDataType;
 import com.linkedin.datahub.graphql.types.tag.mappers.GlobalTagsMapper;
 import com.linkedin.datahub.graphql.types.glossary.mappers.GlossaryTermsMapper;
+import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 
 import javax.annotation.Nonnull;
 
-public class SchemaFieldMapper {
+public class SchemaFieldMapper implements ModelMapper<com.linkedin.schema.SchemaField, SchemaField> {
 
     public static final SchemaFieldMapper INSTANCE = new SchemaFieldMapper();
 
-    public static SchemaField map(@Nonnull final com.linkedin.schema.SchemaField metadata, @Nonnull Urn entityUrn) {
-        return INSTANCE.apply(metadata, entityUrn);
+    public static SchemaField map(@Nonnull final com.linkedin.schema.SchemaField metadata) {
+        return INSTANCE.apply(metadata);
     }
 
-    public SchemaField apply(@Nonnull final com.linkedin.schema.SchemaField input, @Nonnull Urn entityUrn) {
+    @Override
+    public SchemaField apply(@Nonnull final com.linkedin.schema.SchemaField input) {
         final SchemaField result = new SchemaField();
         result.setDescription(input.getDescription());
         result.setFieldPath(input.getFieldPath());
@@ -26,11 +27,11 @@ public class SchemaFieldMapper {
         result.setNativeDataType(input.getNativeDataType());
         result.setType(mapSchemaFieldDataType(input.getType()));
         if (input.hasGlobalTags()) {
-            result.setGlobalTags(GlobalTagsMapper.map(input.getGlobalTags(), entityUrn));
-            result.setTags(GlobalTagsMapper.map(input.getGlobalTags(), entityUrn));
+            result.setGlobalTags(GlobalTagsMapper.map(input.getGlobalTags()));
+            result.setTags(GlobalTagsMapper.map(input.getGlobalTags()));
         }
         if (input.hasGlossaryTerms()) {
-            result.setGlossaryTerms(GlossaryTermsMapper.map(input.getGlossaryTerms(), entityUrn));
+            result.setGlossaryTerms(GlossaryTermsMapper.map(input.getGlossaryTerms()));
         }
         result.setIsPartOfKey(input.isIsPartOfKey());
         return result;

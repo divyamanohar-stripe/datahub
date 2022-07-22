@@ -30,7 +30,6 @@ class AddCustomOwnership(BaseTransformer, SingleAspectTransformer):
     config: AddCustomOwnershipConfig
 
     def __init__(self, config: AddCustomOwnershipConfig, ctx: PipelineContext):
-        super().__init__()
         self.ctx = ctx
         self.config = config
 
@@ -61,10 +60,13 @@ class AddCustomOwnership(BaseTransformer, SingleAspectTransformer):
         assert aspect is None or isinstance(aspect, OwnershipClass)
 
         if owners_to_add:
-            ownership = aspect or OwnershipClass(
-                owners=[],
+            ownership = (
+                aspect
+                if aspect
+                else OwnershipClass(
+                    owners=[],
+                )
             )
-
             ownership.owners.extend(owners_to_add)
 
         return ownership

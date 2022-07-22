@@ -5,7 +5,6 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.VersionedAspectKey;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.Aspect;
-import com.linkedin.datahub.graphql.types.LoadableType;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.entity.EnvelopedAspect;
 import com.linkedin.entity.client.EntityClient;
@@ -16,22 +15,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
-@Deprecated
-public class AspectType implements LoadableType<Aspect, VersionedAspectKey> {
+
+public class AspectType {
   private final EntityClient _entityClient;
 
   public AspectType(final EntityClient entityClient) {
     _entityClient = entityClient;
-  }
-
-  @Override
-  public Class<Aspect> objectClass() {
-    return Aspect.class;
-  }
-
-  @Override
-  public String name() {
-    return AspectType.class.getSimpleName();
   }
 
   /**
@@ -62,7 +51,7 @@ public class AspectType implements LoadableType<Aspect, VersionedAspectKey> {
             return DataFetcherResult.<Aspect>newResult().data(null).build();
           }
           final EnvelopedAspect aspect = entityResponse.getAspects().get(key.getAspectName());
-          return DataFetcherResult.<Aspect>newResult().data(AspectMapper.map(aspect, entityUrn)).build();
+          return DataFetcherResult.<Aspect>newResult().data(AspectMapper.map(aspect)).build();
         } catch (Exception e) {
           if (e instanceof RestLiResponseException) {
             // if no aspect is found, restli will return a 404 rather than null

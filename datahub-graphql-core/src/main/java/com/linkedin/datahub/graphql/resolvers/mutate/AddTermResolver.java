@@ -1,6 +1,5 @@
 package com.linkedin.datahub.graphql.resolvers.mutate;
 
-import com.google.common.collect.ImmutableList;
 import com.linkedin.common.urn.CorpuserUrn;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
@@ -45,8 +44,8 @@ public class AddTermResolver implements DataFetcher<CompletableFuture<Boolean>> 
       try {
         log.info("Adding Term. input: {}", input);
         Urn actor = CorpuserUrn.createFromString(((QueryContext) environment.getContext()).getActorUrn());
-        LabelUtils.addTermsToTarget(
-            ImmutableList.of(termUrn),
+        LabelUtils.addTermToTarget(
+            termUrn,
             targetUrn,
             input.getSubResource(),
             actor,

@@ -1,24 +1,25 @@
 package com.linkedin.datahub.graphql.types.aspect;
 
-import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.generated.Aspect;
 import com.linkedin.datahub.graphql.types.dataset.mappers.SchemaMetadataMapper;
+import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 import com.linkedin.entity.EnvelopedAspect;
 import com.linkedin.metadata.Constants;
 import javax.annotation.Nonnull;
 
 
-public class AspectMapper {
+public class AspectMapper implements ModelMapper<EnvelopedAspect, Aspect> {
 
   public static final AspectMapper INSTANCE = new AspectMapper();
 
-  public static Aspect map(@Nonnull final EnvelopedAspect aspect, @Nonnull final Urn entityUrn) {
-    return INSTANCE.apply(aspect, entityUrn);
+  public static Aspect map(@Nonnull final EnvelopedAspect aspect) {
+    return INSTANCE.apply(aspect);
   }
 
-  public Aspect apply(@Nonnull final EnvelopedAspect aspect, @Nonnull final Urn entityUrn) {
+  @Override
+  public Aspect apply(@Nonnull final EnvelopedAspect aspect) {
     if (Constants.SCHEMA_METADATA_ASPECT_NAME.equals(aspect.getName())) {
-      return SchemaMetadataMapper.map(aspect, entityUrn);
+      return SchemaMetadataMapper.map(aspect);
     }
     return null;
   }

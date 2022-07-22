@@ -16,13 +16,14 @@ const ClickableTag = styled(Tag)`
 `;
 
 type Props = {
+    visible: boolean;
     onClose: () => void;
     onCreate: (id: string | undefined, name: string, description: string) => void;
 };
 
 const SUGGESTED_DOMAIN_NAMES = ['Engineering', 'Marketing', 'Sales', 'Product'];
 
-export default function CreateDomainModal({ onClose, onCreate }: Props) {
+export default function CreateDomainModal({ visible, onClose, onCreate }: Props) {
     const [stagedName, setStagedName] = useState('');
     const [stagedDescription, setStagedDescription] = useState('');
     const [stagedId, setStagedId] = useState<string | undefined>(undefined);
@@ -65,7 +66,7 @@ export default function CreateDomainModal({ onClose, onCreate }: Props) {
     return (
         <Modal
             title="Create new Domain"
-            visible
+            visible={visible}
             onCancel={onClose}
             footer={
                 <>

@@ -4,7 +4,6 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.DataPlatform;
-import com.linkedin.datahub.graphql.generated.Entity;
 import com.linkedin.datahub.graphql.types.EntityType;
 import com.linkedin.datahub.graphql.types.dataplatform.mappers.DataPlatformMapper;
 import com.linkedin.entity.EntityResponse;
@@ -14,13 +13,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.linkedin.metadata.Constants.*;
 
 
-public class DataPlatformType implements EntityType<DataPlatform, String> {
+public class DataPlatformType implements EntityType<DataPlatform> {
 
     private final EntityClient _entityClient;
 
@@ -63,10 +61,5 @@ public class DataPlatformType implements EntityType<DataPlatform, String> {
     @Override
     public com.linkedin.datahub.graphql.generated.EntityType type() {
         return com.linkedin.datahub.graphql.generated.EntityType.DATA_PLATFORM;
-    }
-
-    @Override
-    public Function<Entity, String> getKeyProvider() {
-        return Entity::getUrn;
     }
 }

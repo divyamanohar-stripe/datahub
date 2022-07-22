@@ -51,18 +51,7 @@ public class IngestionSchedulerHookTest {
   }
 
   @Test
-  public void testInvokeDeleteKeyAspect() throws Exception {
-    MetadataChangeLog event2 = new MetadataChangeLog();
-    event2.setEntityType(INGESTION_SOURCE_ENTITY_NAME);
-    event2.setAspectName(INGESTION_SOURCE_KEY_ASPECT_NAME);
-    event2.setChangeType(ChangeType.DELETE);
-    event2.setEntityUrn(Urn.createFromString("urn:li:dataHubIngestionSourceUrn:0"));
-    _ingestionSchedulerHook.invoke(event2);
-    Mockito.verify(_ingestionSchedulerHook.scheduler(), Mockito.times(1)).unscheduleNextIngestionSourceExecution(Mockito.any());
-  }
-
-  @Test
-  public void testInvokeDeleteInfoAspect() throws Exception {
+  public void testInvokeDelete() throws Exception {
     MetadataChangeLog event2 = new MetadataChangeLog();
     event2.setEntityType(INGESTION_SOURCE_ENTITY_NAME);
     event2.setAspectName(INGESTION_INFO_ASPECT_NAME);

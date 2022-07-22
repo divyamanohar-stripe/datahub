@@ -42,7 +42,6 @@ public class SimpleKafkaConsumerFactory {
 
     ConcurrentKafkaListenerContainerFactory<String, GenericRecord> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
-    factory.setContainerCustomizer(new ThreadPoolContainerCustomizer());
     factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties()));
 
     log.info("Simple KafkaListenerContainerFactory built successfully");

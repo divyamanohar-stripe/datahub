@@ -22,8 +22,6 @@ record DataPlatformInstance {
    */
   @Searchable = {
     "fieldType": "URN",
-    "addToFilters": true,
-    "filterNameOverride": "Platform Instance"
     "fieldName": "platformInstance"
   }
   instance: optional Urn

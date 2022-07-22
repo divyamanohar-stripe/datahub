@@ -1,7 +1,6 @@
 package com.linkedin.datahub.graphql.types.corpgroup.mappers;
 
 import com.linkedin.common.Ownership;
-import com.linkedin.common.urn.Urn;
 import com.linkedin.data.DataMap;
 import com.linkedin.datahub.graphql.generated.CorpGroup;
 import com.linkedin.datahub.graphql.generated.EntityType;
@@ -34,8 +33,6 @@ public class CorpGroupMapper implements ModelMapper<EntityResponse, CorpGroup> {
     @Override
     public CorpGroup apply(@Nonnull final EntityResponse entityResponse) {
         final CorpGroup result = new CorpGroup();
-        Urn entityUrn = entityResponse.getUrn();
-
         result.setUrn(entityResponse.getUrn().toString());
         result.setType(EntityType.CORP_GROUP);
         EnvelopedAspectMap aspectMap = entityResponse.getAspects();
@@ -43,7 +40,7 @@ public class CorpGroupMapper implements ModelMapper<EntityResponse, CorpGroup> {
         mappingHelper.mapToResult(CORP_GROUP_KEY_ASPECT_NAME, this::mapCorpGroupKey);
         mappingHelper.mapToResult(CORP_GROUP_INFO_ASPECT_NAME, this::mapCorpGroupInfo);
         mappingHelper.mapToResult(CORP_GROUP_EDITABLE_INFO_ASPECT_NAME, this::mapCorpGroupEditableInfo);
-        mappingHelper.mapToResult(OWNERSHIP_ASPECT_NAME, (entity, dataMap) -> this.mapOwnership(entity, dataMap, entityUrn));
+        mappingHelper.mapToResult(OWNERSHIP_ASPECT_NAME, this::mapOwnership);
         return mappingHelper.getResult();
     }
 
@@ -62,7 +59,7 @@ public class CorpGroupMapper implements ModelMapper<EntityResponse, CorpGroup> {
         corpGroup.setEditableProperties(CorpGroupEditablePropertiesMapper.map(new CorpGroupEditableInfo(dataMap)));
     }
 
-    private void mapOwnership(@Nonnull CorpGroup corpGroup, @Nonnull DataMap dataMap, @Nonnull Urn entityUrn) {
-        corpGroup.setOwnership(OwnershipMapper.map(new Ownership(dataMap), entityUrn));
+    private void mapOwnership(@Nonnull CorpGroup corpGroup, @Nonnull DataMap dataMap) {
+        corpGroup.setOwnership(OwnershipMapper.map(new Ownership(dataMap)));
     }
 }

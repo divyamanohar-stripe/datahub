@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router';
 
 import { Alert, Button, Drawer } from 'antd';
@@ -8,16 +8,14 @@ import styled from 'styled-components';
 import { Message } from '../shared/Message';
 import { useEntityRegistry } from '../useEntityRegistry';
 import CompactContext from '../shared/CompactContext';
-import { EntityAndType, EntitySelectParams, FetchedEntities } from './types';
+import { EntityAndType, EntitySelectParams, FetchedEntities, LineageExpandParams } from './types';
 import LineageViz from './LineageViz';
 import extendAsyncEntities from './utils/extendAsyncEntities';
+import useLazyGetEntityQuery from './utils/useLazyGetEntityQuery';
+import useGetEntityQuery from './utils/useGetEntityQuery';
 import { EntityType } from '../../types.generated';
 import { capitalizeFirstLetter } from '../shared/textUtil';
 import { ANTD_GRAY } from '../entity/shared/constants';
-import { GetEntityLineageQuery, useGetEntityLineageQuery } from '../../graphql/lineage.generated';
-import { useIsSeparateSiblingsMode } from '../entity/shared/siblingUtils';
-
-const DEFAULT_DISTANCE_FROM_TOP = 106;
 
 const LoadingMessage = styled(Message)`
     margin-top: 10%;
@@ -28,10 +26,10 @@ const FooterButtonGroup = styled.div`
     margin: 12px 0;
 `;
 
-const EntityDrawer = styled(Drawer)<{ distanceFromTop: number }>`
-    top: ${(props) => props.distanceFromTop}px;
+const EntityDrawer = styled(Drawer)`
+    top: 106px;
     z-index: 1;
-    height: calc(100vh - ${(props) => props.distanceFromTop}px);
+    height: calc(100vh - 106px);
     .ant-drawer-content-wrapper {
         border-right: 1px solid ${ANTD_GRAY[4.5]};
         box-shadow: none !important;
@@ -46,16 +44,6 @@ function usePrevious(value) {
     return ref.current;
 }
 
-export function getEntityAndType(lineageData?: GetEntityLineageQuery) {
-    if (lineageData && lineageData.entity) {
-        return {
-            type: lineageData.entity.type,
-            entity: { ...lineageData.entity },
-        } as EntityAndType;
-    }
-    return null;
-}
-
 type Props = {
     urn: string;
     type: EntityType;
@@ -66,24 +54,13 @@ export default function LineageExplorer({ urn, type }: Props) {
     const history = useHistory();
 
     const entityRegistry = useEntityRegistry();
-    const isHideSiblingMode = useIsSeparateSiblingsMode();
 
-    const { loading, error, data } = useGetEntityLineageQuery({
-        variables: { urn, separateSiblings: isHideSiblingMode },
-    });
-
-    const entityData: EntityAndType | null | undefined = useMemo(() => getEntityAndType(data), [data]);
+    const { loading, error, data } = useGetEntityQuery(urn, type);
+    const { getAsyncEntity, asyncData } = useLazyGetEntityQuery();
 
     const [isDrawerVisible, setIsDrawVisible] = useState(false);
     const [selectedEntity, setSelectedEntity] = useState<EntitySelectParams | undefined>(undefined);
     const [asyncEntities, setAsyncEntities] = useState<FetchedEntities>({});
-
-    // in the case that sibling mode changes, we want to clear out our cache of entities
-    useEffect(() => {
-        setAsyncEntities({});
-    }, [isHideSiblingMode]);
-
-    const drawerRef: React.MutableRefObject<HTMLDivElement | null> = useRef(null);
 
     const maybeAddAsyncLoadedEntity = useCallback(
         (entityAndType: EntityAndType) => {
@@ -110,17 +87,17 @@ export default function LineageExplorer({ urn, type }: Props) {
     };
 
     useEffect(() => {
-        if (type && entityData && !loading) {
-            maybeAddAsyncLoadedEntity(entityData);
+        if (type && data) {
+            maybeAddAsyncLoadedEntity(data);
         }
-    }, [entityData, setAsyncEntities, maybeAddAsyncLoadedEntity, urn, previousUrn, type, loading]);
+        if (asyncData) {
+            maybeAddAsyncLoadedEntity(asyncData);
+        }
+    }, [data, asyncData, asyncEntities, setAsyncEntities, maybeAddAsyncLoadedEntity, urn, previousUrn, type]);
 
     if (error || (!loading && !error && !data)) {
         return <Alert type="error" message={error?.message || 'Entity failed to load'} />;
     }
-
-    const drawerDistanceFromTop =
-        drawerRef && drawerRef.current ? drawerRef.current.offsetTop : DEFAULT_DISTANCE_FROM_TOP;
 
     return (
         <>
@@ -130,7 +107,7 @@ export default function LineageExplorer({ urn, type }: Props) {
                     <LineageViz
                         selectedEntity={selectedEntity}
                         fetchedEntities={asyncEntities}
-                        entityAndType={entityData}
+                        entityAndType={data}
                         onEntityClick={(params: EntitySelectParams) => {
                             setIsDrawVisible(true);
                             setSelectedEntity(params);
@@ -140,15 +117,13 @@ export default function LineageExplorer({ urn, type }: Props) {
                                 `${entityRegistry.getEntityUrl(params.type, params.urn)}/?is_lineage_mode=true`,
                             );
                         }}
-                        onLineageExpand={(asyncData: EntityAndType) => {
-                            maybeAddAsyncLoadedEntity(asyncData);
+                        onLineageExpand={(params: LineageExpandParams) => {
+                            getAsyncEntity(params.urn, params.type);
                         }}
                     />
                 </div>
             )}
-            <div ref={drawerRef} />
             <EntityDrawer
-                distanceFromTop={drawerDistanceFromTop}
                 placement="left"
                 closable={false}
                 onClose={handleClose}

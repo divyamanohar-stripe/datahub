@@ -1,19 +1,21 @@
 import os
+import time
 
 import pytest
 import requests
-
-from tests.utils import get_frontend_url, wait_for_healthcheck_util
+import urllib
+from datahub.cli.docker import check_local_docker_containers
+from datahub.ingestion.run.pipeline import Pipeline
+from tests.utils import FRONTEND_ENDPOINT
 
 # Disable telemetry
 os.putenv("DATAHUB_TELEMETRY_ENABLED", "false")
 
-
 @pytest.fixture(scope="session")
 def wait_for_healthchecks():
-    wait_for_healthcheck_util()
+    # Simply assert that everything is healthy, but don't wait.
+    assert not check_local_docker_containers()
     yield
-
 
 @pytest.fixture(scope="session")
 def frontend_session(wait_for_healthchecks):
@@ -23,11 +25,12 @@ def frontend_session(wait_for_healthchecks):
         "Content-Type": "application/json",
     }
     data = '{"username":"datahub", "password":"datahub"}'
-    response = session.post(f"{get_frontend_url()}/logIn", headers=headers, data=data)
+    response = session.post(
+        f"{FRONTEND_ENDPOINT}/logIn", headers=headers, data=data
+    )
     response.raise_for_status()
 
     yield session
-
 
 # TODO: Determine whether we need this or not.
 @pytest.mark.dependency()

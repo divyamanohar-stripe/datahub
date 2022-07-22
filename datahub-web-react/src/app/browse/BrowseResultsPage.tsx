@@ -4,6 +4,7 @@ import * as QueryString from 'query-string';
 import { Affix, Alert } from 'antd';
 import { BrowseCfg } from '../../conf';
 import { BrowseResults } from './BrowseResults';
+import { SearchablePage } from '../search/SearchablePage';
 import { useGetBrowseResultsQuery } from '../../graphql/browse.generated';
 import { LegacyBrowsePath } from './LegacyBrowsePath';
 import { PageRoutes } from '../../conf/Global';
@@ -55,7 +56,7 @@ export const BrowseResultsPage = () => {
     }
 
     return (
-        <>
+        <SearchablePage>
             <Affix offsetTop={60}>
                 <LegacyBrowsePath type={entityType} path={path} isBrowsable />
             </Affix>
@@ -73,6 +74,6 @@ export const BrowseResultsPage = () => {
                     onChangePage={onChangePage}
                 />
             )}
-        </>
+        </SearchablePage>
     );
 };

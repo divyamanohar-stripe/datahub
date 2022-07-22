@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import * as React from 'react';
 import { Image, Layout } from 'antd';
 import { Link } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
@@ -10,7 +10,6 @@ import EntityRegistry from '../entity/EntityRegistry';
 import { ANTD_GRAY } from '../entity/shared/constants';
 import { AdminHeaderLinks } from '../shared/admin/AdminHeaderLinks';
 import { useAppConfig } from '../useAppConfig';
-import { DEFAULT_APP_CONFIG } from '../../appConfigContext';
 
 const { Header } = Layout;
 
@@ -75,7 +74,6 @@ export const SearchHeader = ({
     authenticatedUserPictureLink,
     entityRegistry,
 }: Props) => {
-    const [isSearchBarFocused, setIsSearchBarFocused] = useState(false);
     const themeConfig = useTheme();
     const appConfig = useAppConfig();
 
@@ -84,11 +82,7 @@ export const SearchHeader = ({
             <LogoSearchContainer>
                 <Link to="/">
                     <LogoImage
-                        src={
-                            appConfig.config !== DEFAULT_APP_CONFIG
-                                ? appConfig.config.visualConfig.logoUrl || themeConfig.assets.logoUrl
-                                : undefined
-                        }
+                        src={appConfig.config.visualConfig.logoUrl || themeConfig.assets.logoUrl}
                         preview={false}
                     />
                 </Link>
@@ -99,12 +93,11 @@ export const SearchHeader = ({
                     onSearch={onSearch}
                     onQueryChange={onQueryChange}
                     entityRegistry={entityRegistry}
-                    setIsSearchBarFocused={setIsSearchBarFocused}
                     fixAutoComplete
                 />
             </LogoSearchContainer>
             <NavGroup>
-                <AdminHeaderLinks areLinksHidden={isSearchBarFocused} />
+                <AdminHeaderLinks />
                 <ManageAccount urn={authenticatedUserUrn} pictureLink={authenticatedUserPictureLink || ''} />
             </NavGroup>
         </Header>

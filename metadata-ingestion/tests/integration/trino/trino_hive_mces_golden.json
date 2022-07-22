@@ -172,7 +172,7 @@
                             "numrows": "1",
                             "rawdatasize": "32",
                             "totalsize": "33",
-                            "transient_lastddltime": "1653567385"
+                            "transient_lastddltime": "1648000508"
                         },
                         "externalUrl": null,
                         "name": "array_struct_test",
@@ -222,7 +222,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -233,9 +232,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "record"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -244,7 +241,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(ROW([('type', VARCHAR()), ('provider', ARRAY(INTEGER()))]))\"}"
                             },
                             {
@@ -262,7 +258,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             },
                             {
@@ -273,9 +268,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "int"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -284,7 +277,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(INTEGER())\"}"
                             }
                         ],
@@ -362,7 +354,7 @@
                             "numrows": "0",
                             "rawdatasize": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567389"
+                            "transient_lastddltime": "1648000512"
                         },
                         "externalUrl": null,
                         "name": "map_test",
@@ -412,7 +404,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -423,8 +414,8 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.MapType": {
-                                            "keyType": "string",
-                                            "valueType": "string"
+                                            "keyType": null,
+                                            "valueType": null
                                         }
                                     }
                                 },
@@ -433,7 +424,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"MAP(INTEGER(), VARCHAR())\", \"key_type\": {\"type\": \"int\", \"native_data_type\": \"INTEGER()\", \"_nullable\": true}, \"key_native_data_type\": \"INTEGER()\"}"
                             }
                         ],
@@ -511,7 +501,7 @@
                             "numrows": "0",
                             "rawdatasize": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567389"
+                            "transient_lastddltime": "1648000512"
                         },
                         "externalUrl": null,
                         "name": "nested_struct_test",
@@ -561,7 +551,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -579,7 +568,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('type', VARCHAR()), ('provider', ROW([('name', VARCHAR(length=50)), ('id', SMALLINT())]))])\"}"
                             },
                             {
@@ -597,7 +585,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             },
                             {
@@ -615,7 +602,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('name', VARCHAR(length=50)), ('id', SMALLINT())])\"}"
                             },
                             {
@@ -633,7 +619,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR(length=50)\", \"_nullable\": true}"
                             },
                             {
@@ -651,7 +636,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"SMALLINT()\", \"_nullable\": true}"
                             }
                         ],
@@ -724,7 +708,7 @@
                 {
                     "com.linkedin.pegasus2avro.dataset.DatasetProperties": {
                         "customProperties": {
-                            "transient_lastddltime": "1653567376"
+                            "transient_lastddltime": "1648000497"
                         },
                         "externalUrl": null,
                         "name": "pokes",
@@ -774,7 +758,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -792,7 +775,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -810,7 +792,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             }
                         ],
@@ -888,7 +869,7 @@
                             "numrows": "0",
                             "rawdatasize": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567380"
+                            "transient_lastddltime": "1648000501"
                         },
                         "externalUrl": null,
                         "name": "struct_test",
@@ -938,7 +919,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -956,7 +936,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('type', VARCHAR()), ('provider', ARRAY(INTEGER()))])\"}"
                             },
                             {
@@ -974,7 +953,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             },
                             {
@@ -985,9 +963,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "int"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -996,7 +972,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(INTEGER())\"}"
                             }
                         ],
@@ -1071,7 +1046,7 @@
                         "customProperties": {
                             "numfiles": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567388"
+                            "transient_lastddltime": "1648000511"
                         },
                         "externalUrl": null,
                         "name": "struct_test_view_materialized",
@@ -1121,7 +1096,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -1139,7 +1113,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('type', VARCHAR()), ('provider', ARRAY(INTEGER()))])\"}"
                             },
                             {
@@ -1157,7 +1130,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             },
                             {
@@ -1168,9 +1140,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "int"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -1179,7 +1149,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(INTEGER())\"}"
                             }
                         ],
@@ -1257,7 +1226,7 @@
                             "numrows": "0",
                             "rawdatasize": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567380"
+                            "transient_lastddltime": "1648000501"
                         },
                         "externalUrl": null,
                         "name": "_test_table_underscore",
@@ -1307,7 +1276,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -1325,7 +1293,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             }
                         ],
@@ -1403,7 +1370,7 @@
                             "numrows": "0",
                             "rawdatasize": "0",
                             "totalsize": "0",
-                            "transient_lastddltime": "1653567389"
+                            "transient_lastddltime": "1648000512"
                         },
                         "externalUrl": null,
                         "name": "union_test",
@@ -1453,7 +1420,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('tag', SMALLINT()), ('field0', INTEGER()), ('field1', DOUBLE()), ('field2', ARRAY(VARCHAR())), ('field3', ROW([('a', INTEGER()), ('b', VARCHAR())]))])\"}"
                             },
                             {
@@ -1471,7 +1437,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"SMALLINT()\", \"_nullable\": true}"
                             },
                             {
@@ -1489,7 +1454,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"INTEGER()\", \"_nullable\": true}"
                             },
                             {
@@ -1507,7 +1471,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"DOUBLE()\", \"_nullable\": true}"
                             },
                             {
@@ -1518,9 +1481,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "string"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -1529,7 +1490,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(VARCHAR())\"}"
                             },
                             {
@@ -1547,7 +1507,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ROW([('a', INTEGER()), ('b', VARCHAR())])\"}"
                             },
                             {
@@ -1565,7 +1524,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"INTEGER()\", \"_nullable\": true}"
                             },
                             {
@@ -1583,7 +1541,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             }
                         ],
@@ -1656,7 +1613,7 @@
                 {
                     "com.linkedin.pegasus2avro.dataset.DatasetProperties": {
                         "customProperties": {
-                            "transient_lastddltime": "1653567389",
+                            "transient_lastddltime": "1648000511",
                             "view_definition": "SELECT \"property_id\", \"service\"\nFROM \"db1\".\"array_struct_test\"",
                             "is_view": "True"
                         },
@@ -1708,7 +1665,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": null
                             },
                             {
@@ -1719,9 +1675,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "record"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -1730,7 +1684,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(ROW([('type', VARCHAR()), ('provider', ARRAY(INTEGER()))]))\"}"
                             },
                             {
@@ -1748,7 +1701,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"VARCHAR()\", \"_nullable\": true}"
                             },
                             {
@@ -1759,9 +1711,7 @@
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.ArrayType": {
-                                            "nestedType": [
-                                                "int"
-                                            ]
+                                            "nestedType": null
                                         }
                                     }
                                 },
@@ -1770,7 +1720,6 @@
                                 "globalTags": null,
                                 "glossaryTerms": null,
                                 "isPartOfKey": false,
-                                "isPartitioningKey": null,
                                 "jsonProps": "{\"native_data_type\": \"ARRAY(INTEGER())\"}"
                             }
                         ],

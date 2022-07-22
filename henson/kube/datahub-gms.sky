@@ -38,7 +38,7 @@ def env_configs(ctx):
         prod_mysql_host = "datahubdb.ckfnlamw54se.us-west-2.rds.amazonaws.com"
         kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.northwest.consul:9092"
         return {
-            "replicas": 10,
+            "replicas": 3,
             "mysql_host": prod_mysql_host,
             "ebean_datasource_host": prod_mysql_host + ":" + mysql_port,
             "ebean_datasource_url": mysql_datasource_url_template % (prod_mysql_host, mysql_port),
@@ -154,6 +154,9 @@ def _service(ctx, replicas, suffix = ""):
       name = "datahub-gms",
       port = service_port,
       path = "/health",
+      # bump up startup probe threshold as gms often spends time re-indexing etc at bootstrap
+      # which bumps against the default 5 min startup_probe_failure_threshold
+      startup_probe_failure_threshold = 1800,
     ),
     # init container to run MySQL init
     init_container(

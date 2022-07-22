@@ -1,22 +1,9 @@
-import time
-
 import pytest
-from tests.utils import get_frontend_url, wait_for_healthcheck_util
+import time
+import requests
+from tests.utils import FRONTEND_ENDPOINT
 
-
-@pytest.fixture(scope="session")
-def wait_for_healthchecks():
-    wait_for_healthcheck_util()
-    yield
-
-
-@pytest.mark.dependency()
-def test_healthchecks(wait_for_healthchecks):
-    # Call to wait_for_healthchecks fixture will do the actual functionality.
-    pass
-
-
-@pytest.mark.dependency(depends=["test_healthchecks"])
+@pytest.mark.dependency(depends=["test_healthchecks", "test_run_ingestion"])
 def test_create_list_get_remove_secret(frontend_session):
 
     # Get count of existing secrets
@@ -32,10 +19,17 @@ def test_create_list_get_remove_secret(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"input": {"start": "0", "count": "20"}},
+        "variables": {
+          "input": {
+              "start": "0",
+              "count": "20"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -51,10 +45,17 @@ def test_create_list_get_remove_secret(frontend_session):
         "query": """mutation createSecret($input: CreateSecretInput!) {\n
             createSecret(input: $input)
         }""",
-        "variables": {"input": {"name": "SMOKE_TEST", "value": "mytestvalue"}},
+        "variables": {
+          "input": {
+              "name": "SMOKE_TEST",
+              "value": "mytestvalue"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -81,10 +82,17 @@ def test_create_list_get_remove_secret(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"input": {"start": "0", "count": "20"}},
+        "variables": {
+          "input": {
+              "start": "0",
+              "count": "20"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -105,10 +113,16 @@ def test_create_list_get_remove_secret(frontend_session):
               value\n
             }\n
         }""",
-        "variables": {"input": {"secrets": ["SMOKE_TEST"]}},
+        "variables": {
+          "input": {
+            "secrets": ["SMOKE_TEST"]
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -127,10 +141,14 @@ def test_create_list_get_remove_secret(frontend_session):
         "query": """mutation deleteSecret($urn: String!) {\n
             deleteSecret(urn: $urn)
         }""",
-        "variables": {"urn": secret_urn},
+        "variables": {
+          "urn": secret_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -150,10 +168,16 @@ def test_create_list_get_remove_secret(frontend_session):
               value\n
             }\n
         }""",
-        "variables": {"input": {"secrets": ["SMOKE_TEST"]}},
+        "variables": {
+          "input": {
+            "secrets": ["SMOKE_TEST"]
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -166,8 +190,7 @@ def test_create_list_get_remove_secret(frontend_session):
     secret_value_arr = [x for x in secret_values if x["name"] == "SMOKE_TEST"]
     assert len(secret_value_arr) == 0
 
-
-@pytest.mark.dependency(depends=["test_healthchecks"])
+@pytest.mark.dependency(depends=["test_healthchecks", "test_run_ingestion"])
 def test_create_list_get_remove_ingestion_source(frontend_session):
 
     # Get count of existing ingestion sources
@@ -182,10 +205,17 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"input": {"start": "0", "count": "20"}},
+        "variables": {
+          "input": {
+              "start": "0",
+              "count": "20"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -202,21 +232,26 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
             createIngestionSource(input: $input)
         }""",
         "variables": {
-            "input": {
-                "name": "My Test Ingestion Source",
-                "type": "mysql",
-                "description": "My ingestion source description",
-                "schedule": {"interval": "* * * * *", "timezone": "UTC"},
-                "config": {
-                    "recipe": "MY_TEST_RECIPE",
-                    "version": "0.8.18",
-                    "executorId": "mytestexecutor",
-                },
-            }
-        },
+          "input": {
+              "name": "My Test Ingestion Source",
+              "type": "mysql",
+              "description": "My ingestion source description",
+              "schedule": {
+                "interval": "* * * * *",
+                "timezone": "UTC"
+              },
+              "config": {
+                "recipe": "MY_TEST_RECIPE",
+                "version": "0.8.18",
+                "executorId": "mytestexecutor"
+              }
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -242,10 +277,17 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"input": {"start": "0", "count": "20"}},
+        "variables": {
+          "input": {
+              "start": "0",
+              "count": "20"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -276,10 +318,14 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"urn": ingestion_source_urn},
+        "variables": {
+          "urn": ingestion_source_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -303,10 +349,14 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
         "query": """mutation deleteIngestionSource($urn: String!) {\n
             deleteIngestionSource(urn: $urn)
         }""",
-        "variables": {"urn": ingestion_source_urn},
+        "variables": {
+          "urn": ingestion_source_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -331,10 +381,17 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"input": {"start": "0", "count": "20"}},
+        "variables": {
+          "input": {
+              "start": "0",
+              "count": "20"
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -346,13 +403,7 @@ def test_create_list_get_remove_ingestion_source(frontend_session):
     final_count = res_data["data"]["listIngestionSources"]["total"]
     assert final_count == after_count - 1
 
-
-@pytest.mark.dependency(
-    depends=[
-        "test_healthchecks",
-        "test_create_list_get_remove_ingestion_source",
-    ]
-)
+@pytest.mark.dependency(depends=["test_healthchecks", "test_run_ingestion", "test_create_list_get_remove_ingestion_source"])
 def test_create_list_get_ingestion_execution_request(frontend_session):
     # Create new ingestion source
     json = {
@@ -360,21 +411,26 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
             createIngestionSource(input: $input)
         }""",
         "variables": {
-            "input": {
-                "name": "My Test Ingestion Source",
-                "type": "mysql",
-                "description": "My ingestion source description",
-                "schedule": {"interval": "* * * * *", "timezone": "UTC"},
-                "config": {
-                    "recipe": "MY_TEST_RECIPE",
-                    "version": "0.8.18",
-                    "executorId": "mytestexecutor",
-                },
-            }
-        },
+          "input": {
+              "name": "My Test Ingestion Source",
+              "type": "mysql",
+              "description": "My ingestion source description",
+              "schedule": {
+                "interval": "* * * * *",
+                "timezone": "UTC"
+              },
+              "config": {
+                "recipe": "MY_TEST_RECIPE",
+                "version": "0.8.18",
+                "executorId": "mytestexecutor"
+              }
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -390,10 +446,16 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
         "query": """mutation createIngestionExecutionRequest($input: CreateIngestionExecutionRequestInput!) {\n
             createIngestionExecutionRequest(input: $input)
         }""",
-        "variables": {"input": {"ingestionSourceUrn": ingestion_source_urn}},
+        "variables": {
+          "input": {
+              "ingestionSourceUrn": ingestion_source_urn
+          }
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -421,10 +483,14 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"urn": ingestion_source_urn},
+        "variables": {
+          "urn": ingestion_source_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -435,10 +501,7 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
 
     ingestion_source = res_data["data"]["ingestionSource"]
     assert ingestion_source["executions"]["total"] == 1
-    assert (
-        ingestion_source["executions"]["executionRequests"][0]["urn"]
-        == execution_request_urn
-    )
+    assert ingestion_source["executions"]["executionRequests"][0]["urn"] == execution_request_urn
 
     # Get the ingestion request back via direct lookup
     json = {
@@ -459,10 +522,14 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
               }\n
             }\n
         }""",
-        "variables": {"urn": execution_request_urn},
+        "variables": {
+          "urn": execution_request_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -477,10 +544,10 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
     # Verify input
     assert execution_request["input"]["task"] == "RUN_INGEST"
     assert len(execution_request["input"]["arguments"]) == 2
-    assert execution_request["input"]["arguments"][0]["key"] == "recipe"
-    assert execution_request["input"]["arguments"][0]["value"] == "MY_TEST_RECIPE"
-    assert execution_request["input"]["arguments"][1]["key"] == "version"
-    assert execution_request["input"]["arguments"][1]["value"] == "0.8.18"
+    assert execution_request["input"]["arguments"][0]["key"] == 'recipe'
+    assert execution_request["input"]["arguments"][0]["value"] == 'MY_TEST_RECIPE'
+    assert execution_request["input"]["arguments"][1]["key"] == 'version'
+    assert execution_request["input"]["arguments"][1]["value"] == '0.8.18'
 
     # Verify no result
     assert execution_request["result"] is None
@@ -490,10 +557,14 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
         "query": """mutation deleteIngestionSource($urn: String!) {\n
             deleteIngestionSource(urn: $urn)
         }""",
-        "variables": {"urn": ingestion_source_urn},
+        "variables": {
+          "urn": ingestion_source_urn
+        }
     }
 
-    response = frontend_session.post(f"{get_frontend_url()}/api/v2/graphql", json=json)
+    response = frontend_session.post(
+        f"{FRONTEND_ENDPOINT}/api/v2/graphql", json=json
+    )
     response.raise_for_status()
     res_data = response.json()
 
@@ -501,3 +572,4 @@ def test_create_list_get_ingestion_execution_request(frontend_session):
     assert res_data["data"]
     assert res_data["data"]["deleteIngestionSource"] is not None
     assert "errors" not in res_data
+

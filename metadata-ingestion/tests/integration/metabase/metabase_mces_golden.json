@@ -15,7 +15,6 @@
                             "urn:li:chart:(metabase,1)",
                             "urn:li:chart:(metabase,2)"
                         ],
-                        "datasets": [],
                         "lastModified": {
                             "created": {
                                 "time": 1639417721742,

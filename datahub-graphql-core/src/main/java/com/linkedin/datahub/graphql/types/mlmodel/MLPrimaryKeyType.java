@@ -5,7 +5,6 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.AutoCompleteResults;
-import com.linkedin.datahub.graphql.generated.Entity;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.FacetFilterInput;
 import com.linkedin.datahub.graphql.generated.MLPrimaryKey;
@@ -24,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -32,7 +30,7 @@ import javax.annotation.Nullable;
 import static com.linkedin.metadata.Constants.*;
 
 
-public class MLPrimaryKeyType implements SearchableEntityType<MLPrimaryKey, String> {
+public class MLPrimaryKeyType implements SearchableEntityType<MLPrimaryKey> {
 
     private static final Set<String> FACET_FIELDS = ImmutableSet.of("");
     private final EntityClient _entityClient;
@@ -44,11 +42,6 @@ public class MLPrimaryKeyType implements SearchableEntityType<MLPrimaryKey, Stri
     @Override
     public EntityType type() {
         return EntityType.MLPRIMARY_KEY;
-    }
-
-    @Override
-    public Function<Entity, String> getKeyProvider() {
-        return Entity::getUrn;
     }
 
     @Override

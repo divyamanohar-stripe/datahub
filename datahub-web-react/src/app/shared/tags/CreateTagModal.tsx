@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { message, Button, Input, Modal, Space } from 'antd';
 import styled from 'styled-components';
+
+import { useUpdateTagMutation } from '../../../graphql/tag.generated';
 import { useAddTagMutation } from '../../../graphql/mutations.generated';
-import { useCreateTagMutation } from '../../../graphql/tag.generated';
 import { SubResourceType } from '../../../types.generated';
 import { useEnterKeyListener } from '../useEnterKeyListener';
 
@@ -30,17 +31,18 @@ export default function CreateTagModal({
     const [stagedDescription, setStagedDescription] = useState('');
     const [addTagMutation] = useAddTagMutation();
 
-    const [createTagMutation] = useCreateTagMutation();
+    const [updateTagMutation] = useUpdateTagMutation();
     const [disableCreate, setDisableCreate] = useState(false);
 
     const onOk = () => {
         setDisableCreate(true);
         // first create the new tag
         const tagUrn = `urn:li:tag:${tagName}`;
-        createTagMutation({
+        updateTagMutation({
             variables: {
+                urn: tagUrn,
                 input: {
-                    id: tagName,
+                    urn: tagUrn,
                     name: tagName,
                     description: stagedDescription,
                 },
@@ -57,21 +59,15 @@ export default function CreateTagModal({
                             subResourceType: entitySubresource ? SubResourceType.DatasetField : null,
                         },
                     },
-                })
-                    .catch((e) => {
-                        message.destroy();
-                        message.error({ content: `Failed to add tag: \n ${e.message || ''}`, duration: 3 });
-                        onClose();
-                    })
-                    .finally(() => {
-                        // and finally close the modal
-                        setDisableCreate(false);
-                        onClose();
-                    });
+                }).finally(() => {
+                    // and finally close the modal
+                    setDisableCreate(false);
+                    onClose();
+                });
             })
             .catch((e) => {
                 message.destroy();
-                message.error({ content: `Failed to create tag: \n ${e.message || ''}`, duration: 3 });
+                message.error({ content: `Failed to create & add tag: \n ${e.message || ''}`, duration: 3 });
                 onClose();
             });
     };

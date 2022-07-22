@@ -17,7 +17,6 @@ import analytics, { EventType } from '../analytics';
 import { AdminHeaderLinks } from '../shared/admin/AdminHeaderLinks';
 import { ANTD_GRAY } from '../entity/shared/constants';
 import { useAppConfig } from '../useAppConfig';
-import { DEFAULT_APP_CONFIG } from '../../appConfigContext';
 
 const Background = styled.div`
     width: 100%;
@@ -38,7 +37,7 @@ const styles = {
     navBar: { padding: '24px' },
     searchContainer: { width: '100%', marginTop: '40px' },
     logoImage: { width: 140 },
-    searchBox: { width: '47vw', minWidth: 400, margin: '40px 0px', marginBottom: '12px', maxWidth: '650px' },
+    searchBox: { width: '40vw', minWidth: 400, margin: '40px 0px', marginBottom: '12px' },
     subtitle: { marginTop: '28px', color: '#FFFFFF', fontSize: 12 },
 };
 
@@ -58,9 +57,8 @@ const NavGroup = styled.div`
 `;
 
 const SuggestionsContainer = styled.div`
-    margin: 0px 30px;
-    max-width: 650px;
-    width: 47vw;
+    padding: 0px 30px;
+    max-width: 540px;
     display: flex;
     flex-direction: column;
     justify-content: left;
@@ -143,7 +141,7 @@ export const HomePageHeader = () => {
                 variables: {
                     input: {
                         query,
-                        limit: 10,
+                        limit: 30,
                     },
                 },
             });
@@ -157,7 +155,7 @@ export const HomePageHeader = () => {
                 types: [],
                 query: '*',
                 start: 0,
-                count: 6,
+                count: 20,
                 filters: [],
             },
         },
@@ -198,11 +196,7 @@ export const HomePageHeader = () => {
             </Row>
             <HeaderContainer>
                 <Image
-                    src={
-                        appConfig.config !== DEFAULT_APP_CONFIG
-                            ? appConfig.config.visualConfig.logoUrl || themeConfig.assets.logoUrl
-                            : undefined
-                    }
+                    src={appConfig.config.visualConfig.logoUrl || themeConfig.assets.logoUrl}
                     preview={false}
                     style={styles.logoImage}
                 />

@@ -12,23 +12,14 @@ from datahub.metadata.schema_classes import (
     ChangeTypeClass,
     DataFlowSnapshotClass,
     DataJobSnapshotClass,
-    DataPlatformInstanceClass,
-    DatasetDeprecationClass,
     DatasetPropertiesClass,
     DatasetSnapshotClass,
-    DatasetUpstreamLineageClass,
-    EditableDatasetPropertiesClass,
-    EditableSchemaMetadataClass,
     GlobalTagsClass,
     GlossaryTermsClass,
-    InstitutionalMemoryClass,
     MetadataChangeEventClass,
     MetadataChangeProposalClass,
     OwnershipClass,
-    SchemaMetadataClass,
     StatusClass,
-    UpstreamLineageClass,
-    ViewPropertiesClass,
 )
 from datahub.utilities.urns.urn import Urn
 
@@ -43,18 +34,9 @@ class SnapshotAspectRegistry:
             "ownership": OwnershipClass,
             "globalTags": GlobalTagsClass,
             "datasetProperties": DatasetPropertiesClass,
-            "editableDatasetProperties": EditableDatasetPropertiesClass,
             "glossaryTerms": GlossaryTermsClass,
             "status": StatusClass,
             "browsePaths": BrowsePathsClass,
-            "schemaMetadata": SchemaMetadataClass,
-            "editableSchemaMetadata": EditableSchemaMetadataClass,
-            "datasetDeprecation": DatasetDeprecationClass,
-            "datasetUpstreamLineage": DatasetUpstreamLineageClass,
-            "upstreamLineage": UpstreamLineageClass,
-            "institutionalMemory": InstitutionalMemoryClass,
-            "dataPlatformInstance": DataPlatformInstanceClass,
-            "viewProperties": ViewPropertiesClass,
         }
 
     def get_aspect_type(self, aspect_name: str) -> Optional[Type[Aspect]]:
@@ -132,8 +114,8 @@ class BaseTransformer(Transformer, metaclass=ABCMeta):
                     return True
             # fall through, no entity type matched
             return False
-        elif isinstance(
-            record, (MetadataChangeProposalWrapper, MetadataChangeProposalClass)
+        elif isinstance(record, MetadataChangeProposalWrapper) or isinstance(
+            record, MetadataChangeProposalClass
         ):
             return record.entityType in entity_types
 
@@ -193,8 +175,8 @@ class BaseTransformer(Transformer, metaclass=ABCMeta):
                         envelope.record = mce
                     self._mark_processed(mce.proposedSnapshot.urn)
             else:
-                log.warning(
-                    f"Could not locate a snapshot aspect type for aspect {self.aspect_name()}. This can lead to silent drops of messages in transformers."
+                log.debug(
+                    f"Could not locate a snapshot aspect type for aspect {self.aspect_name()}"
                 )
         elif isinstance(self, LegacyMCETransformer):
             # we pass down the full MCE

@@ -28,11 +28,7 @@ import lombok.Value;
 
 
 /**
- * Service coupled with an {@link EntityService} to handle aspect record retention.
- *
- * TODO: This class is abstract with storage-specific implementations. It'd be nice to pull storage and retention
- *       concerns apart, let (into {@link AspectDao}) deal with storage, and merge all retention concerns into a single
- *       class.
+ * Service coupled with an entity service to handle retention
  */
 public abstract class RetentionService {
   protected static final String ALL = "*";
@@ -67,11 +63,10 @@ public abstract class RetentionService {
 
   // Get list of datahub retention keys that match the input entity name and aspect name
   protected List<Urn> getRetentionKeys(@Nonnull String entityName, @Nonnull String aspectName) {
-    return ImmutableList.of(
-            new DataHubRetentionKey().setEntityName(entityName).setAspectName(aspectName),
-            new DataHubRetentionKey().setEntityName(entityName).setAspectName(ALL),
-            new DataHubRetentionKey().setEntityName(ALL).setAspectName(aspectName),
-            new DataHubRetentionKey().setEntityName(ALL).setAspectName(ALL))
+    return ImmutableList.of(new DataHubRetentionKey().setEntityName(entityName).setAspectName(aspectName),
+        new DataHubRetentionKey().setEntityName(entityName).setAspectName(ALL),
+        new DataHubRetentionKey().setEntityName(ALL).setAspectName(aspectName),
+        new DataHubRetentionKey().setEntityName(ALL).setAspectName(ALL))
         .stream()
         .map(key -> EntityKeyUtils.convertEntityKeyToUrn(key, DATAHUB_RETENTION_ENTITY))
         .collect(Collectors.toList());
@@ -168,13 +163,13 @@ public abstract class RetentionService {
 
   /**
    * Apply retention policies given the urn and aspect name and policies
-   * @param urn Urn of the entity
+   *  @param urn Urn of the entity
    * @param aspectName Name of the aspect
    * @param retentionPolicy Retention policies to apply
-   * @param retentionContext Additional context that could be used to apply retention
+   * @param context Additional context that could be used to apply retention
    */
   public abstract void applyRetention(@Nonnull Urn urn, @Nonnull String aspectName, Retention retentionPolicy,
-      Optional<RetentionContext> retentionContext);
+      Optional<RetentionContext> context);
 
   /**
    * Batch apply retention to all records that match the input entityName and aspectName

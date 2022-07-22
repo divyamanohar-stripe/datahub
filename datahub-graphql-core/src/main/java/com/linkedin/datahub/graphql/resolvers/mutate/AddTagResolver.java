@@ -1,6 +1,5 @@
 package com.linkedin.datahub.graphql.resolvers.mutate;
 
-import com.google.common.collect.ImmutableList;
 import com.linkedin.common.urn.CorpuserUrn;
 
 import com.linkedin.common.urn.Urn;
@@ -52,8 +51,8 @@ public class AddTagResolver implements DataFetcher<CompletableFuture<Boolean>> {
 
         log.info("Adding Tag. input: {}", input.toString());
         Urn actor = CorpuserUrn.createFromString(((QueryContext) environment.getContext()).getActorUrn());
-        LabelUtils.addTagsToTarget(
-            ImmutableList.of(tagUrn),
+        LabelUtils.addTagToTarget(
+            tagUrn,
             targetUrn,
             input.getSubResource(),
             actor,

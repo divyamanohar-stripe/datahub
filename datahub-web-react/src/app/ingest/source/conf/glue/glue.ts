@@ -1,6 +1,8 @@
 import { SourceConfig } from '../types';
 import glueLogo from '../../../../../images/gluelogo.png';
 
+const baseUrl = window.location.origin;
+
 const placeholderRecipe = `\
 source:
     type: glue
@@ -22,13 +24,18 @@ source:
         # table_pattern:
         #    allow:
         #        - "avro"
-`;
+sink: 
+    type: datahub-rest 
+    config: 
+        server: "${baseUrl}/api/gms"
+        # Add a secret in secrets Tab
+        token: "\${GMS_TOKEN}"`;
 
 const glueConfig: SourceConfig = {
     type: 'glue',
     placeholderRecipe,
     displayName: 'Glue',
-    docsUrl: 'https://datahubproject.io/docs/generated/ingestion/sources/glue',
+    docsUrl: 'https://datahubproject.io/docs/metadata-ingestion/source_docs/glue',
     logoUrl: glueLogo,
 };
 

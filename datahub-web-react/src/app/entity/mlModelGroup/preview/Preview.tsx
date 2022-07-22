@@ -12,7 +12,6 @@ export const Preview = ({ group }: { group: MlModelGroup }): JSX.Element => {
         <DefaultPreviewCard
             url={entityRegistry.getEntityUrl(EntityType.MlmodelGroup, group.urn)}
             name={group?.name || ''}
-            platformInstanceId={group.dataPlatformInstance?.instanceId}
             description={group?.description || ''}
             type="MLModel Group"
             logoUrl={group?.platform?.properties?.logoUrl || ''}

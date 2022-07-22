@@ -8,9 +8,4 @@ record SearchFlags {
    * Whether to skip cache
    */
   skipCache: boolean = false
-
-  /**
-   * The maximum number of values in an facet aggregation
-   */
-  maxAggValues: int = 20
 }

@@ -5,7 +5,6 @@ import sys
 
 import click
 import stackprinter
-from pydantic import ValidationError
 
 import datahub as datahub_package
 from datahub.cli.check_cli import check
@@ -19,14 +18,13 @@ from datahub.cli.put_cli import put
 from datahub.cli.telemetry import telemetry as telemetry_cli
 from datahub.cli.timeline_cli import timeline
 from datahub.configuration import SensitiveError
-from datahub.configuration.common import ConfigurationError
 from datahub.telemetry import telemetry
 from datahub.utilities.server_config_util import get_gms_config
 
 logger = logging.getLogger(__name__)
 
 # Configure some loggers.
-logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("snowflake").setLevel(level=logging.WARNING)
 # logging.getLogger("botocore").setLevel(logging.INFO)
 # logging.getLogger("google").setLevel(logging.INFO)
@@ -132,15 +130,6 @@ datahub.add_command(put)
 datahub.add_command(telemetry_cli)
 datahub.add_command(migrate)
 datahub.add_command(timeline)
-try:
-    from datahub_actions.cli.actions import actions
-
-    datahub.add_command(actions)
-except ImportError:
-    # TODO: Increase the log level once this approach has been validated.
-    logger.debug(
-        "Failed to load datahub actions framework. Please confirm that the acryl-datahub-actions package has been installed from PyPi."
-    )
 
 
 def main(**kwargs):
@@ -160,30 +149,15 @@ def main(**kwargs):
             kwargs = {"show_vals": None}
             exc = sensitive_cause
 
-        # suppress stack printing for common configuration errors
-        if isinstance(exc, (ConfigurationError, ValidationError)):
-            logger.error(exc)
-        else:
-            logger.error(
-                stackprinter.format(
-                    exc,
-                    line_wrap=MAX_CONTENT_WIDTH,
-                    truncate_vals=10 * MAX_CONTENT_WIDTH,
-                    suppressed_vars=[
-                        r".*password.*",
-                        r".*secret.*",
-                        r".*key.*",
-                        r".*access.*",
-                        # needed because sometimes secrets are in url
-                        r".*url.*",
-                        # needed because sqlalchemy uses it underneath
-                        # and passes all params
-                        r".*cparams.*",
-                    ],
-                    suppressed_paths=[r"lib/python.*/site-packages/click/"],
-                    **kwargs,
-                )
+        logger.error(
+            stackprinter.format(
+                exc,
+                line_wrap=MAX_CONTENT_WIDTH,
+                truncate_vals=10 * MAX_CONTENT_WIDTH,
+                suppressed_paths=[r"lib/python.*/site-packages/click/"],
+                **kwargs,
             )
+        )
         logger.info(
             f"DataHub CLI version: {datahub_package.__version__} at {datahub_package.__file__}"
         )

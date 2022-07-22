@@ -108,7 +108,8 @@ def get_query_columns(query: Any) -> List[Any]:
     try:
         # inner_columns will be more accurate if the column names are unnamed,
         # since .columns will remove the "duplicates".
-        return list(query.inner_columns)
+        inner_columns = list(query.inner_columns)
+        return inner_columns
     except AttributeError:
         return list(query.columns)
 

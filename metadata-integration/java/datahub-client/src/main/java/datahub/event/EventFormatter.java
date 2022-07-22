@@ -7,7 +7,6 @@ import com.linkedin.data.ByteString;
 import com.linkedin.data.template.JacksonDataTemplateCodec;
 import com.linkedin.mxe.GenericAspect;
 import com.linkedin.mxe.MetadataChangeProposal;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -34,8 +33,7 @@ public class EventFormatter {
 
   @SneakyThrows(URISyntaxException.class)
   public MetadataChangeProposal convert(MetadataChangeProposalWrapper mcpw) throws IOException {
-    
-    String serializedAspect = StringEscapeUtils.escapeJava(dataTemplateCodec.dataTemplateToString(mcpw.getAspect()));
+    String serializedAspect = dataTemplateCodec.dataTemplateToString(mcpw.getAspect());
     MetadataChangeProposal mcp = new MetadataChangeProposal().setEntityType(mcpw.getEntityType())
         .setAspectName(mcpw.getAspectName())
         .setEntityUrn(Urn.createFromString(mcpw.getEntityUrn()))

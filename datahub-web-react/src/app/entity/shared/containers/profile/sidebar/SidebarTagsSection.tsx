@@ -3,7 +3,7 @@ import styled from 'styled-components';
 
 import TagTermGroup from '../../../../../shared/tags/TagTermGroup';
 import { SidebarHeader } from './SidebarHeader';
-import { useEntityData, useMutationUrn, useRefetch } from '../../../EntityContext';
+import { useEntityData, useRefetch } from '../../../EntityContext';
 
 const TermSection = styled.div`
     margin-top: 20px;
@@ -13,10 +13,7 @@ export const SidebarTagsSection = ({ properties }: { properties?: any }) => {
     const canAddTag = properties?.hasTags;
     const canAddTerm = properties?.hasTerms;
 
-    const mutationUrn = useMutationUrn();
-
-    const { entityType, entityData } = useEntityData();
-
+    const { urn, entityType, entityData } = useEntityData();
     const refetch = useRefetch();
 
     return (
@@ -27,7 +24,7 @@ export const SidebarTagsSection = ({ properties }: { properties?: any }) => {
                 canAddTag={canAddTag}
                 canRemove
                 showEmptyMessage
-                entityUrn={mutationUrn}
+                entityUrn={urn}
                 entityType={entityType}
                 refetch={refetch}
             />
@@ -38,7 +35,7 @@ export const SidebarTagsSection = ({ properties }: { properties?: any }) => {
                     canAddTerm={canAddTerm}
                     canRemove
                     showEmptyMessage
-                    entityUrn={mutationUrn}
+                    entityUrn={urn}
                     entityType={entityType}
                     refetch={refetch}
                 />

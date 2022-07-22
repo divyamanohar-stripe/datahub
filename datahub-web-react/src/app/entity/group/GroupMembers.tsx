@@ -129,7 +129,7 @@ export default function GroupMembers({ urn, pageSize, onChangeMembers }: Props) 
         setTimeout(function () {
             // Reload the page.
             refetch();
-        }, 3000);
+        }, 2000);
     };
 
     const onRemoveMember = (memberUrn: string) => {
@@ -224,14 +224,12 @@ export default function GroupMembers({ urn, pageSize, onChangeMembers }: Props) 
                     showSizeChanger={false}
                 />
             </Row>
-            {isEditingMembers && (
-                <AddGroupMembersModal
-                    urn={urn}
-                    visible={isEditingMembers}
-                    onSubmit={onAddMembers}
-                    onCloseModal={() => setIsEditingMembers(false)}
-                />
-            )}
+            <AddGroupMembersModal
+                urn={urn}
+                visible={isEditingMembers}
+                onSubmit={onAddMembers}
+                onClose={() => setIsEditingMembers(false)}
+            />
         </>
     );
 }

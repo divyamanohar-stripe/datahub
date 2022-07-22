@@ -19,6 +19,8 @@ import com.linkedin.metadata.search.elasticsearch.update.BulkListener;
 import com.linkedin.metadata.search.elasticsearch.update.ESWriteDAO;
 import com.linkedin.metadata.utils.elasticsearch.IndexConvention;
 import com.linkedin.metadata.utils.elasticsearch.IndexConventionImpl;
+import java.util.Collections;
+import javax.annotation.Nonnull;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.client.RequestOptions;
@@ -26,13 +28,10 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
-import javax.annotation.Nonnull;
-import java.util.Collections;
 
 import static com.linkedin.metadata.DockerTestUtils.checkContainerEngine;
 import static com.linkedin.metadata.ElasticSearchTestUtils.syncAfterWrite;
@@ -50,7 +49,7 @@ public class ElasticSearchServiceTest {
 
   private static final String ENTITY_NAME = "testEntity";
 
-  @BeforeClass
+  @BeforeTest
   public void setup() {
     _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
     _indexConvention = new IndexConventionImpl(null);
@@ -94,7 +93,7 @@ public class ElasticSearchServiceTest {
     return new ElasticSearchService(indexBuilders, searchDAO, browseDAO, writeDAO);
   }
 
-  @AfterClass
+  @AfterTest
   public void tearDown() {
     _elasticsearchContainer.stop();
   }

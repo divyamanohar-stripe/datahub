@@ -55,8 +55,7 @@ workbook_graphql_query = """
           id
           name
           description
-          datasource {
-            id
+          upstreamColumns {
             name
           }
           ... on ColumnField {
@@ -125,10 +124,15 @@ workbook_graphql_query = """
           name
           id
         }
+        upstreamDatabases {
+          id
+          name
+          connectionType
+          isEmbedded
+        }
         upstreamTables {
           id
           name
-          isEmbedded
           database {
             name
           }
@@ -156,7 +160,6 @@ workbook_graphql_query = """
             aggregation
             columns {
               table {
-                __typename
                 ... on CustomSQLTable {
                   id
                   name
@@ -211,10 +214,13 @@ custom_sql_graphql_query = """
             __typename
             id
             name
+            upstreamDatabases {
+              id
+              name
+            }
             upstreamTables {
               id
               name
-              isEmbedded
               database {
                 name
               }
@@ -227,7 +233,6 @@ custom_sql_graphql_query = """
             }
             ... on EmbeddedDatasource {
               workbook {
-                id
                 name
                 projectName
               }
@@ -236,14 +241,12 @@ custom_sql_graphql_query = """
         }
       }
       tables {
-        id
         name
-        isEmbedded
+        schema
+        fullName
         database {
           name
         }
-        schema
-        fullName
         connectionType
       }
 }
@@ -258,10 +261,15 @@ published_datasource_graphql_query = """
     extractLastRefreshTime
     extractLastIncrementalUpdateTime
     extractLastUpdateTime
+    upstreamDatabases {
+      id
+      name
+      connectionType
+      isEmbedded
+    }
     upstreamTables {
       id
       name
-      isEmbedded
       database {
         name
       }
@@ -289,7 +297,6 @@ published_datasource_graphql_query = """
             aggregation
             columns {
                 table {
-                  __typename
                     ... on CustomSQLTable {
                         id
                         name
@@ -412,9 +419,6 @@ def make_table_urn(
         platform = "teradata"
     elif connection_type in ("sqlserver"):
         platform = "mssql"
-    elif connection_type in ("athena"):
-        platform = "athena"
-        upstream_db = ""
     else:
         platform = connection_type
 
@@ -433,7 +437,8 @@ def make_table_urn(
     # if there are more than 3 tokens, just take the final 3
     fully_qualified_table_name = ".".join(fully_qualified_table_name.split(".")[-3:])
 
-    return builder.make_dataset_urn(platform, fully_qualified_table_name, env)
+    urn = builder.make_dataset_urn(platform, fully_qualified_table_name, env)
+    return urn
 
 
 def make_description_from_params(description, formula):
@@ -450,9 +455,10 @@ def make_description_from_params(description, formula):
 
 def get_field_value_in_sheet(field, field_name):
     if field.get("__typename", "") == "DatasourceField":
-        field = field.get("remoteField") or {}
+        field = field.get("remoteField") if field.get("remoteField") else {}
 
-    return field.get(field_name, "")
+    field_value = field.get(field_name, "")
+    return field_value
 
 
 def get_unique_custom_sql(custom_sql_list: List[dict]) -> List[dict]:
@@ -504,4 +510,6 @@ def query_metadata(server, main_query, connection_name, first, offset, qry_filte
         filter=qry_filter,
         main_query=main_query,
     )
-    return server.metadata.query(query)
+    query_result = server.metadata.query(query)
+
+    return query_result

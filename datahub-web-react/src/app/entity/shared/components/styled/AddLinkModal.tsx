@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { message, Modal, Button, Form, Input } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useGetAuthenticatedUser } from '../../../../useGetAuthenticatedUser';
-import { useEntityData, useMutationUrn } from '../../EntityContext';
+import { useEntityData } from '../../EntityContext';
 import { useAddLinkMutation } from '../../../../../graphql/mutations.generated';
 import analytics, { EventType, EntityActionType } from '../../../../analytics';
 
@@ -13,9 +13,8 @@ type AddLinkProps = {
 
 export const AddLinkModal = ({ buttonProps, refetch }: AddLinkProps) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const mutationUrn = useMutationUrn();
     const user = useGetAuthenticatedUser();
-    const { entityType } = useEntityData();
+    const { urn, entityType } = useEntityData();
     const [addLinkMutation] = useAddLinkMutation();
 
     const [form] = Form.useForm();
@@ -33,13 +32,13 @@ export const AddLinkModal = ({ buttonProps, refetch }: AddLinkProps) => {
         if (user?.corpUser.urn) {
             try {
                 await addLinkMutation({
-                    variables: { input: { linkUrl: formData.url, label: formData.label, resourceUrn: mutationUrn } },
+                    variables: { input: { linkUrl: formData.url, label: formData.label, resourceUrn: urn } },
                 });
                 message.success({ content: 'Link Added', duration: 2 });
                 analytics.event({
                     type: EventType.EntityActionEvent,
                     entityType,
-                    entityUrn: mutationUrn,
+                    entityUrn: urn,
                     actionType: EntityActionType.UpdateLinks,
                 });
             } catch (e: unknown) {

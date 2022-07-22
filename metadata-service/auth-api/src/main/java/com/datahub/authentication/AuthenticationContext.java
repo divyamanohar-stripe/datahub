@@ -2,7 +2,7 @@ package com.datahub.authentication;
 
 /**
  * A static wrapper around a {@link ThreadLocal} instance of {@link Authentication} containing
- * information about the currently authenticated actor.
+ * information about the currently authentication actor.
  */
 public class AuthenticationContext {
   private static final ThreadLocal<Authentication> AUTHENTICATION = new ThreadLocal<>();

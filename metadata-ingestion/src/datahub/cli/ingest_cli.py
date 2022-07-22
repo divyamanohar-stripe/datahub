@@ -15,7 +15,6 @@ import datahub as datahub_package
 from datahub.cli import cli_utils
 from datahub.cli.cli_utils import (
     CONDENSED_DATAHUB_CONFIG_PATH,
-    format_aspect_summaries,
     get_session_and_host,
     post_rollback_endpoint,
 )
@@ -23,7 +22,6 @@ from datahub.configuration import SensitiveError
 from datahub.configuration.config_loader import load_config_file
 from datahub.ingestion.run.pipeline import Pipeline
 from datahub.telemetry import telemetry
-from datahub.upgrade import upgrade
 from datahub.utilities import memory_leak_detector
 
 logger = logging.getLogger(__name__)
@@ -79,10 +77,9 @@ def ingest() -> None:
     type=bool,
     is_flag=True,
     default=False,
-    help="Suppress display of variable values in logs by suppressing elaborate stacktrace (stackprinter) during ingestion failures",
+    help="Supress display of variable values in logs by supressing elaborae stacktrace (stackprinter) during ingestion failures",
 )
 @click.pass_context
-@upgrade.check_upgrade
 @telemetry.with_telemetry
 @memory_leak_detector.with_leak_detection
 def run(
@@ -133,7 +130,6 @@ def run(
         logger.info("Finished metadata pipeline")
         pipeline.log_ingestion_stats()
         ret = pipeline.pretty_print_summary(warnings_as_failure=strict_warnings)
-        upgrade.maybe_print_upgrade_message(pipeline.ctx.graph)
         sys.exit(ret)
 
 
@@ -169,7 +165,6 @@ def parse_restli_response(response):
     default=False,
     help="If enabled, will list ingestion runs which have been soft deleted",
 )
-@upgrade.check_upgrade
 @telemetry.with_telemetry
 def list_runs(page_offset: int, page_size: int, include_soft_deletes: bool) -> None:
     """List recent ingestion runs to datahub"""
@@ -208,45 +203,36 @@ def list_runs(page_offset: int, page_size: int, include_soft_deletes: bool) -> N
 
 @ingest.command()
 @click.option("--run-id", required=True, type=str)
-@click.option("--start", type=int, default=0)
-@click.option("--count", type=int, default=100)
-@click.option(
-    "--include-soft-deletes",
-    is_flag=True,
-    default=False,
-    help="If enabled, will include aspects that have been soft deleted",
-)
-@click.option("-a", "--show-aspect", required=False, is_flag=True)
-@upgrade.check_upgrade
 @telemetry.with_telemetry
-def show(
-    run_id: str, start: int, count: int, include_soft_deletes: bool, show_aspect: bool
-) -> None:
+def show(run_id: str) -> None:
     """Describe a provided ingestion run to datahub"""
-    session, gms_host = get_session_and_host()
 
-    url = f"{gms_host}/runs?action=describe"
+    payload_obj = {"runId": run_id, "dryRun": True, "hardDelete": True}
+    (
+        structured_rows,
+        entities_affected,
+        aspects_modified,
+        aspects_affected,
+        unsafe_entity_count,
+        unsafe_entities,
+    ) = post_rollback_endpoint(payload_obj, "/runs?action=rollback")
 
-    payload_obj = {
-        "runId": run_id,
-        "start": start,
-        "count": count,
-        "includeSoft": include_soft_deletes,
-        "includeAspect": show_aspect,
-    }
-
-    payload = json.dumps(payload_obj)
-
-    response = session.post(url, data=payload)
-
-    rows = parse_restli_response(response)
-    if not show_aspect:
+    if aspects_modified >= ELASTIC_MAX_PAGE_SIZE:
         click.echo(
-            tabulate(format_aspect_summaries(rows), RUN_TABLE_COLUMNS, tablefmt="grid")
+            f"this run created at least {entities_affected} new entities and updated at least {aspects_modified} aspects"
         )
     else:
-        for row in rows:
-            click.echo(json.dumps(row, indent=4))
+        click.echo(
+            f"this run created {entities_affected} new entities and updated {aspects_modified} aspects"
+        )
+    click.echo(
+        "rolling back will delete the entities created and revert the updated aspects"
+    )
+    click.echo()
+    click.echo(
+        f"showing first {len(structured_rows)} of {aspects_modified} aspects touched by this run"
+    )
+    click.echo(tabulate(structured_rows, RUN_TABLE_COLUMNS, tablefmt="grid"))
 
 
 @ingest.command()
@@ -261,7 +247,6 @@ def show(
     default="./rollback-reports",
     help="Path to directory where rollback reports will be saved to",
 )
-@upgrade.check_upgrade
 @telemetry.with_telemetry
 def rollback(
     run_id: str, force: bool, dry_run: bool, safe: bool, report_dir: str
@@ -313,14 +298,14 @@ def rollback(
         current_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
         try:
-            folder_name = f"{report_dir}/{current_time}"
+            folder_name = report_dir + "/" + current_time
 
-            ingestion_config_file_name = f"{folder_name}/config.json"
+            ingestion_config_file_name = folder_name + "/config.json"
             os.makedirs(os.path.dirname(ingestion_config_file_name), exist_ok=True)
             with open(ingestion_config_file_name, "w") as file_handle:
                 json.dump({"run_id": run_id}, file_handle)
 
-            csv_file_name = f"{folder_name}/unsafe_entities.csv"
+            csv_file_name = folder_name + "/unsafe_entities.csv"
             with open(csv_file_name, "w") as file_handle:
                 writer = csv.writer(file_handle)
                 writer.writerow(["urn"])
@@ -329,4 +314,4 @@ def rollback(
 
         except IOError as e:
             print(e)
-            sys.exit(f"Unable to write reports to {report_dir}")
+            sys.exit("Unable to write reports to " + report_dir)

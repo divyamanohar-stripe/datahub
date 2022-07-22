@@ -79,15 +79,16 @@ class PluginRegistry(Generic[T]):
 
     def _ensure_not_lazy(self, key: str) -> Union[Type[T], Exception]:
         path = self._mapping[key]
-        if not isinstance(path, str):
+        if isinstance(path, str):
+            try:
+                plugin_class = import_path(path)
+                self.register(key, plugin_class, override=True)
+                return plugin_class
+            except (AssertionError, ModuleNotFoundError, ImportError) as e:
+                self.register_disabled(key, e, override=True)
+                return e
+        else:
             return path
-        try:
-            plugin_class = import_path(path)
-            self.register(key, plugin_class, override=True)
-            return plugin_class
-        except (AssertionError, ImportError) as e:
-            self.register_disabled(key, e, override=True)
-            return e
 
     def is_enabled(self, key: str) -> bool:
         tp = self._mapping[key]

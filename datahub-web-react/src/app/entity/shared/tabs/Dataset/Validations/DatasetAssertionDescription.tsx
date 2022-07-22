@@ -1,5 +1,5 @@
-import { Popover, Typography, Button } from 'antd';
-import React, { useState } from 'react';
+import { Popover, Typography } from 'antd';
+import React from 'react';
 import styled from 'styled-components';
 import {
     AssertionStdAggregation,
@@ -10,11 +10,10 @@ import {
     SchemaFieldRef,
 } from '../../../../../../types.generated';
 import { getFormattedParameterValue } from './assertionUtils';
-import { DatasetAssertionLogicModal } from './DatasetAssertionLogicModal';
 
-const ViewLogicButton = styled(Button)`
-    padding: 0px;
+const SqlText = styled.pre`
     margin: 0px;
+    padding: 0px;
 `;
 
 type Props = {
@@ -45,8 +44,7 @@ const getSchemaAggregationText = (
             );
         }
         default:
-            console.error(`Unsupported schema aggregation assertion ${aggregation} provided.`);
-            return <Typography.Text>Dataset columns are</Typography.Text>;
+            throw new Error(`Unsupported schema aggregation assertion ${aggregation} provided.`);
     }
 };
 
@@ -63,8 +61,7 @@ const getRowsAggregationText = (aggregation: AssertionStdAggregation | undefined
         case AssertionStdAggregation.Native:
             return <Typography.Text>Dataset rows are</Typography.Text>;
         default:
-            console.error(`Unsupported Dataset Rows Aggregation ${aggregation} provided`);
-            return <Typography.Text>Dataset rows are</Typography.Text>;
+            throw new Error(`Unsupported Dataset Rows Aggregation ${aggregation} provided`);
     }
 };
 
@@ -76,38 +73,36 @@ const getColumnAggregationText = (
     aggregation: AssertionStdAggregation | undefined | null,
     field: SchemaFieldRef | undefined,
 ) => {
-    let columnText = field?.path;
     if (field === undefined) {
-        columnText = 'undefined';
-        console.error(`Invalid field provided for Dataset Assertion with scope Column ${JSON.stringify(field)}`);
+        throw new Error(`Invalid field provided for Dataset Assertion with scope Column ${JSON.stringify(field)}`);
     }
     switch (aggregation) {
         // Hybrid Aggregations
         case AssertionStdAggregation.UniqueCount: {
             return (
                 <Typography.Text>
-                    Unique value count for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Unique value count for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.UniquePropotion: {
             return (
                 <Typography.Text>
-                    Unique value proportion for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Unique value proportion for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.NullCount: {
             return (
                 <Typography.Text>
-                    Null count for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Null count for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.NullProportion: {
             return (
                 <Typography.Text>
-                    Null proportion for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Null proportion for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
@@ -115,35 +110,35 @@ const getColumnAggregationText = (
         case AssertionStdAggregation.Min: {
             return (
                 <Typography.Text>
-                    Minimum value for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Minimum value for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.Max: {
             return (
                 <Typography.Text>
-                    Maximum value for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Maximum value for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.Mean: {
             return (
                 <Typography.Text>
-                    Mean value for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Mean value for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.Median: {
             return (
                 <Typography.Text>
-                    Median value for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Median value for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
         case AssertionStdAggregation.Stddev: {
             return (
                 <Typography.Text>
-                    Standard deviation for column <Typography.Text strong>{columnText}</Typography.Text> is
+                    Standard deviation for column <Typography.Text strong>{field.path}</Typography.Text> is
                 </Typography.Text>
             );
         }
@@ -151,7 +146,7 @@ const getColumnAggregationText = (
         case AssertionStdAggregation.Native: {
             return (
                 <Typography.Text>
-                    Column <Typography.Text strong>{columnText}</Typography.Text> values are
+                    Column <Typography.Text strong>{field.path}</Typography.Text> values are
                 </Typography.Text>
             );
         }
@@ -159,7 +154,7 @@ const getColumnAggregationText = (
             // No aggregation on the column at hand. Treat the column as a set of values.
             return (
                 <Typography.Text>
-                    Column <Typography.Text strong>{columnText}</Typography.Text> values are
+                    Column <Typography.Text strong>{field.path}</Typography.Text> values are
                 </Typography.Text>
             );
     }
@@ -181,8 +176,7 @@ const getAggregationText = (
         case DatasetAssertionScope.DatasetColumn:
             return getColumnAggregationText(aggregation, fields?.length === 1 ? fields[0] : undefined);
         default:
-            console.error(`Unsupported Dataset Assertion scope ${scope} provided`);
-            return 'Dataset is';
+            throw new Error(`Unsupported Dataset Assertion scope ${scope} provided`);
     }
 };
 
@@ -320,7 +314,7 @@ const TOOLTIP_MAX_WIDTH = 440;
  */
 export const DatasetAssertionDescription = ({ assertionInfo }: Props) => {
     const { scope, aggregation, fields, operator, parameters, nativeType, nativeParameters, logic } = assertionInfo;
-    const [isLogicVisible, setIsLogicVisible] = useState(false);
+
     /**
      * Build a description component from a) input (aggregation, inputs) b) the operator text
      */
@@ -348,19 +342,7 @@ export const DatasetAssertionDescription = ({ assertionInfo }: Props) => {
                 </>
             }
         >
-            <div>{description}</div>
-            {logic && (
-                <div>
-                    <ViewLogicButton onClick={() => setIsLogicVisible(true)} type="link">
-                        View Logic
-                    </ViewLogicButton>
-                </div>
-            )}
-            <DatasetAssertionLogicModal
-                logic={logic || 'N/A'}
-                visible={isLogicVisible}
-                onClose={() => setIsLogicVisible(false)}
-            />
+            <div>{(logic && <SqlText>{logic}</SqlText>) || description}</div>
         </Popover>
     );
 };

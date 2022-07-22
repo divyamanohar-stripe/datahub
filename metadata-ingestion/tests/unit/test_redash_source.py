@@ -487,7 +487,6 @@ def test_get_dashboard_snapshot():
                     "urn:li:chart:(redash,9)",
                     "urn:li:chart:(redash,8)",
                 ],
-                datasets=[],
                 lastModified=ChangeAuditStamps(
                     created=AuditStamp(
                         time=1628882055288, actor="urn:li:corpuser:unknown"

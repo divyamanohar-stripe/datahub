@@ -11,20 +11,12 @@ from urllib.parse import urljoin
 import requests
 from dateutil import parser
 from packaging import version
-from pydantic.fields import Field
 from requests.adapters import HTTPAdapter
 
 import datahub.emitter.mce_builder as builder
-from datahub.configuration.common import AllowDenyPattern
-from datahub.configuration.source_common import EnvBasedSourceConfigBase
+from datahub.configuration.common import AllowDenyPattern, ConfigModel
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.ingestion.api.common import PipelineContext
-from datahub.ingestion.api.decorators import (
-    SupportStatus,
-    config_class,
-    platform_name,
-    support_status,
-)
 from datahub.ingestion.api.source import Source, SourceReport
 from datahub.ingestion.api.workunit import MetadataWorkUnit
 from datahub.metadata.schema_classes import (
@@ -63,59 +55,32 @@ class NifiAuthType(Enum):
     CLIENT_CERT = "CLIENT_CERT"
 
 
-class NifiSourceConfig(EnvBasedSourceConfigBase):
-    site_url: str = Field(description="URI to connect")
+class NifiSourceConfig(ConfigModel):
+    site_url: str
 
-    auth: NifiAuthType = Field(
-        default=NifiAuthType.NO_AUTH,
-        description="Nifi authentication. must be one of : NO_AUTH, SINGLE_USER, CLIENT_CERT",
-    )
+    auth: NifiAuthType = NifiAuthType.NO_AUTH
 
-    provenance_days: int = Field(
-        default=7,
-        description="time window to analyze provenance events for external datasets",
-    )  # Fetch provenance events for past 1 week
-    process_group_pattern: AllowDenyPattern = Field(
-        default=AllowDenyPattern.allow_all(),
-        description="regex patterns for filtering process groups",
-    )
+    provenance_days: int = 7  # Fetch provenance events for past 1 week
+    process_group_pattern: AllowDenyPattern = AllowDenyPattern.allow_all()
 
     # Required for nifi deployments using Remote Process Groups
-    site_name: str = Field(
-        default="default",
-        description="Site name to identify this site with, useful when using input and output ports receiving remote connections",
-    )
-    site_url_to_site_name: Dict[str, str] = Field(
-        default={},
-        description="Lookup to find site_name for site_url, required if using remote process groups in nifi flow",
-    )
+    site_name: str = "default"
+    site_url_to_site_name: Dict[str, str] = {}
 
     # Required to be set if auth is of type SINGLE_USER
-    username: Optional[str] = Field(
-        default=None, description='Nifi username, must be set for auth = "SINGLE_USER"'
-    )
-    password: Optional[str] = Field(
-        default=None, description='Nifi password, must be set for auth = "SINGLE_USER"'
-    )
+    username: Optional[str]
+    password: Optional[str]
 
     # Required to be set if auth is of type CLIENT_CERT
-    client_cert_file: Optional[str] = Field(
-        default=None,
-        description='Path to PEM file containing the public certificates for the user/client identity, must be set for auth = "CLIENT_CERT"',
-    )
-    client_key_file: Optional[str] = Field(
-        default=None, description="Path to PEM file containing the client’s secret key"
-    )
-    client_key_password: Optional[str] = Field(
-        default=None, description="The password to decrypt the client_key_file"
-    )
+    client_cert_file: Optional[str]
+    client_key_file: Optional[str]
+    client_key_password: Optional[str]
 
     # Required to be set if nifi server certificate is not signed by
     # root CA trusted by client system, e.g. self-signed certificates
-    ca_file: Optional[str] = Field(
-        default=None,
-        description="Path to PEM file containing certs for the root CA(s) for the NiFi",
-    )
+    ca_file: Optional[str]
+
+    env: str = builder.DEFAULT_ENV
 
 
 TOKEN_ENDPOINT = "/nifi-api/access/token"
@@ -193,7 +158,7 @@ class NifiProcessorProvenanceEventAnalyzer:
         s3_url = f"s3://{s3_bucket}/{s3_key}"
         s3_url = s3_url[: s3_url.rindex("/")]
         dataset_name = s3_url.replace("s3://", "").replace("/", ".")
-        platform = "s3"
+        platform = "urn:li:dataPlatform:s3"
         dataset_urn = builder.make_dataset_urn(platform, dataset_name, self.env)
         return ExternalDataset(
             platform,
@@ -303,26 +268,7 @@ class NifiSourceReport(SourceReport):
 
 
 # allowRemoteAccess
-@platform_name("Nifi")
-@config_class(NifiSourceConfig)
-@support_status(SupportStatus.CERTIFIED)
 class NifiSource(Source):
-    """
-    This plugin extracts the following:
-
-    - Nifi flow as `DataFlow` entity
-    - Ingress, egress processors, remote input and output ports as `DataJob` entity
-    - Input and output ports receiving remote connections as `Dataset` entity
-    - Lineage information between external datasets and ingress/egress processors by analyzing provenance events
-
-    Current limitations:
-
-    - Limited ingress/egress processors are supported
-      - S3: `ListS3`, `FetchS3Object`, `PutS3Object`
-      - SFTP: `ListSFTP`, `FetchSFTP`, `GetSFTP`, `PutSFTP`
-
-    """
-
     config: NifiSourceConfig
     report: NifiSourceReport
 
@@ -338,8 +284,8 @@ class NifiSource(Source):
         if self.config.site_url_to_site_name is None:
             self.config.site_url_to_site_name = {}
         if (
-            urljoin(self.config.site_url, "/nifi/")
-            not in self.config.site_url_to_site_name
+            not urljoin(self.config.site_url, "/nifi/")
+            in self.config.site_url_to_site_name
         ):
             self.config.site_url_to_site_name[
                 urljoin(self.config.site_url, "/nifi/")
@@ -620,7 +566,7 @@ class NifiSource(Source):
         if about_response.ok:
             nifi_version = about_response.json().get("about", {}).get("version")
         else:
-            logger.warning("Failed to fetch version for nifi")
+            logger.warn("Failed to fetch version for nifi")
         cluster_response = self.session.get(
             url=urljoin(self.config.site_url, CLUSTER_ENDPOINT)
         )
@@ -630,7 +576,7 @@ class NifiSource(Source):
                 cluster_response.json().get("clusterSummary", {}).get("clustered")
             )
         else:
-            logger.warning("Failed to fetch cluster summary for flow")
+            logger.warn("Failed to fetch cluster summary for flow")
         pg_response = self.session.get(
             url=urljoin(self.config.site_url, PG_ENDPOINT) + "root"
         )
@@ -715,7 +661,7 @@ class NifiSource(Source):
 
             attempts = 5  # wait for at most 5 attempts 5*1= 5 seconds
             while (not provenance.get("finished", False)) and attempts > 0:
-                logger.warning(
+                logger.warn(
                     f"Provenance query not completed, attempts left : {attempts}"
                 )
                 # wait until the uri returns percentcomplete 100
@@ -757,7 +703,7 @@ class NifiSource(Source):
                 f"provenance events could not be fetched for processor \
                     {processor.id} of type {processor.name}",
             )
-            logger.warning(provenance_response.text)
+            logger.warn(provenance_response.text)
         return
 
     def report_warning(self, key: str, reason: str) -> None:
@@ -774,7 +720,7 @@ class NifiSource(Source):
         rootpg = self.nifi_flow.root_process_group
         flow_name = rootpg.name  # self.config.site_name
         flow_urn = builder.make_data_flow_urn(NIFI, rootpg.id, self.config.env)
-        flow_properties = {}
+        flow_properties = dict()
         if self.nifi_flow.clustered is not None:
             flow_properties["clustered"] = str(self.nifi_flow.clustered)
         if self.nifi_flow.version is not None:

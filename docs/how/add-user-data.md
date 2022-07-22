@@ -4,7 +4,7 @@ This guide shares how you can add user metadata in DataHub. Usually you would wa
 
 :::note
 
-This does not allow you to add new users for Authentication. If you want to add a new user in DataHub for Login please refer to [JaaS Authentication](../authentication/guides/jaas.md)
+This does not allow you to add new users for Authentication. If you want to add a new user in DataHub for Login please refer to [JaaS Authentication](./auth/jaas.md)
 
 :::
 
@@ -53,7 +53,7 @@ Define an [ingestion recipe](https://datahubproject.io/docs/metadata-ingestion/#
 
 ```
 ---
-# see https://datahubproject.io/docs/generated/ingestion/sources/file for complete documentation
+# see https://datahubproject.io/docs/metadata-ingestion/source_docs/file for complete documentation
 source:
   type: "file"
   config:

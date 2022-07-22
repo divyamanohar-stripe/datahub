@@ -80,7 +80,7 @@ const LineageBadge = styled(Badge)`
     }
 `;
 
-export const BreadcrumbItem = styled(Breadcrumb.Item)<{ disabled?: boolean }>`
+const BreadcrumbItem = styled(Breadcrumb.Item)<{ disabled: boolean }>`
     &&& :hover {
         color: ${(props) => (props.disabled ? ANTD_GRAY[7] : props.theme.styles['primary-color'])};
     }

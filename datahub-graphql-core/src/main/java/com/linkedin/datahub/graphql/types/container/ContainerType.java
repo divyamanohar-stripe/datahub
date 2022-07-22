@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableSet;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.Container;
-import com.linkedin.datahub.graphql.generated.Entity;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.types.container.mappers.ContainerMapper;
 import com.linkedin.entity.EntityResponse;
@@ -17,12 +16,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 
-public class ContainerType implements com.linkedin.datahub.graphql.types.EntityType<Container, String> {
+public class ContainerType implements com.linkedin.datahub.graphql.types.EntityType<Container> {
 
   static final Set<String> ASPECTS_TO_FETCH = ImmutableSet.of(
       Constants.DATA_PLATFORM_INSTANCE_ASPECT_NAME,
@@ -47,11 +45,6 @@ public class ContainerType implements com.linkedin.datahub.graphql.types.EntityT
   @Override
   public EntityType type() {
     return EntityType.CONTAINER;
-  }
-
-  @Override
-  public Function<Entity, String> getKeyProvider() {
-    return Entity::getUrn;
   }
 
   @Override

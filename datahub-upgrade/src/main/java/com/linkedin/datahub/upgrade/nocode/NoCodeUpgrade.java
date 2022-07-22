@@ -38,7 +38,7 @@ public class NoCodeUpgrade implements Upgrade {
         entityRegistry,
         systemAuthentication,
         entityClient);
-    _cleanupSteps = buildCleanupSteps();
+    _cleanupSteps = buildCleanupSteps(server);
   }
 
   @Override
@@ -56,7 +56,7 @@ public class NoCodeUpgrade implements Upgrade {
     return _cleanupSteps;
   }
 
-  private List<UpgradeCleanupStep> buildCleanupSteps() {
+  private List<UpgradeCleanupStep> buildCleanupSteps(final EbeanServer server) {
     return Collections.emptyList();
   }
 

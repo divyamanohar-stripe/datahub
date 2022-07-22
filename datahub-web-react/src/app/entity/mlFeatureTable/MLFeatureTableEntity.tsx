@@ -14,8 +14,6 @@ import { SidebarTagsSection } from '../shared/containers/profile/sidebar/Sidebar
 import MlFeatureTableFeatures from './profile/features/MlFeatureTableFeatures';
 import Sources from './profile/Sources';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
-import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
-import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
 
 /**
  * Definition of the DataHub MLFeatureTable entity.
@@ -67,7 +65,6 @@ export class MLFeatureTableEntity implements Entity<MlFeatureTable> {
             entityType={EntityType.MlfeatureTable}
             useEntityQuery={useGetMlFeatureTableQuery}
             getOverrideProperties={this.getOverridePropertiesFromEntity}
-            headerDropdownItems={new Set([EntityMenuItems.COPY_URL, EntityMenuItems.UPDATE_DEPRECATION])}
             tabs={[
                 {
                     name: 'Features',
@@ -76,10 +73,6 @@ export class MLFeatureTableEntity implements Entity<MlFeatureTable> {
                 {
                     name: 'Sources',
                     component: Sources,
-                },
-                {
-                    name: 'Properties',
-                    component: PropertiesTab,
                 },
                 {
                     name: 'Documentation',
@@ -133,7 +126,6 @@ export class MLFeatureTableEntity implements Entity<MlFeatureTable> {
                 owners={data.ownership?.owners}
                 logoUrl={data.platform?.properties?.logoUrl}
                 platformName={data.platform?.displayName}
-                platformInstanceId={data.dataPlatformInstance?.instanceId}
             />
         );
     };
@@ -149,7 +141,7 @@ export class MLFeatureTableEntity implements Entity<MlFeatureTable> {
     };
 
     displayName = (data: MlFeatureTable) => {
-        return data.name || data.urn;
+        return data.name;
     };
 
     getGenericEntityProperties = (mlFeatureTable: MlFeatureTable) => {

@@ -42,6 +42,7 @@ public class TagUpdateInputMapper implements InputModelMapper<TagUpdateInput, Co
     auditStamp.setActor(actor, SetMode.IGNORE_NULL);
     auditStamp.setTime(System.currentTimeMillis());
 
+
     // Creator is the owner.
     final Ownership ownership = new Ownership();
     final Owner owner = new Owner();

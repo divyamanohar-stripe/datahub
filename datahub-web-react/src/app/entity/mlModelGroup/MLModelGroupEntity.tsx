@@ -13,7 +13,6 @@ import { SidebarTagsSection } from '../shared/containers/profile/sidebar/Sidebar
 import { useGetMlModelGroupQuery } from '../../../graphql/mlModelGroup.generated';
 import ModelGroupModels from './profile/ModelGroupModels';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
-import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
 
 /**
  * Definition of the DataHub MlModelGroup entity.
@@ -65,7 +64,6 @@ export class MLModelGroupEntity implements Entity<MlModelGroup> {
             entityType={EntityType.MlmodelGroup}
             useEntityQuery={useGetMlModelGroupQuery}
             getOverrideProperties={this.getOverridePropertiesFromEntity}
-            headerDropdownItems={new Set([EntityMenuItems.COPY_URL, EntityMenuItems.UPDATE_DEPRECATION])}
             tabs={[
                 {
                     name: 'Models',
@@ -120,7 +118,7 @@ export class MLModelGroupEntity implements Entity<MlModelGroup> {
     };
 
     displayName = (data: MlModelGroup) => {
-        return data.name || data.urn;
+        return data.name;
     };
 
     getGenericEntityProperties = (mlModelGroup: MlModelGroup) => {

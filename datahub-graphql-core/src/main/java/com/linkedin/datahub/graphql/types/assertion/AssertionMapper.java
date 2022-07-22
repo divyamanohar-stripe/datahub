@@ -3,7 +3,6 @@ package com.linkedin.datahub.graphql.types.assertion;
 import com.linkedin.assertion.AssertionInfo;
 import com.linkedin.common.DataPlatformInstance;
 import com.linkedin.common.urn.Urn;
-import com.linkedin.data.DataMap;
 import com.linkedin.datahub.graphql.generated.Assertion;
 import com.linkedin.datahub.graphql.generated.AssertionStdAggregation;
 import com.linkedin.datahub.graphql.generated.AssertionStdOperator;
@@ -16,7 +15,6 @@ import com.linkedin.datahub.graphql.generated.DatasetAssertionInfo;
 import com.linkedin.datahub.graphql.generated.DatasetAssertionScope;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.SchemaFieldRef;
-import com.linkedin.datahub.graphql.types.common.mappers.DataPlatformInstanceAspectMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.StringMapMapper;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.entity.EnvelopedAspect;
@@ -42,9 +40,7 @@ public class AssertionMapper {
     }
     final EnvelopedAspect envelopedPlatformInstance = aspects.get(Constants.DATA_PLATFORM_INSTANCE_ASPECT_NAME);
     if (envelopedPlatformInstance != null) {
-      final DataMap data = envelopedPlatformInstance.getValue().data();
-      result.setPlatform(mapPlatform(new DataPlatformInstance(data)));
-      result.setDataPlatformInstance(DataPlatformInstanceAspectMapper.map(new DataPlatformInstance(data)));
+      result.setPlatform(mapPlatform(new DataPlatformInstance(envelopedPlatformInstance.getValue().data())));
     } else {
       final DataPlatform unknownPlatform = new DataPlatform();
       unknownPlatform.setUrn(Constants.UNKNOWN_DATA_PLATFORM);

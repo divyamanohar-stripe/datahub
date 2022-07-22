@@ -8,11 +8,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.linkedin.common.GlossaryTermAssociation;
 import com.linkedin.common.urn.GlossaryTermUrn;
 import com.linkedin.tag.TagProperties;
-import com.linkedin.util.Pair;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,14 +30,14 @@ public class ProtobufExtensionUtil {
     }
 
     public enum DataHubMetadataType {
-        PROPERTY, TAG, TAG_LIST, TERM, OWNER, DOMAIN, DEPRECATION;
+        PROPERTY, TAG, TAG_LIST, TERM, OWNER, DOMAIN;
 
         public static final String PROTOBUF_TYPE = "DataHubMetadataType";
     }
 
-    public static List<Pair<Descriptors.FieldDescriptor, Object>> filterByDataHubType(List<Pair<Descriptors.FieldDescriptor, Object>> options,
+    public static Map<Descriptors.FieldDescriptor, Object> filterByDataHubType(Map<Descriptors.FieldDescriptor, Object> options,
                                                                                ExtensionRegistry registry, DataHubMetadataType filterType) {
-        return options.stream()
+        return options.entrySet().stream()
                 .filter(entry -> {
                     DescriptorProtos.FieldDescriptorProto extendedProtoOptions = extendProto(entry.getKey().toProto(), registry);
                     Optional<DataHubMetadataType> dataHubMetadataType = extendedProtoOptions.getOptions().getAllFields().entrySet().stream()
@@ -57,7 +55,8 @@ public class ProtobufExtensionUtil {
                             .findFirst();
 
                     return filterType.equals(dataHubMetadataType.orElse(DataHubMetadataType.PROPERTY));
-                }).collect(Collectors.toList());
+                })
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     public static Stream<Map.Entry<String, String>> getProperties(Descriptors.FieldDescriptor field, DescriptorProtos.DescriptorProto value)  {
@@ -68,12 +67,12 @@ public class ProtobufExtensionUtil {
         });
     }
 
-    public static Stream<TagProperties> extractTagPropertiesFromOptions(List<Pair<Descriptors.FieldDescriptor, Object>> options, ExtensionRegistry registry) {
-        Stream<TagProperties> tags = filterByDataHubType(options, registry, DataHubMetadataType.TAG).stream()
+    public static Stream<TagProperties> extractTagPropertiesFromOptions(Map<Descriptors.FieldDescriptor, Object> options, ExtensionRegistry registry) {
+        Stream<TagProperties> tags = filterByDataHubType(options, registry, DataHubMetadataType.TAG).entrySet().stream()
                 .filter(e -> e.getKey().isExtension())
                 .flatMap(extEntry -> {
                     if (extEntry.getKey().isRepeated()) {
-                        return ((Collection<?>) extEntry.getValue()).stream().map(v -> Pair.of(extEntry.getKey(), v));
+                        return ((Collection<?>) extEntry.getValue()).stream().map(v -> Map.entry(extEntry.getKey(), v));
                     } else {
                         return Stream.of(extEntry);
                     }
@@ -104,7 +103,7 @@ public class ProtobufExtensionUtil {
                     }
                 }).filter(Objects::nonNull);
 
-        Stream<TagProperties> tagListTags = filterByDataHubType(options, registry, DataHubMetadataType.TAG_LIST).stream()
+        Stream<TagProperties> tagListTags = filterByDataHubType(options, registry, DataHubMetadataType.TAG_LIST).entrySet().stream()
                 .filter(e -> e.getKey().isExtension())
                 .flatMap(entry -> {
                     switch (entry.getKey().getJavaType()) {
@@ -118,26 +117,16 @@ public class ProtobufExtensionUtil {
                     }
                 }).filter(Objects::nonNull);
 
-        Stream<TagProperties> deprecationTag;
-        if (options.stream().anyMatch(opt -> opt.getKey().getFullName().endsWith(".deprecated")
-                && opt.getKey().getFullName().startsWith("google.protobuf.")
-                && opt.getKey().getJavaType() == Descriptors.FieldDescriptor.JavaType.BOOLEAN
-                && (Boolean) opt.getValue())) {
-            deprecationTag = Stream.of(new TagProperties().setName("deprecated").setColorHex("#FF0000"));
-        } else {
-            deprecationTag = Stream.empty();
-        }
-
-        return Stream.of(tags, tagListTags, deprecationTag).reduce(Stream::concat).orElse(Stream.empty());
+        return Stream.concat(tags, tagListTags);
     }
 
-    public static Stream<GlossaryTermAssociation> extractTermAssociationsFromOptions(List<Pair<Descriptors.FieldDescriptor, Object>> fieldOptions,
+    public static Stream<GlossaryTermAssociation> extractTermAssociationsFromOptions(Map<Descriptors.FieldDescriptor, Object> options,
                                                                                      ExtensionRegistry registry) {
-        return filterByDataHubType(fieldOptions, registry, DataHubMetadataType.TERM).stream()
+        return filterByDataHubType(options, registry, DataHubMetadataType.TERM).entrySet().stream()
                 .filter(e -> e.getKey().isExtension())
                 .flatMap(extEntry -> {
                     if (extEntry.getKey().isRepeated()) {
-                        return ((Collection<?>) extEntry.getValue()).stream().map(v -> Pair.of(extEntry.getKey(), v));
+                        return ((Collection<?>) extEntry.getValue()).stream().map(v -> Map.entry(extEntry.getKey(), v));
                     } else {
                         return Stream.of(extEntry);
                     }

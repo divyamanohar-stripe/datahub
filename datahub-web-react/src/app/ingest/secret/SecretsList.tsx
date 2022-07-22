@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Button, Empty, message, Modal, Pagination, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import * as QueryString from 'query-string';
-import { useLocation } from 'react-router';
 import styled from 'styled-components';
 import {
     useCreateSecretMutation,
@@ -14,8 +12,6 @@ import TabToolbar from '../../entity/shared/components/styled/TabToolbar';
 import { SecretBuilderModal } from './SecretBuilderModal';
 import { SecretBuilderState } from './types';
 import { StyledTable } from '../../entity/shared/components/styled/StyledTable';
-import { SearchBar } from '../../search/SearchBar';
-import { useEntityRegistry } from '../../useEntityRegistry';
 
 const DeleteButtonContainer = styled.div`
     display: flex;
@@ -30,13 +26,6 @@ const SourcePaginationContainer = styled.div`
 const DEFAULT_PAGE_SIZE = 25;
 
 export const SecretsList = () => {
-    const entityRegistry = useEntityRegistry();
-    const location = useLocation();
-    const params = QueryString.parse(location.search, { arrayFormat: 'comma' });
-    const paramsQuery = (params?.query as string) || undefined;
-    const [query, setQuery] = useState<undefined | string>(undefined);
-    useEffect(() => setQuery(paramsQuery), [paramsQuery]);
-
     const [page, setPage] = useState(1);
 
     const pageSize = DEFAULT_PAGE_SIZE;
@@ -53,7 +42,6 @@ export const SecretsList = () => {
             input: {
                 start,
                 count: pageSize,
-                query,
             },
         },
         fetchPolicy: 'no-cache',
@@ -175,22 +163,6 @@ export const SecretsList = () => {
                             <PlusOutlined /> Create new secret
                         </Button>
                     </div>
-                    <SearchBar
-                        initialQuery={query || ''}
-                        placeholderText="Search secrets..."
-                        suggestions={[]}
-                        style={{
-                            maxWidth: 220,
-                            padding: 0,
-                        }}
-                        inputStyle={{
-                            height: 32,
-                            fontSize: 12,
-                        }}
-                        onSearch={() => null}
-                        onQueryChange={(q) => setQuery(q)}
-                        entityRegistry={entityRegistry}
-                    />
                 </TabToolbar>
                 <StyledTable
                     columns={tableColumns}

@@ -22,9 +22,6 @@ query appConfig {
         analyticsConfig {
             enabled
         }
-        authConfig {
-            tokenAuthEnabled
-        }
         identityManagementConfig {
             enabled
         }
@@ -36,12 +33,6 @@ query appConfig {
         }
         visualConfig {
             logoUrl
-        }
-        telemetryConfig {
-            enableThirdPartyLogging
-        }
-        testsConfig {
-            enabled
         }
     }
 }

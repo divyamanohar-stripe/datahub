@@ -142,13 +142,12 @@ export class MLPrimaryKeyEntity implements Entity<MlPrimaryKey> {
                 description={data.description || ''}
                 owners={data.ownership?.owners}
                 platform={platform}
-                platformInstanceId={data.dataPlatformInstance?.instanceId}
             />
         );
     };
 
     displayName = (data: MlPrimaryKey) => {
-        return data.name || data.urn;
+        return data.name;
     };
 
     getGenericEntityProperties = (mlPrimaryKey: MlPrimaryKey) => {

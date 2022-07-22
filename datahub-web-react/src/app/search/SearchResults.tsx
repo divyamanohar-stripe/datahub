@@ -24,12 +24,6 @@ import { SearchResultsRecommendations } from './SearchResultsRecommendations';
 import { useGetAuthenticatedUser } from '../useGetAuthenticatedUser';
 import { SearchResultsInterface } from '../entity/shared/components/styled/search/types';
 import SearchExtendedMenu from '../entity/shared/components/styled/search/SearchExtendedMenu';
-import {
-    CombinedSearchResult,
-    combineSiblingsInSearchResults,
-    SEPARATE_SIBLINGS_URL_PARAM,
-} from '../entity/shared/siblingUtils';
-import { CompactEntityNameList } from '../recommendations/renderer/component/CompactEntityNameList';
 
 const ResultList = styled(List)`
     &&& {
@@ -58,7 +52,6 @@ const FiltersContainer = styled.div`
 const ResultContainer = styled.div`
     flex: 1;
     margin-bottom: 20px;
-    max-width: calc(100% - 260px);
 `;
 
 const PaginationControlContainer = styled.div`
@@ -115,10 +108,6 @@ const SearchMenuContainer = styled.div`
     margin-right: 10px;
 `;
 
-const SiblingResultContainer = styled.div`
-    margin-top: 6px;
-`;
-
 interface Props {
     query: string;
     page: number;
@@ -141,8 +130,6 @@ interface Props {
     }) => Promise<SearchResultsInterface | null | undefined>;
     entityFilters: EntityType[];
     filtersWithoutEntities: FacetFilterInput[];
-    numResultsPerPage: number;
-    setNumResultsPerPage: (numResults: number) => void;
 }
 
 export const SearchResults = ({
@@ -157,8 +144,6 @@ export const SearchResults = ({
     callSearchOnVariables,
     entityFilters,
     filtersWithoutEntities,
-    numResultsPerPage,
-    setNumResultsPerPage,
 }: Props) => {
     const pageStart = searchResponse?.start || 0;
     const pageSize = searchResponse?.count || 0;
@@ -183,118 +168,93 @@ export const SearchResults = ({
         onChangeFilters(newFilters);
     };
 
-    const updateNumResults = (_currentNum: number, newNum: number) => {
-        setNumResultsPerPage(newNum);
-    };
-
     const history = useHistory();
-
-    const combinedSiblingSearchResults = combineSiblingsInSearchResults(searchResponse?.searchResults);
 
     return (
         <>
             {loading && <Message type="loading" content="Loading..." style={{ marginTop: '10%' }} />}
-            <div>
-                <SearchBody>
-                    <FiltersContainer>
-                        <FiltersHeader>Filter</FiltersHeader>
-                        <SearchFilterContainer>
-                            <SearchFilters
-                                loading={loading}
-                                facets={filters || []}
-                                selectedFilters={selectedFilters}
-                                onFilterSelect={onFilterSelect}
+            <SearchBody>
+                <FiltersContainer>
+                    <FiltersHeader>Filter</FiltersHeader>
+                    <SearchFilterContainer>
+                        <SearchFilters
+                            loading={loading}
+                            facets={filters || []}
+                            selectedFilters={selectedFilters}
+                            onFilterSelect={onFilterSelect}
+                        />
+                    </SearchFilterContainer>
+                </FiltersContainer>
+                <ResultContainer>
+                    <PaginationInfoContainer>
+                        <Typography.Paragraph>
+                            Showing{' '}
+                            <b>
+                                {lastResultIndex > 0 ? (page - 1) * pageSize + 1 : 0} - {lastResultIndex}
+                            </b>{' '}
+                            of <b>{totalResults}</b> results
+                        </Typography.Paragraph>
+                        <SearchMenuContainer>
+                            <SearchExtendedMenu
+                                callSearchOnVariables={callSearchOnVariables}
+                                entityFilters={entityFilters}
+                                filters={filtersWithoutEntities}
+                                query={query}
                             />
-                        </SearchFilterContainer>
-                    </FiltersContainer>
-                    <ResultContainer>
-                        <PaginationInfoContainer>
-                            <Typography.Paragraph>
-                                Showing{' '}
-                                <b>
-                                    {lastResultIndex > 0 ? (page - 1) * pageSize + 1 : 0} - {lastResultIndex}
-                                </b>{' '}
-                                of <b>{totalResults}</b> results
-                            </Typography.Paragraph>
-                            <SearchMenuContainer>
-                                <SearchExtendedMenu
-                                    callSearchOnVariables={callSearchOnVariables}
-                                    entityFilters={entityFilters}
-                                    filters={filtersWithoutEntities}
-                                    query={query}
-                                />
-                            </SearchMenuContainer>
-                        </PaginationInfoContainer>
-                        {!loading && (
-                            <>
-                                <ResultList<React.FC<ListProps<CombinedSearchResult>>>
-                                    dataSource={combinedSiblingSearchResults}
-                                    split={false}
-                                    locale={{
-                                        emptyText: (
-                                            <NoDataContainer>
-                                                <Empty
-                                                    style={{ fontSize: 18, color: ANTD_GRAY[8] }}
-                                                    description={`No results found for "${query}"`}
-                                                />
-                                                <Button
-                                                    onClick={() =>
-                                                        navigateToSearchUrl({ query: '*', page: 0, history })
-                                                    }
-                                                >
-                                                    <RocketOutlined /> Explore your metadata
-                                                </Button>
-                                            </NoDataContainer>
-                                        ),
-                                    }}
-                                    renderItem={(item, index) => (
-                                        <>
-                                            <List.Item
-                                                style={{ padding: 0 }}
-                                                onClick={() => onResultClick(item, index)}
-                                                // class name for counting in test purposes only
-                                                className="test-search-result"
+                        </SearchMenuContainer>
+                    </PaginationInfoContainer>
+                    {!loading && (
+                        <>
+                            <ResultList<React.FC<ListProps<SearchResult>>>
+                                dataSource={searchResponse?.searchResults}
+                                split={false}
+                                locale={{
+                                    emptyText: (
+                                        <NoDataContainer>
+                                            <Empty
+                                                style={{ fontSize: 18, color: ANTD_GRAY[8] }}
+                                                description={`No results found for "${query}"`}
+                                            />
+                                            <Button
+                                                onClick={() => navigateToSearchUrl({ query: '*', page: 0, history })}
                                             >
-                                                {entityRegistry.renderSearchResult(item.entity.type, item)}
-                                            </List.Item>
-                                            {item.matchedEntities && item.matchedEntities.length > 0 && (
-                                                <SiblingResultContainer className="test-search-result-sibling-section">
-                                                    <CompactEntityNameList
-                                                        linkUrlParams={{ [SEPARATE_SIBLINGS_URL_PARAM]: true }}
-                                                        entities={item.matchedEntities}
-                                                    />
-                                                </SiblingResultContainer>
-                                            )}
-                                            <ThinDivider />
-                                        </>
-                                    )}
-                                />
-                                <PaginationControlContainer>
-                                    <Pagination
-                                        current={page}
-                                        pageSize={numResultsPerPage}
-                                        total={totalResults}
-                                        showLessItems
-                                        onChange={onChangePage}
-                                        showSizeChanger={totalResults > SearchCfg.RESULTS_PER_PAGE}
-                                        onShowSizeChange={updateNumResults}
-                                        pageSizeOptions={['10', '20', '50']}
-                                    />
-                                </PaginationControlContainer>
-                                {authenticatedUserUrn && (
-                                    <SearchResultsRecommendationsContainer>
-                                        <SearchResultsRecommendations
-                                            userUrn={authenticatedUserUrn}
-                                            query={query}
-                                            filters={selectedFilters}
-                                        />
-                                    </SearchResultsRecommendationsContainer>
+                                                <RocketOutlined /> Explore your metadata
+                                            </Button>
+                                        </NoDataContainer>
+                                    ),
+                                }}
+                                renderItem={(item, index) => (
+                                    <>
+                                        <List.Item style={{ padding: 0 }} onClick={() => onResultClick(item, index)}>
+                                            {entityRegistry.renderSearchResult(item.entity.type, item)}
+                                        </List.Item>
+                                        <ThinDivider />
+                                    </>
                                 )}
-                            </>
-                        )}
-                    </ResultContainer>
-                </SearchBody>
-            </div>
+                            />
+                            <PaginationControlContainer>
+                                <Pagination
+                                    current={page}
+                                    pageSize={SearchCfg.RESULTS_PER_PAGE}
+                                    total={totalResults}
+                                    showLessItems
+                                    onChange={onChangePage}
+                                    showSizeChanger={false}
+                                />
+                            </PaginationControlContainer>
+                            {authenticatedUserUrn && (
+                                <SearchResultsRecommendationsContainer>
+                                    <SearchResultsRecommendations
+                                        userUrn={authenticatedUserUrn}
+                                        query={query}
+                                        filters={selectedFilters}
+                                    />
+                                </SearchResultsRecommendationsContainer>
+                            )}
+                        </>
+                    )}
+                </ResultContainer>
+            </SearchBody>
         </>
     );
 };

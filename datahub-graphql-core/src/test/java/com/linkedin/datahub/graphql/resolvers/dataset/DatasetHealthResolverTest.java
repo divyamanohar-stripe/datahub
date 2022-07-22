@@ -19,7 +19,6 @@ import com.linkedin.metadata.timeseries.TimeseriesAspectService;
 import com.linkedin.timeseries.GenericTable;
 import graphql.schema.DataFetchingEnvironment;
 import java.util.Collections;
-import java.util.List;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
 
@@ -91,10 +90,9 @@ public class DatasetHealthResolverTest {
     parentDataset.setUrn(TEST_DATASET_URN);
     Mockito.when(mockEnv.getSource()).thenReturn(parentDataset);
 
-    List<Health> result = resolver.get(mockEnv).get();
+    Health result = resolver.get(mockEnv).get();
     assertNotNull(result);
-    assertEquals(result.size(), 1);
-    assertEquals(result.get(0).getStatus(), HealthStatus.PASS);
+    assertEquals(result.getStatus(), HealthStatus.PASS);
   }
 
   @Test
@@ -131,8 +129,8 @@ public class DatasetHealthResolverTest {
     parentDataset.setUrn(TEST_DATASET_URN);
     Mockito.when(mockEnv.getSource()).thenReturn(parentDataset);
 
-    List<Health> result = resolver.get(mockEnv).get();
-    assertEquals(result.size(), 0);
+    Health result = resolver.get(mockEnv).get();
+    assertNull(result);
 
     Mockito.verify(mockAspectService, Mockito.times(0)).getAggregatedStats(
         Mockito.any(),
@@ -208,8 +206,8 @@ public class DatasetHealthResolverTest {
     parentDataset.setUrn(TEST_DATASET_URN);
     Mockito.when(mockEnv.getSource()).thenReturn(parentDataset);
 
-    List<Health> result = resolver.get(mockEnv).get();
-    assertEquals(result.size(), 1);
-    assertEquals(result.get(0).getStatus(), HealthStatus.FAIL);
+    Health result = resolver.get(mockEnv).get();
+    assertNotNull(result);
+    assertEquals(result.getStatus(), HealthStatus.FAIL);
   }
 }

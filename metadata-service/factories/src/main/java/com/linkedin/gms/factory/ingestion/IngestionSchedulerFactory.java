@@ -32,10 +32,10 @@ public class IngestionSchedulerFactory {
   @Autowired
   private ConfigurationProvider _configProvider;
 
-  @Value("${ingestion.scheduler.delayIntervalSeconds:45}") // Boot up ingestion source cache after waiting 45 seconds for startup.
+  @Value("${ingestion.scheduler.delayIntervalSeconds:30}")
   private Integer _delayIntervalSeconds;
 
-  @Value("${ingestion.scheduler.refreshIntervalSeconds:43200}") // By default, refresh ingestion sources 2 times per day.
+  @Value("${ingestion.scheduler.refreshIntervalSeconds:86400}")
   private Integer _refreshIntervalSeconds;
 
   @Bean(name = "ingestionScheduler")

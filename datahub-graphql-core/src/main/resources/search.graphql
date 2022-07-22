@@ -566,13 +566,3 @@ type BrowsePath {
     """
     path: [String!]!
 }
-
-"""
-A set of filter criteria
-"""
-input FilterInput {
-  """
-  A list of conjunctive filters
-  """
-  and: [FacetFilterInput!]!
-}

@@ -1,7 +1,5 @@
 import { CopyOutlined, DeleteOutlined, PlusOutlined, RedoOutlined } from '@ant-design/icons';
-import React, { useEffect, useState } from 'react';
-import * as QueryString from 'query-string';
-import { useLocation } from 'react-router';
+import React, { useState } from 'react';
 import { Button, Empty, Image, message, Modal, Pagination, Tooltip, Typography } from 'antd';
 import styled from 'styled-components';
 import cronstrue from 'cronstrue';
@@ -26,8 +24,6 @@ import {
 import { DEFAULT_EXECUTOR_ID, SourceBuilderState } from './builder/types';
 import { UpdateIngestionSourceInput } from '../../../types.generated';
 import { capitalizeFirstLetter } from '../../shared/textUtil';
-import { SearchBar } from '../../search/SearchBar';
-import { useEntityRegistry } from '../../useEntityRegistry';
 
 const SourceContainer = styled.div``;
 
@@ -70,13 +66,6 @@ const removeExecutionsFromIngestionSource = (source) => {
 };
 
 export const IngestionSourceList = () => {
-    const entityRegistry = useEntityRegistry();
-    const location = useLocation();
-    const params = QueryString.parse(location.search, { arrayFormat: 'comma' });
-    const paramsQuery = (params?.query as string) || undefined;
-    const [query, setQuery] = useState<undefined | string>(undefined);
-    useEffect(() => setQuery(paramsQuery), [paramsQuery]);
-
     const [page, setPage] = useState(1);
 
     const pageSize = DEFAULT_PAGE_SIZE;
@@ -94,7 +83,6 @@ export const IngestionSourceList = () => {
             input: {
                 start,
                 count: pageSize,
-                query,
             },
         },
     });
@@ -356,17 +344,15 @@ export const IngestionSourceList = () => {
             key: 'x',
             render: (_, record: any) => (
                 <ActionButtonContainer>
-                    {navigator.clipboard && (
-                        <Tooltip title="Copy Ingestion Source URN">
-                            <Button
-                                style={{ marginRight: 16 }}
-                                icon={<CopyOutlined />}
-                                onClick={() => {
-                                    navigator.clipboard.writeText(record.urn);
-                                }}
-                            />
-                        </Tooltip>
-                    )}
+                    <Tooltip title="Copy Ingestion Source URN">
+                        <Button
+                            style={{ marginRight: 16 }}
+                            icon={<CopyOutlined />}
+                            onClick={() => {
+                                navigator.clipboard.writeText(record.urn);
+                            }}
+                        />
+                    </Tooltip>
                     <Button style={{ marginRight: 16 }} onClick={() => onEdit(record.urn)}>
                         EDIT
                     </Button>
@@ -418,22 +404,6 @@ export const IngestionSourceList = () => {
                             <RedoOutlined /> Refresh
                         </Button>
                     </div>
-                    <SearchBar
-                        initialQuery={query || ''}
-                        placeholderText="Search sources..."
-                        suggestions={[]}
-                        style={{
-                            maxWidth: 220,
-                            padding: 0,
-                        }}
-                        inputStyle={{
-                            height: 32,
-                            fontSize: 12,
-                        }}
-                        onSearch={() => null}
-                        onQueryChange={(q) => setQuery(q)}
-                        entityRegistry={entityRegistry}
-                    />
                 </TabToolbar>
                 <StyledTable
                     columns={tableColumns}

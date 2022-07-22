@@ -20,8 +20,6 @@ export enum EventType {
     SearchAcrossLineageEvent,
     SearchAcrossLineageResultsViewEvent,
     DownloadAsCsvEvent,
-    SignUpEvent,
-    ResetCredentialsEvent,
 }
 
 /**
@@ -43,14 +41,6 @@ export interface PageViewEvent extends BaseEvent {
 }
 
 /**
- * Logged on successful new user sign up.
- */
-export interface SignUpEvent extends BaseEvent {
-    type: EventType.SignUpEvent;
-    title: string;
-}
-
-/**
  * Logged on user successful login.
  */
 export interface LogInEvent extends BaseEvent {
@@ -62,13 +52,6 @@ export interface LogInEvent extends BaseEvent {
  */
 export interface LogOutEvent extends BaseEvent {
     type: EventType.LogOutEvent;
-}
-
-/**
- * Logged on user resetting their credentials
- */
-export interface ResetCredentialsEvent extends BaseEvent {
-    type: EventType.ResetCredentialsEvent;
 }
 
 /**
@@ -206,10 +189,8 @@ export interface DownloadAsCsvEvent extends BaseEvent {
  */
 export type Event =
     | PageViewEvent
-    | SignUpEvent
     | LogInEvent
     | LogOutEvent
-    | ResetCredentialsEvent
     | SearchEvent
     | SearchResultsViewEvent
     | SearchResultClickEvent

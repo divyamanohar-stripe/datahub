@@ -12,7 +12,6 @@ import {
     Tag as TagType,
     CorpUser,
     CorpGroup,
-    DataPlatformInstance,
 } from '../../types.generated';
 import { StyledTag } from '../entity/shared/components/styled/StyledTag';
 import { capitalizeFirstLetter } from '../shared/textUtil';
@@ -126,17 +125,6 @@ export const SearchFilterLabel = ({ aggregation, field }: Props) => {
                 <span>
                     {truncatedDisplayName} ({countText})
                 </span>
-            </Tooltip>
-        );
-    }
-
-    if (aggregation.entity?.type === EntityType.DataPlatformInstance) {
-        const platform = aggregation.entity as DataPlatformInstance;
-        const displayName = platform.instanceId;
-        const truncatedDisplayName = displayName.length > 25 ? `${displayName.slice(0, 25)}...` : displayName;
-        return (
-            <Tooltip title={displayName}>
-                {truncatedDisplayName} ({countText})
             </Tooltip>
         );
     }

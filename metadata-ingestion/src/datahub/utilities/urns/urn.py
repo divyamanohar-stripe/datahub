@@ -21,7 +21,7 @@ class Urn:
     def __init__(
         self, entity_type: str, entity_id: List[str], urn_domain: str = LI_DOMAIN
     ):
-        if not entity_id:
+        if len(entity_id) == 0:
             raise InvalidUrnError("Empty entity id.")
         self._validate_entity_type(entity_type)
         self._validate_entity_id(entity_id)
@@ -122,9 +122,9 @@ class Urn:
                 part_start = i + 1
 
         if start_paren_count != 0:
-            raise InvalidUrnError(f"{entity_id}, mismatched paren nesting")
+            raise InvalidUrnError(f"{entity_id}, mismtached paren nesting")
 
-        parts.append(entity_id[part_start:-1])
+        parts.append(entity_id[part_start : len(entity_id) - 1])
 
         return parts
 
@@ -144,19 +144,18 @@ class Urn:
             return self._entity_id[0]
         result = ""
         for part in self._entity_id:
-            result = result + str(part) + ","
+            result = result + part + ","
         return f"({result[:-1]})"
 
     def __hash__(self) -> int:
         return hash((self._domain, self._entity_type) + tuple(self._entity_id))
 
     def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Urn):
+            return False
+
         return (
-            (
-                self._entity_id == other._entity_id
-                and self._domain == other._domain
-                and self._entity_type == other._entity_type
-            )
-            if isinstance(other, Urn)
-            else False
+            self._entity_id == other._entity_id
+            and self._domain == other._domain
+            and self._entity_type == other._entity_type
         )

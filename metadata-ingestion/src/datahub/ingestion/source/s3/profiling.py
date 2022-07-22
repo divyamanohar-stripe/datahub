@@ -1,9 +1,9 @@
 import dataclasses
+from math import log10
 from typing import Any, Dict, List, Optional
 
 import pydantic
 from pandas import DataFrame
-from pydantic.fields import Field
 from pydeequ.analyzers import (
     AnalysisRunBuilder,
     AnalysisRunner,
@@ -47,7 +47,7 @@ from datahub.metadata.schema_classes import (
     QuantileClass,
     ValueFrequencyClass,
 )
-from datahub.telemetry import stats, telemetry
+from datahub.telemetry import telemetry
 
 NUM_SAMPLE_ROWS = 20
 QUANTILES = [0.05, 0.25, 0.5, 0.75, 0.95]
@@ -60,64 +60,25 @@ def null_str(value: Any) -> Optional[str]:
 
 
 class DataLakeProfilerConfig(ConfigModel):
-    enabled: bool = Field(
-        default=False, description="Whether profiling should be done."
-    )
+    enabled: bool = False
 
     # These settings will override the ones below.
-    profile_table_level_only: bool = Field(
-        default=False,
-        description="Whether to perform profiling at table-level only or include column-level profiling as well.",
-    )
+    profile_table_level_only: bool = False
 
-    allow_deny_patterns: AllowDenyPattern = Field(
-        default=AllowDenyPattern.allow_all(), description=""
-    )
+    allow_deny_patterns: AllowDenyPattern = AllowDenyPattern.allow_all()
 
-    max_number_of_fields_to_profile: Optional[pydantic.PositiveInt] = Field(
-        default=None,
-        description="A positive integer that specifies the maximum number of columns to profile for any table. `None` implies all columns. The cost of profiling goes up significantly as the number of columns to profile goes up.",
-    )
+    max_number_of_fields_to_profile: Optional[pydantic.PositiveInt] = None
 
-    include_field_null_count: bool = Field(
-        default=True,
-        description="Whether to profile for the number of nulls for each column.",
-    )
-    include_field_min_value: bool = Field(
-        default=True,
-        description="Whether to profile for the min value of numeric columns.",
-    )
-    include_field_max_value: bool = Field(
-        default=True,
-        description="Whether to profile for the max value of numeric columns.",
-    )
-    include_field_mean_value: bool = Field(
-        default=True,
-        description="Whether to profile for the mean value of numeric columns.",
-    )
-    include_field_median_value: bool = Field(
-        default=True,
-        description="Whether to profile for the median value of numeric columns.",
-    )
-    include_field_stddev_value: bool = Field(
-        default=True,
-        description="Whether to profile for the standard deviation of numeric columns.",
-    )
-    include_field_quantiles: bool = Field(
-        default=True,
-        description="Whether to profile for the quantiles of numeric columns.",
-    )
-    include_field_distinct_value_frequencies: bool = Field(
-        default=True, description="Whether to profile for distinct value frequencies."
-    )
-    include_field_histogram: bool = Field(
-        default=True,
-        description="Whether to profile for the histogram for numeric fields.",
-    )
-    include_field_sample_values: bool = Field(
-        default=True,
-        description="Whether to profile for the sample values for all columns.",
-    )
+    include_field_null_count: bool = True
+    include_field_min_value: bool = True
+    include_field_max_value: bool = True
+    include_field_mean_value: bool = True
+    include_field_median_value: bool = True
+    include_field_stddev_value: bool = True
+    include_field_quantiles: bool = True
+    include_field_distinct_value_frequencies: bool = True
+    include_field_histogram: bool = True
+    include_field_sample_values: bool = True
 
     @pydantic.root_validator()
     def ensure_field_level_settings_are_normalized(
@@ -273,8 +234,7 @@ class _SingleTableProfiler:
         )
         column_null_counts = null_counts.toPandas().T[0].to_dict()
         column_null_fractions = {
-            c: column_null_counts[c] / self.row_count if self.row_count != 0 else 0
-            for c in self.columns_to_profile
+            c: column_null_counts[c] / self.row_count for c in self.columns_to_profile
         }
         column_nonnull_counts = {
             c: self.row_count - column_null_counts[c] for c in self.columns_to_profile
@@ -358,7 +318,8 @@ class _SingleTableProfiler:
 
         telemetry.telemetry_instance.ping(
             "profile_data_lake_table",
-            {"rows_profiled": stats.discretize(row_count)},
+            # bucket by taking floor of log of the number of rows scanned
+            {"rows_profiled": 10 ** int(log10(row_count + 1))},
         )
 
         # loop through the columns and add the analyzers

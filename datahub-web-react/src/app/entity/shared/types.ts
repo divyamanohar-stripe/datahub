@@ -17,19 +17,14 @@ import {
     Ownership,
     OwnershipUpdate,
     SchemaMetadata,
+    StringMapEntry,
     EntityLineageResult,
+    Domain,
     SubTypes,
     Container,
     Health,
     Status,
     Deprecation,
-    DataPlatformInstance,
-    ParentContainersResult,
-    EntityRelationshipsResult,
-    ParentNodesResult,
-    SiblingProperties,
-    CustomPropertiesEntry,
-    DomainAssociation,
 } from '../../../types.generated';
 import { FetchedEntity } from '../../lineage/types';
 
@@ -57,16 +52,13 @@ export type GenericEntityProperties = {
     properties?: Maybe<{
         description?: Maybe<string>;
         qualifiedName?: Maybe<string>;
-        sourceUrl?: Maybe<string>;
-        sourceRef?: Maybe<string>;
     }>;
     globalTags?: Maybe<GlobalTags>;
     glossaryTerms?: Maybe<GlossaryTerms>;
     ownership?: Maybe<Ownership>;
-    domain?: Maybe<DomainAssociation>;
+    domain?: Maybe<Domain>;
     platform?: Maybe<DataPlatform>;
-    dataPlatformInstance?: Maybe<DataPlatformInstance>;
-    customProperties?: Maybe<CustomPropertiesEntry[]>;
+    customProperties?: Maybe<StringMapEntry[]>;
     institutionalMemory?: Maybe<InstitutionalMemory>;
     schemaMetadata?: Maybe<SchemaMetadata>;
     externalUrl?: Maybe<string>;
@@ -81,15 +73,9 @@ export type GenericEntityProperties = {
     subTypes?: Maybe<SubTypes>;
     entityCount?: number;
     container?: Maybe<Container>;
-    health?: Maybe<Array<Health>>;
+    health?: Maybe<Health>;
     status?: Maybe<Status>;
     deprecation?: Maybe<Deprecation>;
-    parentContainers?: Maybe<ParentContainersResult>;
-    children?: Maybe<EntityRelationshipsResult>;
-    parentNodes?: Maybe<ParentNodesResult>;
-    isAChildren?: Maybe<EntityRelationshipsResult>;
-    siblings?: Maybe<SiblingProperties>;
-    siblingPlatforms?: Maybe<DataPlatform[]>;
 };
 
 export type GenericEntityUpdate = {
@@ -116,7 +102,6 @@ export type UpdateEntityType<U> = (
 export type EntityContextType = {
     urn: string;
     entityType: EntityType;
-    dataNotCombinedWithSiblings: any;
     entityData: GenericEntityProperties | null;
     baseEntity: any;
     updateEntity?: UpdateEntityType<any> | null;

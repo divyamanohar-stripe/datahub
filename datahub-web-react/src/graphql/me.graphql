@@ -28,12 +28,6 @@ query getMe {
             manageIngestion
             manageSecrets
             manageDomains
-            manageTests
-            manageGlossaries
-            manageUserCredentials
-            manageTags
-            createDomains
-            createTags
         }
     }
 }

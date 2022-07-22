@@ -1,23 +1,26 @@
 import { Menu } from 'antd';
 import React, { useEffect, useState } from 'react';
-import styled from 'styled-components/macro';
+import styled from 'styled-components';
 import { useEntityData } from '../../shared/EntityContext';
-import GlossaryRelatedTermsResult, { RelatedTermTypes } from './GlossaryRelatedTermsResult';
+import GlossaryRelatedTermsResult from './GlossaryRelatedTermsResult';
+
+export enum RelatedTermTypes {
+    hasRelatedTerms = 'Contains',
+    isRelatedTerms = 'Inherits',
+}
 
 const DetailWrapper = styled.div`
     display: inline-flex;
-    flex: 1;
     width: 100%;
 `;
 
 const MenuWrapper = styled.div`
-    border-right: 2px solid #f5f5f5;
+    border: 2px solid #f5f5f5;
 `;
 
 const Content = styled.div`
+    margin-left: 32px;
     flex-grow: 1;
-    max-width: 100%;
-    overflow: hidden;
 `;
 
 export default function GlossayRelatedTerms() {

@@ -67,7 +67,7 @@ export const LogoCountCard = ({ logoUrl, logoComponent, name, count, onClick }: 
                     {name}
                 </Title>
             </TitleContainer>
-            {count !== undefined && <CountText>{formatNumber(count)}</CountText>}
+            {count && <CountText>{formatNumber(count)}</CountText>}
         </Container>
     );
 };

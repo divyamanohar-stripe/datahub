@@ -10,7 +10,6 @@ import com.linkedin.datahub.graphql.authorization.ConjunctivePrivilegeGroup;
 import com.linkedin.datahub.graphql.authorization.DisjunctivePrivilegeGroup;
 import com.linkedin.datahub.graphql.exception.AuthorizationException;
 import com.linkedin.datahub.graphql.generated.AutoCompleteResults;
-import com.linkedin.datahub.graphql.generated.Entity;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.FacetFilterInput;
 import com.linkedin.datahub.graphql.generated.SearchResults;
@@ -37,7 +36,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -45,8 +43,7 @@ import javax.annotation.Nullable;
 import static com.linkedin.metadata.Constants.*;
 
 
-public class TagType implements com.linkedin.datahub.graphql.types.SearchableEntityType<Tag, String>,
-                                MutableType<TagUpdateInput, Tag> {
+public class TagType implements com.linkedin.datahub.graphql.types.SearchableEntityType<Tag>, MutableType<TagUpdateInput, Tag> {
 
     private static final Set<String> FACET_FIELDS = Collections.emptySet();
 
@@ -64,11 +61,6 @@ public class TagType implements com.linkedin.datahub.graphql.types.SearchableEnt
     @Override
     public EntityType type() {
         return EntityType.TAG;
-    }
-
-    @Override
-    public Function<Entity, String> getKeyProvider() {
-        return Entity::getUrn;
     }
 
     @Override

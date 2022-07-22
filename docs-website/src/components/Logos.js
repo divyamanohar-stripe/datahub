@@ -67,11 +67,6 @@ const companiesByIndustry = [
         size: "small",
       },
       {
-        name: "N26",
-        imageUrl: "/img/logos/companies/n26.svg",
-        size: "large",
-      },
-      {
         name: "BankSalad",
         imageUrl: "/img/logos/companies/banksalad.png",
         size: "large",
@@ -120,11 +115,6 @@ const companiesByIndustry = [
         imageUrl: "/img/logos/companies/wolt.png",
         size: "large",
       },
-      {
-        name: "Showroomprive.com",
-        imageUrl: "/img/logos/companies/showroomprive.png",
-        size: "default",
-      },
     ],
   },
   {
@@ -134,11 +124,6 @@ const companiesByIndustry = [
         name: "Cabify",
         imageUrl: "/img/logos/companies/cabify.png",
         size: "large",
-      },
-      {
-        name: "Digital Turbine",
-        imageUrl: "/img/logos/companies/digitalturbine.svg",
-        size: "defualt",
       },
       {
         name: "Viasat",

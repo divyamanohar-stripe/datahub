@@ -2,64 +2,35 @@ from typing import Any, Dict, Optional
 
 import parse
 import pydantic
-from pydantic.fields import Field
 
-from datahub.configuration.common import AllowDenyPattern
-from datahub.configuration.source_common import EnvBasedSourceConfigBase
+from datahub.configuration.common import AllowDenyPattern, ConfigModel
+from datahub.emitter.mce_builder import DEFAULT_ENV
 from datahub.ingestion.source.aws.aws_common import AwsSourceConfig
 from datahub.ingestion.source.aws.s3_util import is_s3_uri
 from datahub.ingestion.source.data_lake.profiling import DataLakeProfilerConfig
 
 
-class DataLakeSourceConfig(EnvBasedSourceConfigBase):
+class DataLakeSourceConfig(ConfigModel):
 
-    base_path: str = Field(
-        description="Path of the base folder to crawl. Unless `schema_patterns` and `profile_patterns` are set, the connector will ingest all files in this folder."
-    )
-    platform: str = Field(
-        default="",
-        description="Autodetected.  Platform to use in namespace when constructing URNs. If left blank, local paths will correspond to `file` and S3 paths will correspond to `s3`.",
-    )  # overwritten by validator below
+    env: str = DEFAULT_ENV
+    base_path: str
+    platform: str = ""  # overwritten by validator below
 
-    use_relative_path: bool = Field(
-        default=False,
-        description="Whether to use the relative path when constructing URNs. Has no effect when a `path_spec` is provided.",
-    )
-    ignore_dotfiles: bool = Field(
-        default=True,
-        description="Whether to ignore files that start with `.`. For instance, `.DS_Store`, `.bash_profile`, etc.",
-    )
+    use_relative_path: bool = False
+    ignore_dotfiles: bool = True
 
-    aws_config: Optional[AwsSourceConfig] = Field(
-        default=None, description="AWS details"
-    )
+    aws_config: Optional[AwsSourceConfig] = None
 
-    schema_patterns: AllowDenyPattern = Field(
-        default=AllowDenyPattern.allow_all(),
-        description="regex patterns for tables to filter for ingestion.",
-    )
-    profile_patterns: AllowDenyPattern = Field(
-        default=AllowDenyPattern.allow_all(),
-        description="regex patterns for tables to profile ",
-    )
+    schema_patterns: AllowDenyPattern = AllowDenyPattern.allow_all()
+    profile_patterns: AllowDenyPattern = AllowDenyPattern.allow_all()
 
-    path_spec: Optional[str] = Field(
-        default=None,
-        description="Format string for constructing table identifiers from the relative path. See the above setup section for details.",
-    )
+    path_spec: Optional[str] = None
 
-    profiling: DataLakeProfilerConfig = Field(
-        default=DataLakeProfilerConfig(), description="Profiling configurations"
-    )
+    profiling: DataLakeProfilerConfig = DataLakeProfilerConfig()
 
-    spark_driver_memory: str = Field(
-        default="4g", description="Max amount of memory to grant Spark."
-    )
+    spark_driver_memory: str = "4g"
 
-    max_rows: int = Field(
-        default=100,
-        description="Maximum number of rows to use when inferring schemas for TSV and CSV files.",
-    )
+    max_rows: int = 100
 
     @pydantic.root_validator()
     def ensure_profiling_pattern_is_passed_to_profiling(

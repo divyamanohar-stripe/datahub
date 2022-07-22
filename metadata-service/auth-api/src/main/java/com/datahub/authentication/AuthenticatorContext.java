@@ -1,26 +1,32 @@
 package com.datahub.authentication;
 
-import java.util.HashMap;
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Objects;
-import javax.annotation.Nonnull;
+import java.util.TreeMap;
 
 
 /**
- *  Context class to provide Authenticator implementations with concrete objects necessary for their correct workings.
+ * Request context provided to each {@link Authenticator} to perform Authentication.
+ *
+ * Currently, this class only hold the inbound request's headers, but could certainly be extended
+ * to contain additional information like the request parameters, body, ip, etc as needed.
  */
 public class AuthenticatorContext {
 
-  private final Map<String, Object> contextMap;
+  private final Map<String, String> caseInsensitiveHeaders;
 
-  public AuthenticatorContext(@Nonnull final Map<String, Object> context) {
-    Objects.requireNonNull(context);
-    contextMap = new HashMap<>();
-    contextMap.putAll(context);
+  public AuthenticatorContext(@Nonnull final Map<String, String> requestHeaders) {
+    Objects.requireNonNull(requestHeaders);
+    caseInsensitiveHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    caseInsensitiveHeaders.putAll(requestHeaders);
   }
 
+  /**
+   * Returns a case-insensitive map of the inbound request's headers.
+   */
   @Nonnull
-  public Map<String, Object> data() {
-    return contextMap;
+  public Map<String, String> getRequestHeaders() {
+    return this.caseInsensitiveHeaders;
   }
 }

@@ -12,7 +12,7 @@ T = TypeVar("T")
 
 
 def _trace_has_file(trace: tracemalloc.Traceback, file_pattern: str) -> bool:
-    for frame_index in range(len(trace)):
+    for frame_index in range(0, len(trace)):
         cur_frame = trace[frame_index]
         if fnmatch.fnmatch(cur_frame.filename, file_pattern):
             return True
@@ -99,7 +99,8 @@ def with_leak_detection(func: Callable[..., T]) -> Callable[..., T]:
             _init_leak_detection()
 
         try:
-            return func(*args, **kwargs)
+            res = func(*args, **kwargs)
+            return res
         finally:
             if detect_leaks:
                 _perform_leak_detection()

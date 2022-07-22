@@ -14,8 +14,7 @@ import com.linkedin.entity.EnvelopedAspect;
 import com.linkedin.entity.EnvelopedAspectMap;
 import com.linkedin.entity.client.EntityClient;
 import com.linkedin.metadata.Constants;
-import com.linkedin.metadata.search.SearchEntity;
-import com.linkedin.metadata.search.SearchResult;
+import com.linkedin.metadata.query.ListResult;
 import com.linkedin.secret.DataHubSecretValue;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -26,7 +25,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.linkedin.datahub.graphql.resolvers.ResolverUtils.*;
@@ -40,7 +38,6 @@ public class ListSecretsResolver implements DataFetcher<CompletableFuture<ListSe
 
   private static final Integer DEFAULT_START = 0;
   private static final Integer DEFAULT_COUNT = 20;
-  private static final String DEFAULT_QUERY = "";
 
   private final EntityClient _entityClient;
 
@@ -57,28 +54,24 @@ public class ListSecretsResolver implements DataFetcher<CompletableFuture<ListSe
       final ListSecretsInput input = bindArgument(environment.getArgument("input"), ListSecretsInput.class);
       final Integer start = input.getStart() == null ? DEFAULT_START : input.getStart();
       final Integer count = input.getCount() == null ? DEFAULT_COUNT : input.getCount();
-      final String query = input.getQuery() == null ? DEFAULT_QUERY : input.getQuery();
 
       return CompletableFuture.supplyAsync(() -> {
         try {
           // First, get all secrets
-          final SearchResult
-              gmsResult = _entityClient.search(Constants.SECRETS_ENTITY_NAME, query, Collections.emptyMap(), start, count, context.getAuthentication());
+          final ListResult gmsResult = _entityClient.list(Constants.SECRETS_ENTITY_NAME, Collections.emptyMap(), start, count, context.getAuthentication());
 
           // Then, resolve all secrets
           final Map<Urn, EntityResponse> entities = _entityClient.batchGetV2(
               Constants.SECRETS_ENTITY_NAME,
-              new HashSet<>(gmsResult.getEntities().stream()
-                  .map(SearchEntity::getEntity)
-                  .collect(Collectors.toList())),
+              new HashSet<>(gmsResult.getEntities()),
               ImmutableSet.of(Constants.SECRET_VALUE_ASPECT_NAME),
               context.getAuthentication());
 
           // Now that we have entities we can bind this to a result.
           final ListSecretsResult result = new ListSecretsResult();
-          result.setStart(gmsResult.getFrom());
-          result.setCount(gmsResult.getPageSize());
-          result.setTotal(gmsResult.getNumEntities());
+          result.setStart(gmsResult.getStart());
+          result.setCount(gmsResult.getCount());
+          result.setTotal(gmsResult.getTotal());
           result.setSecrets(mapEntities(entities.values()));
           return result;
 

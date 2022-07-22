@@ -1,7 +1,6 @@
 namespace com.linkedin.mxe
 
 import com.linkedin.avro2pegasus.events.KafkaAuditHeader
-import com.linkedin.common.AuditStamp
 
 /**
  * Kafka event for capturing update made to an entity's metadata.
@@ -18,8 +17,4 @@ record MetadataChangeLog includes MetadataChangeProposal {
    */
   previousSystemMetadata: optional SystemMetadata
 
-  /**
-   * An audit stamp detailing who and when the aspect was changed by. Required for all intents and purposes.
-   */
-  created: optional AuditStamp
 }

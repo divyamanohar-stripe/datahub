@@ -55,8 +55,8 @@ class PipelineContext:
         self.pipeline_name = pipeline_name
         self.dry_run_mode = dry_run
         self.preview_mode = preview_mode
-        self.reporters: Dict[str, Committable] = {}
-        self.checkpointers: Dict[str, Committable] = {}
+        self.reporters: Dict[str, Committable] = dict()
+        self.checkpointers: Dict[str, Committable] = dict()
         self._set_dataset_urn_to_lower_if_needed()
 
     def _set_dataset_urn_to_lower_if_needed(self) -> None:
@@ -81,8 +81,11 @@ class PipelineContext:
         self.reporters[committable.name] = committable
 
     def get_reporters(self) -> Iterable[Committable]:
-        yield from self.reporters.values()
+        for committable in self.reporters.values():
+            yield committable
 
     def get_committables(self) -> Iterable[Tuple[str, Committable]]:
-        yield from self.reporters.items()
-        yield from self.checkpointers.items()
+        for reporting_item_commitable in self.reporters.items():
+            yield reporting_item_commitable
+        for checkpointing_item_commitable in self.checkpointers.items():
+            yield checkpointing_item_commitable

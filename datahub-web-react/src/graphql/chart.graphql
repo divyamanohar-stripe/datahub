@@ -56,20 +56,17 @@ query getChart($urn: String!) {
         dashboards: relationships(input: { types: ["Contains"], direction: INCOMING, start: 0, count: 100 }) {
             ...fullRelationshipResults
         }
-        parentContainers {
-            ...parentContainersFields
+        container {
+            ...entityContainer
         }
         upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
-            ...partialLineageResults
+            ...fullLineageResults
         }
         downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
-            ...partialLineageResults
+            ...fullLineageResults
         }
         status {
             removed
-        }
-        dataPlatformInstance {
-            ...dataPlatformInstanceFields
         }
     }
 }

@@ -23,8 +23,6 @@ import com.linkedin.metadata.entity.EntityService;
 import com.linkedin.schema.EditableSchemaFieldInfo;
 import com.linkedin.schema.EditableSchemaMetadata;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -102,8 +100,8 @@ public class LabelUtils {
     }
   }
 
-  public static void addTagsToTarget(
-      List<Urn> labelUrns,
+  public static void addTagToTarget(
+      Urn labelUrn,
       Urn targetUrn,
       String subResource,
       Urn actor,
@@ -116,7 +114,7 @@ public class LabelUtils {
       if (!tags.hasTags()) {
         tags.setTags(new TagAssociationArray());
       }
-      addTagsIfNotExists(tags, labelUrns);
+      addTagIfNotExists(tags, labelUrn);
       persistAspect(targetUrn, TAGS_ASPECT_NAME, tags, actor, entityService);
     } else {
       com.linkedin.schema.EditableSchemaMetadata editableSchemaMetadata =
@@ -128,13 +126,13 @@ public class LabelUtils {
         editableFieldInfo.setGlobalTags(new GlobalTags());
       }
 
-      addTagsIfNotExists(editableFieldInfo.getGlobalTags(), labelUrns);
+      addTagIfNotExists(editableFieldInfo.getGlobalTags(), labelUrn);
       persistAspect(targetUrn, EDITABLE_SCHEMA_METADATA, editableSchemaMetadata, actor, entityService);
     }
   }
 
-  public static void addTermsToTarget(
-      List<Urn> labelUrns,
+  public static void addTermToTarget(
+      Urn labelUrn,
       Urn targetUrn,
       String subResource,
       Urn actor,
@@ -149,8 +147,7 @@ public class LabelUtils {
         terms.setTerms(new GlossaryTermAssociationArray());
       }
 
-      addTermsIfNotExistsToEntity(terms, labelUrns);
-      System.out.println(String.format("Persisting terms! %s", terms.toString()));
+      addTermIfNotExistsToEntity(terms, labelUrn);
       persistAspect(targetUrn, GLOSSARY_TERM_ASPECT_NAME, terms, actor, entityService);
     } else {
       com.linkedin.schema.EditableSchemaMetadata editableSchemaMetadata =
@@ -164,12 +161,12 @@ public class LabelUtils {
 
       editableFieldInfo.getGlossaryTerms().setAuditStamp(getAuditStamp(actor));
 
-      addTermsIfNotExistsToEntity(editableFieldInfo.getGlossaryTerms(), labelUrns);
+      addTermIfNotExistsToEntity(editableFieldInfo.getGlossaryTerms(), labelUrn);
       persistAspect(targetUrn, EDITABLE_SCHEMA_METADATA, editableSchemaMetadata, actor, entityService);
     }
   }
 
-  private static void addTermsIfNotExistsToEntity(GlossaryTerms terms, List<Urn> termUrns)
+  private static void addTermIfNotExistsToEntity(GlossaryTerms terms, Urn termUrn)
       throws URISyntaxException {
     if (!terms.hasTerms()) {
       terms.setTerms(new GlossaryTermAssociationArray());
@@ -177,24 +174,14 @@ public class LabelUtils {
 
     GlossaryTermAssociationArray termArray = terms.getTerms();
 
-    List<Urn> termsToAdd = new ArrayList<>();
-    for (Urn termUrn : termUrns) {
-      if (termArray.stream().anyMatch(association -> association.getUrn().equals(termUrn))) {
-        continue;
-      }
-      termsToAdd.add(termUrn);
-    }
-
-    // Check for no terms to add
-    if (termsToAdd.size() == 0) {
+    // if term exists, do not add it again
+    if (termArray.stream().anyMatch(association -> association.getUrn().equals(termUrn))) {
       return;
     }
 
-    for (Urn termUrn : termsToAdd) {
-      GlossaryTermAssociation newAssociation = new GlossaryTermAssociation();
-      newAssociation.setUrn(GlossaryTermUrn.createFromUrn(termUrn));
-      termArray.add(newAssociation);
-    }
+    GlossaryTermAssociation newAssociation = new GlossaryTermAssociation();
+    newAssociation.setUrn(GlossaryTermUrn.createFromUrn(termUrn));
+    termArray.add(newAssociation);
   }
 
   private static TagAssociationArray removeTagIfExists(GlobalTags tags, Urn tagUrn) {
@@ -219,31 +206,21 @@ public class LabelUtils {
     return termArray;
   }
 
-  private static void addTagsIfNotExists(GlobalTags tags, List<Urn> tagUrns) throws URISyntaxException {
+  private static void addTagIfNotExists(GlobalTags tags, Urn tagUrn) throws URISyntaxException {
     if (!tags.hasTags()) {
       tags.setTags(new TagAssociationArray());
     }
 
     TagAssociationArray tagAssociationArray = tags.getTags();
 
-    List<Urn> tagsToAdd = new ArrayList<>();
-    for (Urn tagUrn : tagUrns) {
-      if (tagAssociationArray.stream().anyMatch(association -> association.getTag().equals(tagUrn))) {
-        continue;
-      }
-      tagsToAdd.add(tagUrn);
-    }
-
-    // Check for no tags to add
-    if (tagsToAdd.size() == 0) {
+    // if tag exists, do not add it again
+    if (tagAssociationArray.stream().anyMatch(association -> association.getTag().equals(tagUrn))) {
       return;
     }
 
-    for (Urn tagUrn : tagsToAdd) {
-      TagAssociation newAssociation = new TagAssociation();
-      newAssociation.setTag(TagUrn.createFromUrn(tagUrn));
-      tagAssociationArray.add(newAssociation);
-    }
+    TagAssociation newAssociation = new TagAssociation();
+    newAssociation.setTag(TagUrn.createFromUrn(tagUrn));
+    tagAssociationArray.add(newAssociation);
   }
 
   public static boolean isAuthorizedToUpdateTags(@Nonnull QueryContext context, Urn targetUrn, String subResource) {
@@ -286,24 +263,6 @@ public class LabelUtils {
         targetUrn.getEntityType(),
         targetUrn.toString(),
         orPrivilegeGroups);
-  }
-
-  public static Boolean validateInput(
-      List<Urn> labelUrns,
-      Urn targetUrn,
-      String subResource,
-      SubResourceType subResourceType,
-      String labelEntityType,
-      EntityService entityService,
-      Boolean isRemoving
-  ) {
-    for (Urn urn : labelUrns) {
-      boolean labelResult = validateInput(urn, targetUrn, subResource, subResourceType, labelEntityType, entityService, isRemoving);
-      if (!labelResult) {
-        return false;
-      }
-    }
-    return true;
   }
 
   public static Boolean validateInput(

@@ -1,6 +1,8 @@
 import { SourceConfig } from '../types';
 import kafkaLogo from '../../../../../images/kafkalogo.png';
 
+const baseUrl = window.location.origin;
+
 const placeholderRecipe = `\
 source:
     type: kafka
@@ -21,13 +23,18 @@ source:
             # Uncomment and add secrets in Secrets Tab
             # schema_registry_config:
             #     basic.auth.user.info: "\${REGISTRY_API_KEY_ID}:\${REGISTRY_API_KEY_SECRET}"
-`;
+sink: 
+    type: datahub-rest 
+    config: 
+        server: "${baseUrl}/api/gms"
+        # Add a secret in secrets Tab
+        token: "\${GMS_TOKEN}"`;
 
 const kafkaConfig: SourceConfig = {
     type: 'kafka',
     placeholderRecipe,
     displayName: 'Kafka',
-    docsUrl: 'https://datahubproject.io/docs/generated/ingestion/sources/kafka/',
+    docsUrl: 'https://datahubproject.io/docs/metadata-ingestion/source_docs/kafka/',
     logoUrl: kafkaLogo,
 };
 

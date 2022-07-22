@@ -1,11 +1,5 @@
 import React from 'react';
-import Editor, { loader } from '@monaco-editor/react';
-
-loader.config({
-    paths: {
-        vs: `${process.env.PUBLIC_URL}/monaco-editor/vs`,
-    },
-});
+import Editor from '@monaco-editor/react';
 
 type Props = {
     initialText: string;

@@ -6,17 +6,14 @@ import { EmbeddedListSearch } from '../../shared/components/styled/search/Embedd
 import { useEntityData } from '../../shared/EntityContext';
 
 const GroupAssetsWrapper = styled(Row)`
-    height: 100%;
+    height: calc(100vh - 245px);
+    overflow: auto;
 `;
 
 export default function GlossaryRelatedEntity() {
     const { entityData }: any = useEntityData();
     const glossaryTermHierarchicalName = entityData?.hierarchicalName;
-    let fixedQueryString = `glossaryTerms:"${glossaryTermHierarchicalName}" OR fieldGlossaryTerms:"${glossaryTermHierarchicalName}" OR editedFieldGlossaryTerms:"${glossaryTermHierarchicalName}"`;
-    entityData?.isAChildren?.relationships.forEach((term) => {
-        const name = term.entity?.hierarchicalName;
-        fixedQueryString += `OR glossaryTerms:"${name}" OR fieldGlossaryTerms:"${name}" OR editedFieldGlossaryTerms:"${name}"`;
-    });
+    const fixedQueryString = `glossaryTerms:"${glossaryTermHierarchicalName}" OR fieldGlossaryTerms:"${glossaryTermHierarchicalName}" OR editedFieldGlossaryTerms:"${glossaryTermHierarchicalName}"`;
 
     return (
         <GroupAssetsWrapper>

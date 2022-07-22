@@ -11,6 +11,7 @@ REQUIRED_CONTAINERS = [
     "kafka-setup",
     "schema-registry",
     "broker",
+    "mysql",
     "zookeeper",
     # These two containers are not necessary - only helpful in debugging.
     # "kafka-topics-ui",
@@ -30,10 +31,7 @@ ENSURE_EXIT_SUCCESS = [
 CONTAINERS_TO_CHECK_IF_PRESENT = [
     # We only add this container in some cases, but if it's present, we
     # definitely want to check that it exits properly.
-    "mysql",
     "mysql-setup",
-    "cassandra",
-    "cassandra-setup",
     "neo4j",
 ]
 
@@ -88,11 +86,10 @@ def check_local_docker_containers(preflight_only: bool = False) -> List[str]:
         if len(containers) == 0:
             issues.append("quickstart.sh or dev.sh is not running")
         else:
-            existing_containers = {container.name for container in containers}
+            existing_containers = set(container.name for container in containers)
             missing_containers = set(REQUIRED_CONTAINERS) - existing_containers
-            issues.extend(
-                f"{missing} container is not present" for missing in missing_containers
-            )
+            for missing in missing_containers:
+                issues.append(f"{missing} container is not present")
 
         # Check that the containers are running and healthy.
         for container in containers:

@@ -13,19 +13,18 @@ import com.linkedin.gms.factory.search.EntitySearchServiceFactory;
 import com.linkedin.gms.factory.search.SearchDocumentTransformerFactory;
 import com.linkedin.gms.factory.timeseries.TimeseriesAspectServiceFactory;
 import com.linkedin.metadata.Constants;
+import com.linkedin.metadata.models.extractor.FieldExtractor;
 import com.linkedin.metadata.graph.Edge;
 import com.linkedin.metadata.graph.GraphService;
 import com.linkedin.metadata.models.AspectSpec;
 import com.linkedin.metadata.models.EntitySpec;
 import com.linkedin.metadata.models.RelationshipFieldSpec;
-import com.linkedin.metadata.models.extractor.FieldExtractor;
 import com.linkedin.metadata.models.registry.EntityRegistry;
 import com.linkedin.metadata.query.filter.ConjunctiveCriterionArray;
 import com.linkedin.metadata.query.filter.Filter;
 import com.linkedin.metadata.query.filter.RelationshipDirection;
 import com.linkedin.metadata.search.EntitySearchService;
 import com.linkedin.metadata.search.transformer.SearchDocumentTransformer;
-import com.linkedin.metadata.search.utils.SearchUtils;
 import com.linkedin.metadata.systemmetadata.SystemMetadataService;
 import com.linkedin.metadata.timeseries.TimeseriesAspectService;
 import com.linkedin.metadata.timeseries.transformer.TimeseriesAspectTransformer;
@@ -95,7 +94,7 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
     }
     Urn urn = EntityKeyUtils.getUrnFromLog(event, entitySpec.getKeyAspectSpec());
 
-    if (event.getChangeType() == ChangeType.UPSERT || event.getChangeType() == ChangeType.RESTATE) {
+    if (event.getChangeType() == ChangeType.UPSERT) {
 
       if (!event.hasAspectName() || !event.hasAspect()) {
         log.error("Aspect or aspect name is missing");
@@ -120,8 +119,8 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
         updateSystemMetadata(event.getSystemMetadata(), urn, aspectSpec, aspect);
       }
     } else if (event.getChangeType() == ChangeType.DELETE) {
-      if (!event.hasAspectName() || !event.hasPreviousAspectValue()) {
-        log.error("Previous aspect or aspect name is missing");
+      if (!event.hasAspectName() || !event.hasAspect()) {
+        log.error("Aspect or aspect name is missing");
         return;
       }
 
@@ -131,8 +130,9 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
         return;
       }
 
-      RecordTemplate aspect = GenericRecordUtils.deserializeAspect(event.getPreviousAspectValue().getValue(),
-              event.getPreviousAspectValue().getContentType(), aspectSpec);
+      RecordTemplate aspect =
+          GenericRecordUtils.deserializeAspect(event.getAspect().getValue(), event.getAspect().getContentType(),
+              aspectSpec);
       Boolean isDeletingKey = event.getAspectName().equals(entitySpec.getKeyAspectName());
 
       if (!aspectSpec.isTimeseries()) {
@@ -157,7 +157,7 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
           edgesToAdd.add(
               new Edge(urn, Urn.createFromString(fieldValue.toString()), entry.getKey().getRelationshipName()));
         } catch (URISyntaxException e) {
-          log.error("Invalid destination urn: {}", fieldValue.toString(), e);
+          log.info("Invalid destination urn: {}", e.getLocalizedMessage());
         }
       }
     }
@@ -174,7 +174,7 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
     final List<Edge> edgesToAdd = edgeAndRelationTypes.getFirst();
     final Set<String> relationshipTypesBeingAdded = edgeAndRelationTypes.getSecond();
 
-    log.debug("Here's the relationship types found {}", relationshipTypesBeingAdded);
+    log.info(String.format("Here's the relationship types found %s", relationshipTypesBeingAdded));
     if (relationshipTypesBeingAdded.size() > 0) {
       _graphService.removeEdgesFromNode(urn, new ArrayList<>(relationshipTypesBeingAdded),
           newRelationshipFilter(new Filter().setOr(new ConjunctiveCriterionArray()), RelationshipDirection.OUTGOING));
@@ -198,13 +198,15 @@ public class UpdateIndicesHook implements MetadataChangeLogHook {
       return;
     }
 
-    Optional<String> docId = SearchUtils.getDocId(urn);
-
-    if (!docId.isPresent()) {
+    String docId;
+    try {
+      docId = URLEncoder.encode(urn.toString(), "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      log.error("Failed to encode the urn with error: {}", e.toString());
       return;
     }
 
-    _entitySearchService.upsertDocument(entityName, searchDocument.get(), docId.get());
+    _entitySearchService.upsertDocument(entityName, searchDocument.get(), docId);
   }
 
   /**

@@ -6,7 +6,6 @@ import styled from 'styled-components';
 import { Button, Divider, Typography } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import MDEditor from '@uiw/react-md-editor';
-import DOMPurify from 'dompurify';
 
 import TabToolbar from '../../components/styled/TabToolbar';
 import { AddLinkModal } from '../../components/styled/AddLinkModal';
@@ -24,16 +23,10 @@ const DocumentationContainer = styled.div`
     margin: 0 32px;
 `;
 
-interface Props {
-    hideLinksButton?: boolean;
-}
-
-export const DocumentationTab = ({ properties }: { properties?: Props }) => {
-    const hideLinksButton = properties?.hideLinksButton;
+export const DocumentationTab = () => {
     const { urn, entityData } = useEntityData();
     const refetch = useRefetch();
     const description = entityData?.editableProperties?.description || entityData?.properties?.description || '';
-    const sanitizedDescription = DOMPurify.sanitize(description);
     const links = entityData?.institutionalMemory?.elements || [];
     const localStorageDictionary = localStorage.getItem(EDITED_DESCRIPTIONS_CACHE_NAME);
 
@@ -53,7 +46,7 @@ export const DocumentationTab = ({ properties }: { properties?: Props }) => {
         </>
     ) : (
         <>
-            {sanitizedDescription || links.length ? (
+            {description || links.length ? (
                 <>
                     <TabToolbar>
                         <div>
@@ -63,17 +56,17 @@ export const DocumentationTab = ({ properties }: { properties?: Props }) => {
                             >
                                 <EditOutlined /> Edit
                             </Button>
-                            {!hideLinksButton && <AddLinkModal buttonProps={{ type: 'text' }} refetch={refetch} />}
+                            <AddLinkModal buttonProps={{ type: 'text' }} refetch={refetch} />
                         </div>
                     </TabToolbar>
                     <DocumentationContainer>
-                        {sanitizedDescription ? (
-                            <MDEditor.Markdown style={{ fontWeight: 400 }} source={sanitizedDescription} />
+                        {description ? (
+                            <MDEditor.Markdown style={{ fontWeight: 400 }} source={description} />
                         ) : (
                             <Typography.Text type="secondary">No documentation added yet.</Typography.Text>
                         )}
                         <Divider />
-                        {!hideLinksButton && <LinkList refetch={refetch} />}
+                        <LinkList refetch={refetch} />
                     </DocumentationContainer>
                 </>
             ) : (
@@ -81,7 +74,7 @@ export const DocumentationTab = ({ properties }: { properties?: Props }) => {
                     <Button onClick={() => routeToTab({ tabName: 'Documentation', tabParams: { editing: true } })}>
                         <EditOutlined /> Add Documentation
                     </Button>
-                    {!hideLinksButton && <AddLinkModal refetch={refetch} />}
+                    <AddLinkModal refetch={refetch} />
                 </EmptyTab>
             )}
         </>

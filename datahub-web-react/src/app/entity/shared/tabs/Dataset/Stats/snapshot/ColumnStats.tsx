@@ -1,11 +1,10 @@
-import { Typography } from 'antd';
+import { Tag, Typography } from 'antd';
 import { ColumnsType, ColumnType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import { DatasetFieldProfile } from '../../../../../../../types.generated';
 import { StyledTable } from '../../../../components/styled/StyledTable';
 import { ANTD_GRAY } from '../../../../constants';
-import SampleValueTag from './SampleValueTag';
 
 type Props = {
     columnStats: Array<DatasetFieldProfile>;
@@ -129,7 +128,7 @@ export default function ColumnStats({ columnStats }: Props) {
                         (sampleValues &&
                             sampleValues
                                 .slice(0, sampleValues.length < 3 ? sampleValues?.length : 3)
-                                .map((value) => <SampleValueTag value={value} />)) ||
+                                .map((value) => <Tag>{value}</Tag>)) ||
                         unknownValue()
                     );
                 },

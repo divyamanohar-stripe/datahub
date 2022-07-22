@@ -11,7 +11,6 @@ import com.linkedin.events.metadata.ChangeType;
 import com.linkedin.identity.CorpGroupInfo;
 import com.linkedin.metadata.Constants;
 import com.linkedin.metadata.key.CorpGroupKey;
-import com.linkedin.metadata.utils.EntityKeyUtils;
 import com.linkedin.metadata.utils.GenericRecordUtils;
 import com.linkedin.mxe.MetadataChangeProposal;
 import graphql.schema.DataFetcher;
@@ -46,10 +45,6 @@ public class CreateGroupResolver implements DataFetcher<CompletableFuture<String
           final CorpGroupKey key = new CorpGroupKey();
           final String id = input.getId() != null ? input.getId() : UUID.randomUUID().toString();
           key.setName(id); // 'name' in the key really reflects nothing more than a stable "id".
-
-          if (_entityClient.exists(EntityKeyUtils.convertEntityKeyToUrn(key, Constants.CORP_GROUP_ENTITY_NAME), context.getAuthentication())) {
-            throw new IllegalArgumentException("This Group already exists!");
-          }
 
           // Create the Group info.
           final CorpGroupInfo info = new CorpGroupInfo();

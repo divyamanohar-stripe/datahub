@@ -19,19 +19,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static datahub.protobuf.ProtobufUtils.getFieldOptions;
-import static datahub.protobuf.ProtobufUtils.getMessageOptions;
-
 public class ProtobufExtensionFieldVisitor extends SchemaFieldVisitor {
 
     @Override
     public Stream<Pair<SchemaField, Double>> visitField(ProtobufField field, VisitContext context) {
-        boolean isPrimaryKey = getFieldOptions(field.getFieldProto()).stream().map(Pair::getKey)
+        boolean isPrimaryKey = field.getFieldProto().getOptions().getAllFields().keySet().stream()
                 .anyMatch(fieldDesc -> fieldDesc.getName().matches("(?i).*primary_?key"));
 
         List<TagAssociation> tags = Stream.concat(
                 ProtobufExtensionUtil.extractTagPropertiesFromOptions(
-                        getFieldOptions(field.getFieldProto()),
+                        field.getFieldProto().getOptions().getAllFields(),
                         context.getGraph().getRegistry()),
                         promotedTags(field, context))
                 .distinct().map(tag -> new TagAssociation().setTag(new TagUrn(tag.getName())))
@@ -40,7 +37,7 @@ public class ProtobufExtensionFieldVisitor extends SchemaFieldVisitor {
 
         List<GlossaryTermAssociation> terms =  Stream.concat(
                 ProtobufExtensionUtil.extractTermAssociationsFromOptions(
-                                getFieldOptions(field.getFieldProto()), context.getGraph().getRegistry()),
+                                field.getFieldProto().getOptions().getAllFields(), context.getGraph().getRegistry()),
                 promotedTerms(field, context))
                 .distinct()
                 .sorted(Comparator.comparing(a -> a.getUrn().getNameEntity()))
@@ -68,8 +65,8 @@ public class ProtobufExtensionFieldVisitor extends SchemaFieldVisitor {
     private Stream<TagProperties> promotedTags(ProtobufField field, VisitContext context) {
         if (field.isMessage()) {
             return context.getGraph().outgoingEdgesOf(field).stream().flatMap(e ->
-                    ProtobufExtensionUtil.extractTagPropertiesFromOptions(getMessageOptions(e.getEdgeTarget().messageProto()),
-                            context.getGraph().getRegistry())
+                    ProtobufExtensionUtil.extractTagPropertiesFromOptions(e.getEdgeTarget().messageProto()
+                            .getOptions().getAllFields(), context.getGraph().getRegistry())
             ).distinct();
         } else {
             return Stream.of();
@@ -83,8 +80,8 @@ public class ProtobufExtensionFieldVisitor extends SchemaFieldVisitor {
     private Stream<GlossaryTermAssociation> promotedTerms(ProtobufField field, VisitContext context) {
         if (field.isMessage()) {
             return context.getGraph().outgoingEdgesOf(field).stream().flatMap(e ->
-                    ProtobufExtensionUtil.extractTermAssociationsFromOptions(getMessageOptions(e.getEdgeTarget().messageProto()),
-                            context.getGraph().getRegistry())
+                    ProtobufExtensionUtil.extractTermAssociationsFromOptions(e.getEdgeTarget().messageProto()
+                            .getOptions().getAllFields(), context.getGraph().getRegistry())
             ).distinct();
         } else {
             return Stream.of();

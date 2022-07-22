@@ -35,7 +35,11 @@ export type DatasetEntityArg = {
     path: string;
 };
 
-export const datasetEntity = ({ platform, origin, path }: DatasetEntityArg): Dataset => {
+export const datasetEntity = ({
+    platform,
+    origin,
+    path,
+}: DatasetEntityArg): Dataset & { previousSchemaMetadata: any } => {
     const name = `${path}.${faker.company.bsNoun()}_${faker.company.bsNoun()}`;
     const description = `${faker.commerce.productDescription()}`;
     const datahubUser = findUserByUsername('datahub');
@@ -59,7 +63,6 @@ export const datasetEntity = ({ platform, origin, path }: DatasetEntityArg): Dat
                 {
                     owner: datahubUser,
                     type: OwnershipType.Dataowner,
-                    associatedUrn: `urn:li:dataset:(${platformURN},${name},${origin.toUpperCase()})`,
                     __typename: 'Owner',
                 },
             ],
@@ -77,8 +80,8 @@ export const datasetEntity = ({ platform, origin, path }: DatasetEntityArg): Dat
         usageStats: null,
         glossaryTerms: null,
         schemaMetadata: null,
+        previousSchemaMetadata: null,
         __typename: 'Dataset',
         subTypes: null,
-        health: [],
     };
 };

@@ -1,16 +1,12 @@
-import json
 import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-import pydantic
 from looker_sdk.error import SDKError
 from looker_sdk.rtl.transport import TransportOptions
 from looker_sdk.sdk.api31.methods import Looker31SDK
-from looker_sdk.sdk.api31.models import WriteQuery
-from pydantic import BaseModel, Field
 from pydantic.class_validators import validator
 
 import datahub.emitter.mce_builder as builder
@@ -66,13 +62,13 @@ from datahub.metadata.schema_classes import (
 logger = logging.getLogger(__name__)
 
 
-# @dataclass
-class NamingPattern(BaseModel):
+@dataclass
+class NamingPattern:
     allowed_vars: List[str]
     pattern: str
     variables: Optional[List[str]] = None
 
-    def validate_pattern(self, at_least_one: bool) -> bool:
+    def validate(self, at_least_one: bool) -> bool:
         variables = re.findall("({[^}{]+})", self.pattern)
         self.variables = [v[1:-1] for v in variables]
         for v in variables:
@@ -97,11 +93,8 @@ naming_pattern_variables: List[str] = [
 
 
 class LookerExploreNamingConfig(ConfigModel):
-    explore_naming_pattern: NamingPattern = pydantic.Field(
-        description="Pattern for providing dataset names to explores. Allowed variables are {project}, {model}, {name}. Default is `{model}.explore.{name}`",
-        default=NamingPattern(
-            allowed_vars=naming_pattern_variables, pattern="{model}.explore.{name}"
-        ),
+    explore_naming_pattern: NamingPattern = NamingPattern(
+        allowed_vars=naming_pattern_variables, pattern="{model}.explore.{name}"
     )
     explore_browse_pattern: NamingPattern = NamingPattern(
         allowed_vars=naming_pattern_variables,
@@ -112,59 +105,53 @@ class LookerExploreNamingConfig(ConfigModel):
     def init_naming_pattern(cls, v):
         if isinstance(v, NamingPattern):
             return v
-        assert isinstance(v, str), "pattern must be a string"
-        return NamingPattern(allowed_vars=naming_pattern_variables, pattern=v)
+        else:
+            assert isinstance(v, str), "pattern must be a string"
+            naming_pattern = NamingPattern(
+                allowed_vars=naming_pattern_variables, pattern=v
+            )
+            return naming_pattern
 
     @validator("explore_naming_pattern", "explore_browse_pattern", always=True)
     def validate_naming_pattern(cls, v):
         assert isinstance(v, NamingPattern)
-        v.validate_pattern(at_least_one=True)
+        v.validate(at_least_one=True)
         return v
 
 
 class LookerViewNamingConfig(ConfigModel):
-    view_naming_pattern: NamingPattern = Field(
-        NamingPattern(
-            allowed_vars=naming_pattern_variables, pattern="{project}.view.{name}"
-        ),
-        description="Pattern for providing dataset names to views. Allowed variables are `{project}`, `{model}`, `{name}`",
+    view_naming_pattern: NamingPattern = NamingPattern(
+        allowed_vars=naming_pattern_variables, pattern="{project}.view.{name}"
     )
-    view_browse_pattern: NamingPattern = Field(
-        NamingPattern(
-            allowed_vars=naming_pattern_variables,
-            pattern="/{env}/{platform}/{project}/views/{name}",
-        ),
-        description="Pattern for providing browse paths to views. Allowed variables are `{project}`, `{model}`, `{name}`, `{platform}` and `{env}`",
+    view_browse_pattern: NamingPattern = NamingPattern(
+        allowed_vars=naming_pattern_variables,
+        pattern="/{env}/{platform}/{project}/views/{name}",
     )
 
     @validator("view_naming_pattern", "view_browse_pattern", pre=True)
     def init_naming_pattern(cls, v):
         if isinstance(v, NamingPattern):
             return v
-        assert isinstance(v, str), "pattern must be a string"
-        return NamingPattern(allowed_vars=naming_pattern_variables, pattern=v)
+        else:
+            assert isinstance(v, str), "pattern must be a string"
+            naming_pattern = NamingPattern(
+                allowed_vars=naming_pattern_variables, pattern=v
+            )
+            return naming_pattern
 
     @validator("view_naming_pattern", "view_browse_pattern", always=True)
     def validate_naming_pattern(cls, v):
         assert isinstance(v, NamingPattern)
-        v.validate_pattern(at_least_one=True)
+        v.validate(at_least_one=True)
         return v
 
 
 class LookerCommonConfig(
     LookerViewNamingConfig, LookerExploreNamingConfig, DatasetSourceConfigBase
 ):
-    tag_measures_and_dimensions: bool = Field(
-        True,
-        description="When enabled, attaches tags to measures, dimensions and dimension groups to make them more discoverable. When disabled, adds this information to the description of the column.",
-    )
-    platform_name: str = Field(
-        "looker", description="Default platform name. Don't change."
-    )
-    github_info: Optional[GitHubInfo] = Field(
-        None,
-        description="Reference to your github location to enable easy navigation from DataHub to your LookML files",
-    )
+    tag_measures_and_dimensions: bool = True
+    platform_name: str = "looker"
+    github_info: Optional[GitHubInfo] = None
 
 
 @dataclass
@@ -308,7 +295,8 @@ class LookerUtil:
         assert (
             field.count(".") == 1
         ), f"Error: A field must be prefixed by a view name, field is: {field}"
-        return field.split(".")[0]
+        view_name = field.split(".")[0]
+        return view_name
 
     @staticmethod
     def _get_field_type(
@@ -329,7 +317,8 @@ class LookerUtil:
             )
             type_class = NullTypeClass
 
-        return SchemaFieldDataType(type=type_class())
+        data_type = SchemaFieldDataType(type=type_class())
+        return data_type
 
     @staticmethod
     def _get_schema(
@@ -338,7 +327,7 @@ class LookerUtil:
         view_fields: List[ViewField],
         reporter: SourceReport,
     ) -> Optional[SchemaMetadataClass]:
-        if not view_fields:
+        if view_fields == []:
             return None
         fields, primary_keys = LookerUtil._get_fields_and_primary_keys(
             view_fields=view_fields, reporter=reporter
@@ -454,47 +443,6 @@ class LookerUtil:
                 primary_keys.append(schema_field.fieldPath)
         return fields, primary_keys
 
-    @staticmethod
-    def _display_name(name: str) -> str:
-        """Returns a display name that corresponds to the Looker conventions"""
-        return name.replace("_", " ").title() if name else name
-
-    @staticmethod
-    def create_query_request(q: dict, limit: Optional[str] = None) -> WriteQuery:
-        return WriteQuery(
-            model=q["model"],
-            view=q["view"],
-            fields=q.get("fields"),
-            filters=q.get("filters"),
-            filter_expression=q.get("filter_expressions"),
-            sorts=q.get("sorts"),
-            limit=q.get("limit") or limit,
-            column_limit=q.get("column_limit"),
-            vis_config={"type": "looker_column"},
-            filter_config=q.get("filter_config"),
-            query_timezone="UTC",
-        )
-
-    @staticmethod
-    def run_inline_query(client: Looker31SDK, q: dict) -> List:
-
-        response_sql = client.run_inline_query(
-            result_format="sql",
-            body=LookerUtil.create_query_request(q),
-        )
-        logger.debug("=================Query=================")
-        logger.debug(response_sql)
-
-        response_json = client.run_inline_query(
-            result_format="json",
-            body=LookerUtil.create_query_request(q),
-        )
-
-        logger.debug("=================Response=================")
-        data = json.loads(response_json)
-        logger.debug(f"length {len(data)}")
-        return data
-
 
 @dataclass
 class LookerExplore:
@@ -522,23 +470,20 @@ class LookerExplore:
         return field_match.findall(sql_fragment)
 
     @classmethod
-    def from_dict(cls, model_name: str, dict: Dict) -> "LookerExplore":
-        view_names = set()
-        joins = None
-        # always add the explore's name or the name from the from clause as the view on which this explore is built
-        view_names.add(dict.get("from", dict.get("name")))
-
+    def __from_dict(cls, model_name: str, dict: Dict) -> "LookerExplore":
         if dict.get("joins", {}) != {}:
-            # additionally for join-based explores, pull in the linked views
             assert "joins" in dict
+            view_names = set()
             for join in dict["joins"]:
-                join_from = join.get("from")
-                view_names.add(join_from or join["name"])
                 sql_on = join.get("sql_on", None)
                 if sql_on is not None:
                     fields = cls._get_fields_from_sql_equality(sql_on)
                     joins = fields
-
+                    for f in fields:
+                        view_names.add(LookerUtil._extract_view_from_field(f))
+        else:
+            # non-join explore, get view_name from `from` field if possible, default to explore name
+            view_names = set(dict.get("from", dict.get("name")))
         return LookerExplore(
             model_name=model_name,
             name=dict["name"],
@@ -574,14 +519,7 @@ class LookerExplore:
                     views.add(explore.name)
 
             if explore.joins is not None and explore.joins != []:
-                join_to_orig_name_map = {}
-                potential_views = []
-                for e in explore.joins:
-                    if e.from_ is not None:
-                        potential_views.append(e.from_)
-                        join_to_orig_name_map[e.name] = e.from_
-                    elif e.name is not None:
-                        potential_views.append(e.name)
+                potential_views = [e.name for e in explore.joins if e.name is not None]
                 for e_join in [
                     e for e in explore.joins if e.dependent_fields is not None
                 ]:
@@ -589,9 +527,6 @@ class LookerExplore:
                     for field_name in e_join.dependent_fields:
                         try:
                             view_name = LookerUtil._extract_view_from_field(field_name)
-                            orig_name = join_to_orig_name_map.get(e_join.name)
-                            if orig_name is not None:
-                                view_name = orig_name
                             potential_views.append(view_name)
                         except AssertionError:
                             reporter.report_warning(
@@ -664,13 +599,16 @@ class LookerExplore:
                 source_file=explore.source_file,
             )
         except SDKError as e:
-            logger.warning(
-                f"Failed to extract explore {explore_name} from model {model}."
+            logger.warn(
+                "Failed to extract explore {} from model {}.".format(
+                    explore_name, model
+                )
             )
             logger.debug(
-                f"Failed to extract explore {explore_name} from model {model} with {e}"
+                "Failed to extract explore {} from model {} with {}".format(
+                    explore_name, model, e
+                )
             )
-
         except AssertionError:
             reporter.report_warning(
                 key="chart-",
@@ -721,7 +659,7 @@ class LookerExplore:
         # If the base_url contains a port number (like https://company.looker.com:19999) remove the port number
         m = re.match("^(.*):([0-9]+)$", base_url)
         if m is not None:
-            base_url = m[1]
+            base_url = m.group(1)
         return f"{base_url}/explore/{self.model_name}/{self.name}"
 
     def _to_metadata_events(  # noqa: C901
@@ -744,7 +682,7 @@ class LookerExplore:
         if self.source_file is not None:
             custom_properties["looker.explore.file"] = str(self.source_file)
         dataset_props = DatasetPropertiesClass(
-            name=str(self.label) if self.label else LookerUtil._display_name(self.name),
+            name=self.name,
             description=self.description,
             customProperties=custom_properties,
         )

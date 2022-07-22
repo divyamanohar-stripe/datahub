@@ -7,4 +7,4 @@ set -x
 DATAHUB_SECRET=$(cat /pay/keys/playsecret.txt)
 export DATAHUB_SECRET
 
-./datahub-frontend/bin/datahub-frontend
+./datahub-frontend/bin/playBinary

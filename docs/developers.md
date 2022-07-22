@@ -10,12 +10,6 @@ title: "Local Development"
  - [Docker Compose](https://docs.docker.com/compose/)
  - Docker engine with at least 8GB of memory to run tests.
 
- :::note
-
- Do not try to use a JDK newer than JDK 8. The build process does not work with newer JDKs currently.
-
- :::
-
 ## Building the Project
 
 Fork and clone the repository if haven't done so already
@@ -43,7 +37,7 @@ We suggest partially compiling DataHub according to your needs:
 ```
  - Build Datahub's frontend:
 ```
-./gradlew :datahub-frontend:dist -x yarnTest -x yarnLint
+./gradlew :datahub-frontend:build -x yarnTest -x yarnLint
 ```
  - Build DataHub's command line tool:
 ```

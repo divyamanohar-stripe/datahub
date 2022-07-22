@@ -12,8 +12,8 @@ type Props = {
     columnCount?: number;
     queryCount?: number;
     users?: Array<Maybe<UserUsageCounts>>;
-    lastUpdatedTime?: string;
-    lastReportedTime?: string;
+    lastUpdated?: string;
+    lastUpdatedUTC?: string;
 };
 
 const StatSection = styled.div`
@@ -29,17 +29,9 @@ const StatContainer = styled.div<{ justifyContent }>`
     padding: 12px 2px;
 `;
 
-export default function TableStats({
-    rowCount,
-    columnCount,
-    queryCount,
-    users,
-    lastUpdatedTime,
-    lastReportedTime,
-}: Props) {
+export default function TableStats({ rowCount, columnCount, queryCount, users, lastUpdated, lastUpdatedUTC }: Props) {
     // If there are less than 4 items, simply stack the stat views.
     const justifyContent = !queryCount && !users ? 'default' : 'space-between';
-    const lastReportedTimeString = lastReportedTime || 'unknown';
     return (
         <StatSection>
             <Typography.Title level={5}>Table Stats</Typography.Title>
@@ -47,7 +39,7 @@ export default function TableStats({
                 {rowCount && (
                     <InfoItem title="Rows">
                         <Tooltip title={countSeparator(rowCount)} placement="right">
-                            <Typography.Text strong style={{ fontSize: 24 }} data-testid="table-stats-rowcount">
+                            <Typography.Text strong style={{ fontSize: 24 }}>
                                 {countFormatter(rowCount)}
                             </Typography.Text>
                         </Tooltip>
@@ -70,15 +62,15 @@ export default function TableStats({
                 {users && (
                     <InfoItem title="Top Users">
                         <div style={{ paddingTop: 8 }}>
-                            <UsageFacepile users={users} maxNumberDisplayed={10} />
+                            <UsageFacepile users={users} />
                         </div>
                     </InfoItem>
                 )}
-                {lastUpdatedTime && (
+                {lastUpdated && (
                     <InfoItem title="Last Updated" width="220px">
-                        <Tooltip title={`Last reported at ${lastReportedTimeString}`}>
+                        <Tooltip title={lastUpdatedUTC}>
                             <Typography.Text strong style={{ fontSize: 16 }}>
-                                {lastUpdatedTime}
+                                {lastUpdated}
                             </Typography.Text>
                         </Tooltip>
                     </InfoItem>
