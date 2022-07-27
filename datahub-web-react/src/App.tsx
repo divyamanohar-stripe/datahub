@@ -30,11 +30,18 @@ import { MLModelEntity } from './app/entity/mlModel/MLModelEntity';
 import { MLModelGroupEntity } from './app/entity/mlModelGroup/MLModelGroupEntity';
 import { DomainEntity } from './app/entity/domain/DomainEntity';
 import { ContainerEntity } from './app/entity/container/ContainerEntity';
+import { loadLocalMockGraphQL } from './utils/local-dev-utils/loadLocalMockGraphQL';
+import { LocalDevLink } from './utils/local-dev-utils/LocalDevLink';
 
 /*
     Construct Apollo Client
 */
-const httpLink = createHttpLink({ uri: '/api/v2/graphql' });
+const baseLink =
+    window.location.hostname === 'localhost'
+        ? new LocalDevLink(loadLocalMockGraphQL())
+        : createHttpLink({
+              uri: 'https://datahub.corp.stripe.com/api/v2/graphql',
+          });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
     if (networkError) {
@@ -57,7 +64,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 
 const client = new ApolloClient({
     connectToDevTools: true,
-    link: errorLink.concat(httpLink),
+    link: errorLink.concat(baseLink),
     cache: new InMemoryCache(),
     credentials: 'include',
     defaultOptions: {
