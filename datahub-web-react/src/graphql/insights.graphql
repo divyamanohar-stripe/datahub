@@ -1,0 +1,49 @@
+query getInsights($urn: String!) {
+    searchAcrossLineage(input: { urn: $urn, direction: UPSTREAM, count: 1000 }) {
+        count
+        total
+        searchResults {
+            entity {
+                urn
+                ... on Dataset {
+                    properties {
+                        customProperties {
+                            key
+                            value
+                        }
+                    }
+                }
+                ... on DataJob {
+                    runs(start: 0, count: 100) {
+                        runs {
+                            urn
+                            state {
+                                status
+                                attempt
+                            }
+                            properties {
+                                customProperties {
+                                    key
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+                relationships(input: { direction: OUTGOING, types: ["Consumes", "Produces"] }) {
+                    relationships {
+                        type
+                        direction
+                        entity {
+                            urn
+                        }
+                    }
+                }
+            }
+            path {
+                urn
+            }
+            degree
+        }
+    }
+}

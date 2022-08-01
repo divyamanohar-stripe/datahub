@@ -30,7 +30,6 @@ export class LocalDevLink extends ApolloLink {
                 variables: mapping.request.variables,
             });
             this.mappings.set(key, mapping);
-            console.trace(`Registered mapping with key: ${key}`);
         }
         console.info(`Registered ${mappings.length} GraphQL mocks for development.`);
     }
@@ -41,10 +40,27 @@ export class LocalDevLink extends ApolloLink {
             query: print(operation.query),
             variables: operation.variables,
         });
-        console.trace(`Looking up mapping with key: ${key}`);
         const mapping = this.mappings.get(key);
 
-        if (!mapping) {
+        if (!mapping || !mapping.result) {
+            console.warn(
+                [
+                    '*'.repeat(80),
+                    `  The mapping for a "${operation.operationName}" query is missing.`,
+                    '*'.repeat(80),
+                    '',
+                    `If this is an existing operation, capture the same action in production and run add-local-mocks.js.`,
+                    '',
+                    `If this is a new operation, go to https://datahub.corp.stripe.com/api/graphiql and capture execution of the following:`,
+                    '',
+                    'Query:',
+                    print(operation.query).replace(/^/gm, '    '),
+                    '',
+                    'Variables:',
+                    JSON.stringify(operation.variables).replace(/^/gm, '    '),
+                    '',
+                ].join('\n'),
+            );
             return new Observable((observer) => {
                 try {
                     this.onError(
@@ -65,9 +81,9 @@ export class LocalDevLink extends ApolloLink {
 
             const timer = setTimeout(() => {
                 console.info(
-                    `Simulated GraphQL response to "${operation.operationName}" operation with a delay of ${
-                        delayMillis?.toFixed(0) ?? 0
-                    } milliseconds`,
+                    `\nSimulated GraphQL response with a delay of ${delayMillis?.toFixed(0) ?? 0} milliseconds:\n${
+                        operation.operationName
+                    }(${JSON.stringify(operation.variables, null, 2)})\n\n`,
                 );
                 observer.next(result);
                 observer.complete();

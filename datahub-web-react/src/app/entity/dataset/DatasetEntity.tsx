@@ -24,6 +24,7 @@ import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
 import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
 import { GenericEntityProperties } from '../shared/types';
 import { Preview } from './preview/Preview';
+import { InsightsTab } from './profile/InsightsTab';
 import { OperationsTab } from './profile/OperationsTab';
 import { TimelinessTab } from './profile/TimelinessTab';
 import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
@@ -168,6 +169,14 @@ export class DatasetEntity implements Entity<Dataset> {
                                 (dataset?.dataset?.writeRuns?.total || 0) > 0
                             );
                         },
+                    },
+                },
+                {
+                    name: 'Insights',
+                    component: InsightsTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, _dataset: GetDatasetQuery) => true,
                     },
                 },
                 {

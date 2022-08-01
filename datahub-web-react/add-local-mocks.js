@@ -19,7 +19,7 @@ async function main() {
         });
 
     const resultsBySerializedRequest = Object.fromEntries(
-        mockData.map(({ request, result }) => [JSON.stringify(request), result]),
+        mockData.map((entry) => [JSON.stringify(entry.request), entry]),
     );
 
     const [, , filename] = process.argv;
@@ -39,13 +39,13 @@ async function main() {
 
     for (const entry of harData.log.entries) {
         const { request, response } = entry;
-        if (request.method !== 'POST' || !request.url.endsWith('/api/v2/graphql')) {
+        if (request.method !== 'POST' || !request.url.endsWith('/graphql')) {
             continue;
         }
         if (!request.postData || request.postData.mimeType !== 'application/json') {
             continue;
         }
-        if (!response.content || response.content.mimeType !== 'application/json') {
+        if (!response.content?.text || response.content.mimeType !== 'application/json') {
             continue;
         }
         // normalize the request data to make a consistent key
@@ -53,6 +53,7 @@ async function main() {
 
         resultsBySerializedRequest[serializedRequest] = {
             delayMillis: entry.time, 
+            request: JSON.parse(request.postData.text),
             result: JSON.parse(response.content.text)
         };
     }
@@ -60,10 +61,7 @@ async function main() {
     const sortedMockDataEntries = [...Object.entries(resultsBySerializedRequest)];
     sortedMockDataEntries.sort(([a], [b]) => (a < b ? -1 : 1));
 
-    const outputMockData = sortedMockDataEntries.map(([serializedRequest, response]) => ({
-        request: JSON.parse(serializedRequest),
-        ...response,
-    }));
+    const outputMockData = sortedMockDataEntries.map(([serializedRequest, result]) => result);
     await fs.writeFile(MOCKS_FILE, JSON.stringify(outputMockData, null, 2));
 }
 

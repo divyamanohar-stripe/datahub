@@ -40,7 +40,7 @@ const baseLink =
     window.location.hostname === 'localhost'
         ? new LocalDevLink(loadLocalMockGraphQL())
         : createHttpLink({
-              uri: 'https://datahub.corp.stripe.com/api/v2/graphql',
+              uri: '/api/v2/graphql',
           });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
