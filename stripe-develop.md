@@ -45,3 +45,30 @@ While making changes to DataHub there's a couple of options available to test yo
 Note:
 * You need to have your Docker daemon running
 * In the `docker-compose-build.sh`, we use [Space Commander](https://confluence.corp.stripe.com/display/CLOUDMGMT/Space+Commander) to pull the Stripe Ubuntu image
+
+## Troubleshooting
+
+**Problem**: DataHub currently uses Java 8. Gradle finds a Java 8 JDK on your system to satisfy a toolchain requirement.
+If you're running on an M1 Mac, the default action of downloading the AdoptOpenJDK 8 build won't work, because the project doesn't have an arm64 build.
+
+**Solution**: Download JDK 8 from [Amazon Coretto](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/downloads-list.html) instead.
+
+---
+
+**Problem**: `> Task :metadata-ingestion:runPreFlightScript FAILED`. The default installation script for the CLI tool tries to install all dependencies for scipy and compile it from scratch. This produces `clang` errors and fails.
+
+**Solution**: Create a virtual environment and install the dependency manually:
+```
+cd metadata-ingestion/
+python3 -m venv venv
+source venv/bin/activate
+pip3 install scipy
+```
+---
+
+**Problem**: `error: cannot find symbol @javax.annotation.processing.Generated(`. Gradle generates GraphQL source files while running Java 11, then attempts to compile with Java 8.
+
+**Solution**: Set the Java home property explicitly. `$EDITOR ~/.gradle/gradle.properties`
+```
+org.gradle.java.home=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
+```
