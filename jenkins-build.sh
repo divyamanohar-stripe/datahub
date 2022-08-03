@@ -35,6 +35,9 @@ echo Building datahub.
 
 ./gradlew :metadata-service:war:build
 
+./gradlew :metadata-jobs:mce-consumer-job:build
+./gradlew :metadata-jobs:mae-consumer-job:build
+
 # Skip yarn tests temporarily till we resolve: https://jira.corp.stripe.com/browse/SCHMAQUERY-1551
 ./gradlew :datahub-frontend:dist -x yarnTest
 
@@ -43,12 +46,17 @@ curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-jmx/9.4.20.v20190813/jetty-jmx-9.4.20.v20190813.jar --output /build/jetty-jmx.jar
 curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-util/9.4.20.v20190813/jetty-util-9.4.20.v20190813.jar --output /build/jetty-util.jar
 
+cp metadata-jobs/mce-consumer-job/build/libs/mce-consumer-job.jar /build/mce-consumer-job.jar
+cp metadata-jobs/mae-consumer-job/build/libs/mae-consumer-job.jar /build/mae-consumer-job.jar
 cp datahub-frontend/build/distributions/datahub-frontend.zip /build/datahub-frontend.zip
 cp metadata-service/war/build/libs/war.war /build/war.war
 cp metadata-models/src/main/resources/entity-registry.yml /build/entity-registry.yml
 cp docker/datahub-gms/jetty.xml /build/jetty.xml
 cp docker/datahub-gms/stripe-start.sh /build/stripe-start.sh
+cp docker/datahub-mce-consumer/stripe-start.sh /build/mxe-stripe-start.sh
 cp docker/datahub-gms/stripe-jmxfetch.yaml /build/stripe-jmxfetch.yaml
+cp docker/datahub-mce-consumer/stripe-jmxfetch.yaml /build/mce-stripe-jmxfetch.yaml
+cp docker/datahub-mae-consumer/stripe-jmxfetch.yaml /build/mae-stripe-jmxfetch.yaml
 cp docker/datahub-frontend/stripe-frontend-start.sh /build/stripe-frontend-start.sh
 cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
 cp docker/mysql-setup/init.sql /build/mysql_init.sql

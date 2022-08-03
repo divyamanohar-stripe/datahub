@@ -1,0 +1,186 @@
+load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/core/container.sky", "container", "init_container")
+load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/core/volume.sky", "mount_pod_volume", "volume_mount")
+load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
+load("config/kubernetes/helpers/aws_instance_sizes.sky", "m5d_xlarge")
+load("config/kubernetes/helpers/context.sky", "get_cluster", "get_env")
+load("config/kubernetes/helpers/quantities.sky", "cores", "gigabytes")
+load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
+load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_unprivileged")
+load("config/kubernetes/stripe.sky", "stripe_pod")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+
+def env_configs(ctx):
+    schema_registry_envoy_url = "http://schema-registry.service.envoy:10080/contexts/.datahub"
+    es_sproxy_host = "sproxy.service.envoy"
+    es_sproxy_port = "10080"
+    es_cluster_name = "searchdatahub"
+    gms_host_envoy_url = "datahub-gms.service.envoy"
+    gms_port_envoy_url = "10080"
+    if get_env(ctx) == "qa":
+        kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.qa-northwest.consul:9092"
+        return {
+            "replicas": 2,
+            "kafka_bootstrap_server": kafka_datahub,
+            "kafka_schemaregistry_url": schema_registry_envoy_url,
+            "elasticsearch_host": es_sproxy_host,
+            "elasticsearch_port": es_sproxy_port,
+            "elasticsearch_path_prefix": "/" + es_cluster_name,
+            "gms_host": gms_host_envoy_url,
+            "gms_port": gms_port_envoy_url,
+        }
+    else:
+        kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.northwest.consul:9092"
+        return {
+            "replicas": 2,
+            "kafka_bootstrap_server": kafka_datahub,
+            "kafka_schemaregistry_url": schema_registry_envoy_url,
+            "elasticsearch_host": es_sproxy_host,
+            "elasticsearch_port": es_sproxy_port,
+            "elasticsearch_path_prefix": "/" + es_cluster_name,
+            "gms_host": gms_host_envoy_url,
+            "gms_port": gms_port_envoy_url,
+        }
+
+def add_jmxfetch_sidecar(ctx, service_name, jmx_port, props_volume, yaml_file):
+    return compose_plugins(
+        container(
+            name = "jmxfetch",
+            image = image(
+                ctx,
+                "third-party/jmxfetch",
+                label = "latest",
+            ),
+            command = [
+                "java",
+                "-classpath",
+                "/jmxfetch-0.14.0-jar-with-dependencies.jar",
+                "org.datadog.jmxfetch.App",
+                "--check",
+                yaml_file,
+                "--check_period",
+                "15000",
+                "--conf_directory",
+                props_volume,
+                "--log_level",
+                "INFO",
+                "--log_location",
+                "/jmxfetch/jmxfetch-datahub-mae-consumer.log",
+                "--reporter",
+                "statsd:127.0.0.1:8200",
+                "--status_location",
+                "/jmxfetch/status_datahub-mae-consumer.yaml",
+                "collect",
+            ],
+            plugins = [
+                container_env_vars(
+                    vars = {
+                        "JAVA_OPTS": " ".join([
+                            "-Xms50m",
+                            "-Xmx200m",
+                        ]),
+                    },
+                ),
+            ],
+        ),
+        mount_pod_volume("/jmxfetch", container_name = "jmxfetch", mount_args = {"read_only": False}),
+        mount_pod_volume(props_volume, container_name = "jmxfetch"),
+    )
+
+# Canary to one replica
+def canary(ctx):
+    return _service(ctx, replicas = 1, suffix = "-canary")
+
+# Deploy to the rest of the fleet
+def main(ctx):
+    return _service(ctx, replicas = env_configs(ctx)["replicas"])
+
+def _service(ctx, replicas, suffix = ""):
+    container_image = image(
+        ctx,
+        artifact = "datahub-image",
+    )
+
+    PROPS_VOLUME = "/pay/jmxfetch-config"
+    common_mae_consumer_env_vars = {
+        "CONSUMER_JOB": "mae",
+        "KAFKA_BOOTSTRAP_SERVER": env_configs(ctx)["kafka_bootstrap_server"],
+        "KAFKA_SCHEMAREGISTRY_URL": env_configs(ctx)["kafka_schemaregistry_url"],
+        "ELASTICSEARCH_HOST": env_configs(ctx)["elasticsearch_host"],
+        "ELASTICSEARCH_PORT": env_configs(ctx)["elasticsearch_port"],
+        "ELASTICSEARCH_PATH_PREFIX": env_configs(ctx)["elasticsearch_path_prefix"],
+        "MAE_CONSUMER_ENABLED": "true",
+        "GMS_HOST": env_configs(ctx)["gms_host"],
+        "GMS_PORT": env_configs(ctx)["gms_port"],
+        "GRAPH_SERVICE_IMPL": "elasticsearch",
+        "ENTITY_REGISTRY_CONFIG_PATH": "/datahub/datahub-mxe-consumers/resources/entity-registry.yml",
+        "LOG_DIR": "/datahub/datahub-mxe-consumers/logs",
+        "JAVA_OPTS": "-Xms4g -Xmx4g",
+        "JMX_OPTS": "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082",
+        # KEEP THESE ENV VARIABLES
+        "METADATA_CHANGE_EVENT_NAME": "datahub.metadata_change_event",
+        "KAFKA_MCE_TOPIC_NAME": "datahub.metadata_change_event",
+        "METADATA_AUDIT_EVENT_NAME": "datahub.metadata_audit_event",
+        "FAILED_METADATA_CHANGE_EVENT_NAME": "datahub.failed_metadata_change_event",
+        "KAFKA_FMCE_TOPIC_NAME": "datahub.failed_metadata_change_event",
+        "METADATA_CHANGE_PROPOSAL_TOPIC_NAME": "datahub.metadata_change_proposal",
+        "DATAHUB_USAGE_EVENT_NAME": "datahub.usage_event",
+        "METADATA_CHANGE_LOG_VERSIONED_TOPIC_NAME": "datahub.metadata_changelog_versioned",
+        "METADATA_CHANGE_LOG_TIMESERIES_TOPIC_NAME": "datahub.metadata_changelog_timeseries",
+    }
+
+    service_port = 9091
+    deploy = deployment(
+        ctx,
+        stripe_pod(
+            name = "datahub-mae-consumer" + suffix,
+            namespace = "datahub",
+            command = ["./datahub-mxe-consumers/scripts/mxe-stripe-start.sh"],
+            # m5.xlarge instances have 4 cores and 16 GB of memory
+            instance_type = m5d_xlarge,
+            image = container_image,
+        ),
+        healthchecked_service(
+            name = "datahub-mae-consumer",
+            port = service_port,
+            path = "/actuator/health",
+        ),
+        # init container to copy the jmx fetch yaml to the properties volume so that JMX fetch
+        # can access it
+        init_container(
+            name = "copy-jmxfetch-yaml",
+            command = ["cp", "/datahub/datahub-mxe-consumers/resources/mae-stripe-jmxfetch.yaml", PROPS_VOLUME],
+            cpu = cores(1),
+            memory = gigabytes(1),
+            plugins = [
+                volume_mount(PROPS_VOLUME, read_only = False),
+            ],
+        ),
+        # configure the jmx fetch sidecar container
+        add_jmxfetch_sidecar(ctx, "datahub-mae-consumer", "8082", PROPS_VOLUME, "mae-stripe-jmxfetch.yaml"),
+        add_security_groups("datahub"),
+        # set various env vars on both datahub-gms and datahub-gms-canary
+        container_env_vars(
+            vars = common_mae_consumer_env_vars,
+            container_name = "datahub-mae-consumer",
+        ),
+        container_env_vars(
+            vars = common_mae_consumer_env_vars,
+            container_name = "datahub-mae-consumer-canary",
+        ),
+        run_as_unprivileged(),  # this runs the containers as 'stripe-service'
+        replicas = replicas,
+        # details on this: https://skycfg.corp.stripe.com/rollouts
+        # these numbers allow us to have sufficient number of healthy instances
+        # in each of our deployment stages
+        strategy = rolling_update_strategy(
+            # max_unavailable must be less than 1/6th the number of total pods to ensure
+            # uptime availability across AZs during deployment events (ir-aqua-factorial)
+            max_unavailable = "16%" if replicas > 6 else 1,
+            max_surge = "50%",
+        ),
+        shared_msp = True,
+    )
+    return [deploy]

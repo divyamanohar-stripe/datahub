@@ -61,8 +61,8 @@ services:
     - JAVA_OPTS=-Xms1g -Xmx1g
     - JMX_OPTS=-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082
     - ENTITY_REGISTRY_CONFIG_PATH=/datahub/datahub-gms/resources/entity-registry.yml
-    - MAE_CONSUMER_ENABLED=true
-    - MCE_CONSUMER_ENABLED=true
+    - MAE_CONSUMER_ENABLED=false
+    - MCE_CONSUMER_ENABLED=false
     - UI_INGESTION_ENABLED=false
     - LOG_DIR=/datahub/datahub-gms/logs
     - METADATA_CHANGE_EVENT_NAME=datahub.metadata_change_event
@@ -82,6 +82,49 @@ services:
     volumes:
     - ${HOME}/.datahub/plugins:/etc/datahub/plugins
     - ./docker/datahub-gms/local_dbpwd_secret.txt:/pay/keys/db_root_password.txt
+  datahub-mae-consumer:
+    container_name: datahub-mae-consumer
+    depends_on:
+      - kafka-setup
+      - elasticsearch-setup
+    environment:
+      - CONSUMER_JOB=mae,
+      - KAFKA_BOOTSTRAP_SERVER=broker:29092
+      - KAFKA_SCHEMAREGISTRY_URL=http://schema-registry:8081
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - GRAPH_SERVICE_IMPL=elasticsearch
+      - ENTITY_REGISTRY_CONFIG_PATH=/datahub/datahub-mxe-consumers/resources/entity-registry.yml
+      - MAE_CONSUMER_ENABLED=true
+      - PE_CONSUMER_ENABLED=true
+      - GMS_HOST=datahub-gms
+      - GMS_PORT=8080
+      - JAVA_OPTS=-Xms1g -Xmx1g
+      - JMX_OPTS=-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082
+    hostname: datahub-mae-consumer
+    image: stripe/datahub:latest
+    command: "./datahub-mxe-consumers/scripts/mae-stripe-start.sh"
+    ports:
+      - 9091:9091
+  datahub-mce-consumer:
+    container_name: datahub-mce-consumer
+    depends_on:
+      - kafka-setup
+      - datahub-gms
+    environment:
+      - CONSUMER_JOB=mce,
+      - KAFKA_BOOTSTRAP_SERVER=broker:29092
+      - KAFKA_SCHEMAREGISTRY_URL=http://schema-registry:8081 # different from gms
+      - MCE_CONSUMER_ENABLED=true
+      - GMS_HOST=datahub-gms
+      - GMS_PORT=8080
+      - JAVA_OPTS=-Xms1g -Xmx1g
+      - JMX_OPTS=-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082
+    hostname: datahub-mae-consumer
+    image: stripe/datahub:latest
+    command: "./datahub-mxe-consumers/scripts/mce-stripe-start.sh"
+    ports:
+      - 9090:9090
   elasticsearch:
     container_name: elasticsearch
     environment:

@@ -1,0 +1,91 @@
+service_name: datahub-mce-consumer
+availability_tier: A300
+repo: stripe-private-oss-forks/datahub
+description: "DataHub MCE service"
+contact:
+  responsible_team: schema-and-query
+  slack_channel: data-platform
+kubernetes:
+  template: "henson/kube/datahub-mce-consumer.sky"
+container_images:
+  - artifact_name: datahub-image
+    ecr:
+      repository: stripe/stripe-private-oss-forks/datahub
+deploy:
+  clusters:
+    - northwest
+  rollout:
+    stages:
+      - kubernetes:
+          function_name: canary
+        clusters:
+          - northwest
+        stage_advance:
+          abort_unhealthy_after: 120
+          wait_duration: 60
+          healthchecks:
+            - consul_health:
+                service_name: datahub-mce-consumer
+      - kubernetes:
+          function_name: main
+        clusters:
+          - northwest
+        stage_advance:
+          abort_unhealthy_after: 120
+          wait_duration: 60
+          healthchecks:
+            - consul_health:
+                service_name: datahub-mce-consumer
+  autodeploy:
+    enabled: true
+    triggers:
+      merges:
+        commits_have_labels: [ "service-datahub-mce-consumer" ]
+      schedule:
+        cron: "20 TUE" # Deploy Tuesdays at 20:00 UTC
+          # TODO: Once we're confident of the stability of the service we should update the announce to cc the relevant runner
+          # in case of errors during deploys
+announce:
+  announce_channels:
+    - channel: datahub-bots
+      # Deployment failed
+      enable_deployment_failed: ENABLED
+      # Create/clear lock
+      enable_create_lock: ENABLED
+      enable_clear_lock: ENABLED
+      # A deployment healthcheck is unhealthy during an active deploy
+      enable_rollout_stage_unhealthy: ENABLED
+      # A scheduled autodeploy will go out, did go out, or was unable to go out
+      enable_autodeploy_scheduled_deployment: ENABLED
+      # Autodeploys are not able to deploy, needs attention
+      enable_autodeploy_not_deploying: ENABLED
+dashboard_urls:
+  - title: DataHub SignalFX dashboard
+    url: https://stripe.signalfx.com/#/dashboard/FTsBp4KAYAA?groupId=FTsBpiMAcAA&configId=FTsBqFNAgAA
+runbook:
+  url: http://go/datahub-runbook
+# http://go/outbound-acls
+inbound_config:
+  inbound_listeners:
+    # Services
+    - consul_service: datahub-mce-consumer
+      allowed_clients:
+        - host_type: airflow
+        - host_type: airflowbackfill
+        - host_type: airflowds
+        - host_type: airflowicp
+        - host_type: airflowretention
+        - host_type: airflowweb
+        - host_type: datahub
+        - host_type: mydev
+        - host_type: mydata
+  outbound_services:
+    - service_name: schema-registry
+      mtls_authorities:
+        - schemaregistry
+    - service_name: sproxy
+      mtls_authorities:
+        - sproxy
+    - service_name: datahub-gms
+      mtls_authorities:
+        - datahub
