@@ -1,5 +1,5 @@
 load("config/kubernetes/apps/deployment.sky", "deployment")
-load("config/kubernetes/core/container.sky", "init_container", "container")
+load("config/kubernetes/core/container.sky", "container", "init_container")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/core/volume.sky", "mount_pod_volume", "volume_mount")
 load("config/kubernetes/helpers/images.sky", "image")
@@ -12,6 +12,7 @@ load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_un
 load("config/kubernetes/sidecars/confidant.sky", "raw_secret")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 
 def env_configs(ctx):
     mysql_datasource_url_template = "jdbc:mysql://%s:%s/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
@@ -51,47 +52,47 @@ def env_configs(ctx):
 
 def add_jmxfetch_sidecar(ctx, service_name, jmx_port, props_volume, yaml_file):
     return compose_plugins(
-      container(
-        name = "jmxfetch",
-        image = image(
-            ctx,
-            "third-party/jmxfetch",
-            label = "latest",
-        ),
-        command = [
-            "java",
-            "-classpath",
-            "/jmxfetch-0.14.0-jar-with-dependencies.jar",
-            "org.datadog.jmxfetch.App",
-            "--check",
-            yaml_file,
-            "--check_period",
-            "15000",
-            "--conf_directory",
-            props_volume,
-            "--log_level",
-            "INFO",
-            "--log_location",
-            "/jmxfetch/jmxfetch-datahub-gms.log",
-            "--reporter",
-            "statsd:127.0.0.1:8200",
-            "--status_location",
-            "/jmxfetch/status_datahub_gms.yaml",
-            "collect",
-        ],
-        plugins = [
-            container_env_vars(
-                vars = {
-                    "JAVA_OPTS": " ".join([
-                        "-Xms50m",
-                        "-Xmx200m",
-                    ]),
-                },
+        container(
+            name = "jmxfetch",
+            image = image(
+                ctx,
+                "third-party/jmxfetch",
+                label = "latest",
             ),
-        ],
-      ),
-      mount_pod_volume("/jmxfetch", container_name = "jmxfetch", mount_args = {"read_only": False}),
-      mount_pod_volume(props_volume, container_name = "jmxfetch"),
+            command = [
+                "java",
+                "-classpath",
+                "/jmxfetch-0.14.0-jar-with-dependencies.jar",
+                "org.datadog.jmxfetch.App",
+                "--check",
+                yaml_file,
+                "--check_period",
+                "15000",
+                "--conf_directory",
+                props_volume,
+                "--log_level",
+                "INFO",
+                "--log_location",
+                "/jmxfetch/jmxfetch-datahub-gms.log",
+                "--reporter",
+                "statsd:127.0.0.1:8200",
+                "--status_location",
+                "/jmxfetch/status_datahub_gms.yaml",
+                "collect",
+            ],
+            plugins = [
+                container_env_vars(
+                    vars = {
+                        "JAVA_OPTS": " ".join([
+                            "-Xms50m",
+                            "-Xmx200m",
+                        ]),
+                    },
+                ),
+            ],
+        ),
+        mount_pod_volume("/jmxfetch", container_name = "jmxfetch", mount_args = {"read_only": False}),
+        mount_pod_volume(props_volume, container_name = "jmxfetch"),
     )
 
 # Canary to one replica
@@ -103,10 +104,10 @@ def main(ctx):
     return _service(ctx, replicas = env_configs(ctx)["replicas"])
 
 def _service(ctx, replicas, suffix = ""):
-  container_image = image(
-    ctx,
-    artifact = "datahub-image",
-  )
+    container_image = image(
+        ctx,
+        artifact = "datahub-image",
+    )
 
   PROPS_VOLUME = "/pay/jmxfetch-config"
   common_gms_env_vars = {
@@ -139,79 +140,80 @@ def _service(ctx, replicas, suffix = ""):
       "JMX_OPTS": "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=8082"
   }
 
-  service_port = 8080
-  deploy = deployment(
-    ctx,
-    stripe_pod(
-      name="datahub-gms" + suffix,
-      namespace="datahub",
-      command = ["./datahub-gms/scripts/stripe-start.sh"],
-      # m5.xlarge instances have 4 cores and 16 GB of memory
-      instance_type = m5d_xlarge,
-      image = container_image,
-    ),
-    healthchecked_service(
-      name = "datahub-gms",
-      port = service_port,
-      path = "/health",
-      # bump up startup probe threshold as gms often spends time re-indexing etc at bootstrap
-      # which bumps against the default 5 min startup_probe_failure_threshold
-      startup_probe_failure_threshold = 900,
-    ),
-    # init container to run MySQL init
-    init_container(
-        name = "datahub-gms-initmysql",
-        command = ["/datahub/datahub-gms/scripts/stripe-init.sh"],
-        cpu = cores(1),
-        memory = gigabytes(1),
-    ),
-    container_env_vars(
-        vars = {
-            "MYSQL_USERNAME": "datahub",
-            "MYSQL_HOST": env_configs(ctx)["mysql_host"],
-            "DATAHUB_DB_NAME": "datahub",
-        },
-        container_name = 'datahub-gms-initmysql',
-    ),
-    # init container to copy the jmx fetch yaml to the properties volume so that JMX fetch
-    # can access it
-    init_container(
-        name="copy-jmxfetch-yaml",
-        command=["cp", "/datahub/datahub-gms/resources/stripe-jmxfetch.yaml", PROPS_VOLUME],
-        cpu = cores(1),
-        memory = gigabytes(1),
-        plugins = [
-            volume_mount(PROPS_VOLUME, read_only = False),
-        ],
-    ),
-    # configure the jmx fetch sidecar container
-    add_jmxfetch_sidecar(ctx, "datahub-gms", "8082", PROPS_VOLUME, "stripe-jmxfetch.yaml"),
-    add_security_groups("datahub"),
-    raw_secret(
-        filename = "db_root_password.txt",
-        key = "datahub/mysqldb/db_root_password",
-        container_names = ["datahub-gms-initmysql", "datahub-gms", "datahub-gms-canary"]
-    ),
-    # set various env vars on both datahub-gms and datahub-gms-canary
-    container_env_vars(
-        vars = common_gms_env_vars,
-        container_name = 'datahub-gms',
-    ),
-    container_env_vars(
-        vars = common_gms_env_vars,
-        container_name = 'datahub-gms-canary',
-    ),
-    run_as_unprivileged(), # this runs the containers as 'stripe-service'
-    replicas = replicas,
-    # details on this: https://skycfg.corp.stripe.com/rollouts
-    # these numbers allow us to have sufficient number of healthy instances
-    # in each of our deployment stages
-    strategy = rolling_update_strategy(
-        # max_unavailable must be less than 1/6th the number of total pods to ensure
-        # uptime availability across AZs during deployment events (ir-aqua-factorial)
-        max_unavailable = "16%" if replicas > 6 else 1,
-        max_surge = "50%"
-    ),
-    shared_msp = True,
-  )
-  return [deploy]
+    service_port = 8080
+    deploy = deployment(
+        ctx,
+        stripe_pod(
+            name = "datahub-gms" + suffix,
+            namespace = "datahub",
+            command = ["./datahub-gms/scripts/stripe-start.sh"],
+            # m5.xlarge instances have 4 cores and 16 GB of memory
+            instance_type = m5d_xlarge,
+            image = container_image,
+        ),
+        healthchecked_service(
+            name = "datahub-gms",
+            port = service_port,
+            path = "/health",
+            # bump up startup probe threshold as gms often spends time re-indexing etc at bootstrap
+            # which bumps against the default 5 min startup_probe_failure_threshold
+            startup_probe_failure_threshold = 900,
+        ),
+        # init container to run MySQL init
+        init_container(
+            name = "datahub-gms-initmysql",
+            command = ["/datahub/datahub-gms/scripts/stripe-init.sh"],
+            cpu = cores(1),
+            memory = gigabytes(1),
+        ),
+        container_env_vars(
+            vars = {
+                "MYSQL_USERNAME": "datahub",
+                "MYSQL_HOST": env_configs(ctx)["mysql_host"],
+                "DATAHUB_DB_NAME": "datahub",
+            },
+            container_name = "datahub-gms-initmysql",
+        ),
+        # init container to copy the jmx fetch yaml to the properties volume so that JMX fetch
+        # can access it
+        init_container(
+            name = "copy-jmxfetch-yaml",
+            command = ["cp", "/datahub/datahub-gms/resources/stripe-jmxfetch.yaml", PROPS_VOLUME],
+            cpu = cores(1),
+            memory = gigabytes(1),
+            plugins = [
+                volume_mount(PROPS_VOLUME, read_only = False),
+            ],
+        ),
+        # configure the jmx fetch sidecar container
+        add_jmxfetch_sidecar(ctx, "datahub-gms", "8082", PROPS_VOLUME, "stripe-jmxfetch.yaml"),
+        add_security_groups("datahub"),
+        raw_secret(
+            filename = "db_root_password.txt",
+            key = "datahub/mysqldb/db_root_password",
+            container_names = ["datahub-gms-initmysql", "datahub-gms", "datahub-gms-canary"],
+        ),
+        # set various env vars on both datahub-gms and datahub-gms-canary
+        container_env_vars(
+            vars = common_gms_env_vars,
+            container_name = "datahub-gms",
+        ),
+        container_env_vars(
+            vars = common_gms_env_vars,
+            container_name = "datahub-gms-canary",
+        ),
+        prefer_msp_shard("kubeapibb"),
+        run_as_unprivileged(),  # this runs the containers as 'stripe-service'
+        replicas = replicas,
+        # details on this: https://skycfg.corp.stripe.com/rollouts
+        # these numbers allow us to have sufficient number of healthy instances
+        # in each of our deployment stages
+        strategy = rolling_update_strategy(
+            # max_unavailable must be less than 1/6th the number of total pods to ensure
+            # uptime availability across AZs during deployment events (ir-aqua-factorial)
+            max_unavailable = "16%" if replicas > 6 else 1,
+            max_surge = "50%",
+        ),
+        shared_msp = True,
+    )
+    return [deploy]

@@ -11,6 +11,7 @@ load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
 load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_unprivileged")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 
 def env_configs(ctx):
     schema_registry_envoy_url = "http://schema-registry.service.envoy:10080/contexts/.datahub"
@@ -170,6 +171,7 @@ def _service(ctx, replicas, suffix = ""):
             vars = common_mae_consumer_env_vars,
             container_name = "datahub-mae-consumer-canary",
         ),
+        prefer_msp_shard("kubeapibb"),
         run_as_unprivileged(),  # this runs the containers as 'stripe-service'
         replicas = replicas,
         # details on this: https://skycfg.corp.stripe.com/rollouts
