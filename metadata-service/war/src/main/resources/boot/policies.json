@@ -30,10 +30,11 @@
         ]
       },
       "privileges":[
+        "EDIT_ENTITY",
         "VIEW_ENTITY_PAGE"
       ],
-      "displayName":"Root User - View All Resources",
-      "description":"Grants full view privileges for all resources to root 'datahub' root user.",
+      "displayName":"Root User - Edit and View All Resources",
+      "description":"Grants full edit and view privileges for all resources to root 'datahub' root user.",
       "state":"ACTIVE",
       "type":"METADATA",
       "editable":false
