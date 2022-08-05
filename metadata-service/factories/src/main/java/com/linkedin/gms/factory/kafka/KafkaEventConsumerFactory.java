@@ -35,6 +35,9 @@ public class KafkaEventConsumerFactory {
   @Value("${kafka.bootstrapServers}")
   private String kafkaBootstrapServers;
 
+  @Value("${kafka.consumer.autoOffsetReset:earliest}")
+  private String kafkaConsumerAutoOffsetReset;
+
   @Value("${kafka.schemaRegistry.type}")
   private String schemaRegistryType;
 
@@ -61,6 +64,8 @@ public class KafkaEventConsumerFactory {
     // Records will be flushed every 10 seconds.
     consumerProps.setEnableAutoCommit(true);
     consumerProps.setAutoCommitInterval(Duration.ofSeconds(10));
+    // Specify what to do when there's no committed offset on partitions.
+    consumerProps.setAutoOffsetReset(kafkaConsumerAutoOffsetReset);
 
     // KAFKA_BOOTSTRAP_SERVER has precedence over SPRING_KAFKA_BOOTSTRAP_SERVERS
     if (kafkaBootstrapServers != null && kafkaBootstrapServers.length() > 0) {
@@ -81,7 +86,7 @@ public class KafkaEventConsumerFactory {
     schemaRegistryConfig.getProperties().entrySet()
       .stream()
       .filter(entry -> entry.getValue() != null && !entry.getValue().toString().isEmpty())
-      .forEach(entry -> props.put(entry.getKey(), entry.getValue())); 
+      .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
 
     ConcurrentKafkaListenerContainerFactory<String, GenericRecord> factory =
         new ConcurrentKafkaListenerContainerFactory<>();

@@ -132,6 +132,8 @@ elasticsearch:
 
 # TODO: Kafka topic convention
 kafka:
+  consumer:
+    autoOffsetReset: ${KAFKA_CONSUMER_AUTO_OFFSET_RESET:earliest}
   listener:
     concurrency: ${KAFKA_LISTENER_CONCURRENCY:1}
   bootstrapServers: ${KAFKA_BOOTSTRAP_SERVER:http://localhost:9092}
