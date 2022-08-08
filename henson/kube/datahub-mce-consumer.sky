@@ -29,7 +29,7 @@ def env_configs(ctx):
     else:
         kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.northwest.consul:9092"
         return {
-            "replicas": 2,
+            "replicas": 7, # 8 in total including canary
             "kafka_bootstrap_server": kafka_datahub,
             "kafka_schemaregistry_url": schema_registry_envoy_url,
             "gms_host": gms_host_envoy_url,
