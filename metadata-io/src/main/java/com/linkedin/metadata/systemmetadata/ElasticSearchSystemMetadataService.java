@@ -196,7 +196,8 @@ public class ElasticSearchSystemMetadataService implements SystemMetadataService
       _indexBuilder.buildIndex(_indexConvention.getIndexName(INDEX_NAME), SystemMetadataMappingsBuilder.getMappings(),
           Collections.emptyMap());
     } catch (IOException ie) {
-      throw new RuntimeException("Could not configure system metadata index", ie);
+      log.error("Could not configure system metadata index", ie);
+      System.exit(1);
     }
   }
 
