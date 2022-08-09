@@ -10,7 +10,7 @@
           "urn:li:corpuser:datahub"
         ]
       },
-      "privileges":[],
+      "privileges":["MANAGE_DOMAINS"],
       "displayName":"Root User - No Platform Privileges",
       "description":"Cuts down platform privileges to default datahub user.",
       "state":"ACTIVE",
