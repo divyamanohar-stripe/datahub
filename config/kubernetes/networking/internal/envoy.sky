@@ -35,29 +35,31 @@ load(
 )
 load(
     "config/kubernetes/networking/internal/config/envoy-sidecar-config.sky",
+    "generate_cli_args",
     "generate_envoy_bootstrap_opts",
 )
 load("config/kubernetes/helpers/constants.sky", "ENVOY_SIDECAR_NAME")
+
+ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS = 4096
 
 _core = proto.package("k8s.io.api.core.v1")
 
 # When trying to test a digest from a non-master branch, use stripe-qa instead of stripe in the URI
 _CONTAINER_IMAGES = {
     # Prod sha256 digest
-    #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LKjDiY0dwl2iU5
-    # Git Commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/7c0c3050c69179b7ea9adaf589298bec5c4a8b7a
-    "prod": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:9a8cde0708f378881d11361c87dabbd804e06fcda6b7b8d7397e9f20851b6014",
+    # CI Build  : https://cibot.corp.stripe.com/builds/gocode-containers--bui_M5T5b34H9MKvhD
+    # Git Commit: b931058033726a257ef00fd3e784128c884e149a
+    "prod": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:0a33cdc02f0b0aebcd28545ae292952e04f2fa43b9b6ff668a4ed96f3ff26e74",
+
     # Preprod sha256 digest
-    #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LUWPmeYVbQQaLn
-    # Git Commit: 96c963bb6b60fb0b3eabcd641de1fe0c0f146f3c
-    "preprod": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:4e4178873cc2d879b51957933a07577259187f81c4ef87db264ac95b81bbbf4d",
+    # CI Build  : https://cibot.corp.stripe.com/builds/gocode-containers--bui_M5T5b34H9MKvhD
+    # Git Commit: b931058033726a257ef00fd3e784128c884e149a
+    "preprod": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:0a33cdc02f0b0aebcd28545ae292952e04f2fa43b9b6ff668a4ed96f3ff26e74",
+
     # QA sha256 digest
-    #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LUWPmeYVbQQaLn
-    # Git Commit: 96c963bb6b60fb0b3eabcd641de1fe0c0f146f3c
-    "qa": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:4e4178873cc2d879b51957933a07577259187f81c4ef87db264ac95b81bbbf4d",
+    # CI Build  : https://cibot.corp.stripe.com/builds/gocode-containers--bui_M5T5b34H9MKvhD
+    # Git Commit: b931058033726a257ef00fd3e784128c884e149a
+    "qa": "containers.global.prod.stripe.io/stripe/traffic/envoy-sidecar@sha256:0a33cdc02f0b0aebcd28545ae292952e04f2fa43b9b6ff668a4ed96f3ff26e74",
 }
 
 _OPEN_FILES_LIMIT = 262144
@@ -128,6 +130,8 @@ def envoy_sidecar(ctx, namespace, config_target, user_overrides):
 def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, namespace):
     probe_port = 12345
 
+    cli_args = generate_cli_args(config_target, user_overrides)
+
     cfg_json = _envoy_sidecar_config(
         config_target,
         user_overrides,
@@ -156,6 +160,9 @@ def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, names
         "--rlimit-no-file=%d" % _OPEN_FILES_LIMIT,
     ]
 
+    if cli_args["envoy_concurrency"] != None:
+        command.append("--concurrency=%s" % cli_args["envoy_concurrency"])
+
     return container(
         name = self,
         image = container_image,
@@ -174,11 +181,6 @@ def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, names
                 readiness = http_probe(
                     port = probe_port,
                     path = "/msp-infra-ready",
-                ),
-                # liveness probe detects deadlocked envoy-sidecar (e.g. if envoy exits but parent does not)
-                liveness = http_probe(
-                    port = probe_port,
-                    path = "/msp-infra-live",
                 ),
                 # add a startup probe to give envoy-sidecar time to initialize before the liveness probe kicks in
                 startup = http_probe(
@@ -251,6 +253,16 @@ def _envoy_sidecar_config(
                     ],
                 },
             ],
+        },
+        "circuit_breakers": {
+            "thresholds": [
+                {
+                    "priority": "DEFAULT",
+                    "max_connections": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
+                    "max_pending_requests": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
+                    "max_requests": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
+                }
+            ]
         },
     }
     envoy_config_srv_local = {
@@ -449,6 +461,14 @@ def _envoy_sidecar_config(
                     {
                         "tag_name": "dest",
                         "regex": "stripe\\.no_route\\.no_route(\\.([-a-z0-9_\\.]+)(?:\\:\\d+)?)",
+                    },
+                    {
+                        "tag_name": "grpc_method",
+                        "regex": "^cluster[.][^.]+[.]grpc([.].+[.]([^.]+[.][^.]+))[.][^.]+$",
+                    },
+                    {
+                        "tag_name": "grpc_status",
+                        "regex": "^cluster[.][^.]+[.]grpc[.].+([.](\\d+))$",
                     },
                 ],
                 "stats_matcher": {

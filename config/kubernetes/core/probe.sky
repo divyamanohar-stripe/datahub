@@ -48,7 +48,7 @@ def probes(liveness = None, readiness = None, startup = None, container_name = N
         startup = startup,
     )
 
-def http_probe(path, port, headers = {}, **kwargs):
+def http_probe(path, port, headers = {}, scheme = None, **kwargs):
     """
     Create a probe that uses HTTP to check the status of a container.
 
@@ -60,6 +60,7 @@ def http_probe(path, port, headers = {}, **kwargs):
             a health check endpoint.
         port: The port to send the HTTP request to.
         headers: An optional dictionary of HTTP headers to send with the probe's requests.
+        scheme: The scheme to use for connecting to the host (defaults to HTTP)
         **kwargs: Optional additional parameters for the probe. These map directly to fields on the
             Kubernetes [Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#probe-v1-core).
 
@@ -79,6 +80,7 @@ def http_probe(path, port, headers = {}, **kwargs):
                 path = path,
                 port = IntOrString(intVal = port),
                 httpHeaders = http_headers,
+                scheme = scheme,
             ),
         ),
         **kwargs

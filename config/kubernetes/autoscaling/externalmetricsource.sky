@@ -1,0 +1,21 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of ExternalMetricSource message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L46-L55
+"""
+
+load("config/kubernetes/autoscaling/metricidentifier.sky", "metric_identifier")
+load("config/kubernetes/autoscaling/metrictarget.sky", "metric_target")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def external_metric_status(ctx, object):
+    obj_external_metric_source = hpa.ExternalMetricSource()
+    object = struct(**object)
+
+    if hasattr(object, "metric"):
+        obj_external_metric_source.metric = metric_identifier(ctx, object.metric)
+
+    if hasattr(object, "target"):
+        obj_external_metric_source.target = metric_target(ctx, object.target)
+
+    return obj_external_metric_source

@@ -1,0 +1,31 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of CrossVersionObjectReference message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L33-L44
+"""
+
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def object_reference(ctx, target):
+    object_reference = hpa.CrossVersionObjectReference()
+    target = struct(**target)
+
+    if hasattr(target, "kind"):
+        if type(target.kind) == "string":
+            object_reference.kind = target.kind
+        else:
+            fail("CrossVersionObjectReference kind field called with non string value")
+
+    if hasattr(target, "name"):
+        if type(target.kind) == "string":
+            object_reference.name = target.name
+        else:
+            fail("CrossVersionObjectReference name field called with non string value")
+
+    if hasattr(target, "apiVersion"):
+        if type(target.apiVersion) == "string":
+            object_reference.apiVersion = target.apiVersion
+        else:
+            fail("CrossVersionObjectReference apiVersion field called with non string value")
+
+    return object_reference

@@ -9,6 +9,7 @@ load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/core/lifecycle.sky", "DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME", "grace_period")
 load("config/kubernetes/core/probe.sky", "command_probe", "probes")
 load("config/kubernetes/helpers/availability_tiers.sky", "A100", "A400")
+load("config/kubernetes/helpers/aws_instance_sizes.sky", "aws_instance_size")
 load("config/kubernetes/pay-server.sky", "einhorn_service", "pay_server_pod")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
 
@@ -18,13 +19,13 @@ Can't be overriden because the canary is always one node.
 def deployment_strategy_canary_func(ctx):
   return rolling_update_strategy(
      max_unavailable = 1,
-     max_surge = 0,
+     max_surge = 1,
   )
 
 def deployment_strategy_func(ctx):
   return rolling_update_strategy(
      max_unavailable = 1,
-     max_surge = 0,
+     max_surge = 1,
   )
 
 def ruby_workflow_worker_shared_msp(
@@ -39,7 +40,9 @@ def ruby_workflow_worker_shared_msp(
         replicas_func,
         plugins_func = None,
         startup_timeout,
-        drain_timeout = 300):
+        drain_timeout = 300,
+        strict_packaging = True,
+        manage_workers = True):
     """
     Create deployments for a Ruby Workflow Engine worker that runs on Shared MSP.
 
@@ -68,6 +71,13 @@ def ruby_workflow_worker_shared_msp(
             drain work when the host is requested to shutdown. This period must
             be between 10 seconds <-> 300 seconds (5 minutes). It is recommended
             to keep this at the default, however you may tune this as required.
+        strict_packaging: Marks this worker as being strictly packaged. If a
+            worker is not strictly packaged then we apply some extra validations
+            to make sure that it's configured safely.
+        manage_workers: Enables periodic cycling of worker processes to protect from out-of-memory issues.
+            Disabling this is strongly discouraged, but may be necessary for activities which run a single execution
+            for a long amount of time (ex. 1h). If possible, try to refactor your activity to have shorter execution times,
+            as this will ensure a more reliable workflow.
 
     Returns:
         A struct with two members, canary and main. These are functions
@@ -95,12 +105,17 @@ def ruby_workflow_worker_shared_msp(
             drain_timeout = drain_timeout,
             replicas = 1,
             is_canary = True,
+            manage_workers = manage_workers,
         )
 
     def _main(ctx):
         plugins = []
         if plugins_func:
             plugins = plugins_func(ctx)
+
+        if not strict_packaging:
+            memory_mib = aws_instance_size(instance_type.name).memory_mib
+            _validate_packaging_settings(name, startup_timeout, workers_per_replica, memory_mib)
 
         replicas = replicas_func(ctx)
         _validate_replicas(replicas)
@@ -123,6 +138,7 @@ def ruby_workflow_worker_shared_msp(
             drain_timeout = drain_timeout,
             replicas = replicas - 1,  # the canary counts for one
             is_canary = False,
+            manage_workers = manage_workers,
         )
 
     return struct(
@@ -142,7 +158,8 @@ def ruby_workflow_worker_dedicated_msp(
         replicas_func,
         plugins_func = None,
         startup_timeout,
-        drain_timeout = 300):
+        drain_timeout = 300,
+        strict_packaging = True):
     """
     Create deployments for a Ruby Workflow Engine worker that runs on Dedicated MSP.
 
@@ -172,6 +189,9 @@ def ruby_workflow_worker_dedicated_msp(
             drain work when the host is requested to shutdown. This period must
             be between 10 seconds <-> 300 seconds (5 minutes). It is recommended
             to keep this at the default, however you may tune this as required.
+        strict_packaging: Marks this worker as being strictly packaged. If a
+            worker is not strictly packaged then we apply some extra validations
+            to make sure that it's configured safely.
 
     Returns:
         A struct with two members, canary and main. These are functions
@@ -244,7 +264,8 @@ def _service_shared_msp(
         startup_timeout,
         drain_timeout,
         replicas,
-        is_canary):
+        is_canary,
+        manage_workers):
     envs = {}
     file_to_wait_for = "/tmp/workflowworker-alive"
     consul_name = name
@@ -275,6 +296,7 @@ def _service_shared_msp(
             healthcheck = None,
             workers = workers_per_replica,
             signal_timeout = drain_timeout,
+            manage_workers = manage_workers,
         ),
         container_env_vars(envs),
         probes(
@@ -390,6 +412,15 @@ def _validate_replicas(replicas):
 def _validate_drain_timeout(timeout):
     if timeout < 10 or timeout > 300:
        fail("The worker drain timeout (%s specified) must be set between 10 seconds and 300 seconds. If you require these limits to change, please reach out at #workflow-engine." % (timeout))
+
+def _validate_packaging_settings(name, startup_timeout, workers_per_replica, memory_mib):
+    if startup_timeout < 600:
+        fail("The worker service {name} is marked as having unpackaged code (strict_packaging=False) but has a short startup timeout ({startup_timeout}s). We've seen unpackaged code take up to 10 minutes (600 seconds) to start up during a deploy. Please increase your startup_timeout to at least 600 seconds to avoid deployment flakiness.".format(name=name, startup_timeout=startup_timeout))
+
+    UNPACKAGED_PAY_SERVER_MEMORY_MIB = 4096
+    expected_memory_mib = workers_per_replica * UNPACKAGED_PAY_SERVER_MEMORY_MIB
+    if expected_memory_mib > memory_mib:
+        fail("The worker service {name} is marked as having unpackaged code (strict_packaging=False) but the instance size that it's using doesn't have enough memory to run the number of unpackaged workers that are currently configured. An unpackaged pay-server worker uses about {payserver_memory}GB of RAM and you have {workers_per_replica} workers on your host (workers_per_replica) which means that you're estimated to use {expected_memory}GB of RAM but your host only has {memory}GB of RAM. You can either decrease the number of workers per replica or increase the size of your host. An r5.xlarge (instance_type = 'r5_xlarge') often works better.".format(name=name, payserver_memory=(UNPACKAGED_PAY_SERVER_MEMORY_MIB/1024), workers_per_replica=workers_per_replica, expected_memory=(expected_memory_mib/1024), memory=(memory_mib/1024)))
 
 def _compensate_drain_timeout(timeout):
     # When the drain period starts, the service will not be notified of the drain

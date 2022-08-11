@@ -6,8 +6,6 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/helpers/security.sky", "mount_credentials_proxy", "use_credentials_proxy")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/helpers/images.sky", "image")
-load("config/kubernetes/helpers/quantities.sky", "megabytes", "millicores")
-load("config/kubernetes/core/container.sky", "resource_requirements")
 load("config/kubernetes/core/env_var.sky", "container_env_vars", "default_env_vars")
 load("config/kubernetes/helpers/context.sky", "get_env")
 load("config/kubernetes/pay-server.sky", "default_pay_server_image")
@@ -92,9 +90,5 @@ def _offload_profiles_container(ctx, container_def, pod):
         image = image(ctx, default_pay_server_image),
         command = ["/deploy/pay-server/current/lib/production_profiler/scripts/offload_dumps_sidecar.rb"],
         env = env,
-        resources = resource_requirements(
-            memory = megabytes(512),
-            cpu = millicores(100),
-        ),
         volumeMounts = volume_mounts,
     )

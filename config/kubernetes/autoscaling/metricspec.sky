@@ -1,0 +1,35 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of MetricSpec message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L256-L289
+"""
+
+load("config/kubernetes/autoscaling/resourcemetricsource.sky", "resource_metric_source")
+load("config/kubernetes/autoscaling/podsmetricsource.sky", "pod_metric_source")
+load("config/kubernetes/autoscaling/objectmetricsource.sky", "object_metric_source")
+load("config/kubernetes/autoscaling/externalmetricsource.sky", "external_metric_status")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def metricspec(ctx, metric_def):
+    obj_metric_spec = hpa.MetricSpec()
+    metric = struct(**metric_def)
+
+    if hasattr(metric, "type"):
+        if type(metric.type) == "string":
+            obj_metric_spec.type = metric.type
+        else:
+            fail("MetricSpec type field called with non string value")
+
+    if hasattr(metric, "resource"):
+        obj_metric_spec.resource = resource_metric_source(ctx, resource = metric.resource, target = metric.target)
+
+    if hasattr(metric, "pods"):
+        obj_metric_spec.pods = pod_metric_source(ctx, metric.pods)
+
+    if hasattr(metric, "object"):
+        obj_metric_spec.object = object_metric_source(ctx, metric.object)
+
+    if hasattr(metric, "external"):
+        obj_metric_spec.external = external_metric_status(ctx, metric.external)
+
+    return obj_metric_spec

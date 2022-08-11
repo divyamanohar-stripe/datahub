@@ -1,0 +1,23 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of MetricIdentifier message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L244-L254
+"""
+
+load("config/kubernetes/autoscaling/labelselector.sky", "label_selector")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def metric_identifier(ctx, metric):
+    obj_metric_identifier = hpa.MetricIdentifier()
+    metric = struct(**metric)
+
+    if hasattr(metric, "name"):
+        if type(metric.name) == "string":
+            obj_metric_identifier.name = metric.name
+        else:
+            fail("MetricIdentifier name field called with non string value")
+
+    if hasattr(metric, "selector"):
+        obj_metric_identifier.selector = label_selector(ctx, metric.selector)
+
+    return obj_metric_identifier

@@ -1,5 +1,5 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/apps/deployment.sky", "deployment", "deployment_options")
 load("config/kubernetes/async-processing/monster/config.sky", "get_msp_availability_tier")
 load("config/kubernetes/async-processing/monster/jmxfetch.sky", "add_jmxfetch_sidecar")
 load("config/kubernetes/async-processing/monster/util.sky", "format_isolation_group", "generate_consul_name", "get_jmx_java_options", "get_monster_env_cmd_arguments", "get_worker_envoy_address_from_consul", "monster_deployment_labels")
@@ -10,21 +10,21 @@ load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/helpers/security.sky", "add_security_groups")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
+load("config/kubernetes/sidecars/config_srv.sky", "config_srv_sidecar")
 load("config/kubernetes/sidecars/consul.sky", "consul_service")
 load("config/kubernetes/stripe.sky", "stripe_pod")
-
+load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 
 def is_fanout_retry(config):
     return config.monster_service == "fanout-retry"
 
 
+# NOTE: This name becomes the kafka consumer group name. It uses the unformatted version of the isolation group
 def generate_name(config):
-    ig = format_isolation_group(config.monster_isolation_group)
-
     if is_fanout_retry(config):
-        return "monster-queuing-only-{}-retry".format(ig)
+        return "monster-queuing-only-{}-retry".format(config.monster_isolation_group)
     else:
-        return "monster-queuing-only-{}".format(ig)
+        return "monster-queuing-only-{}".format(config.monster_isolation_group)
 
 
 def generate_derive_input_topics_for_host_set(config):
@@ -35,19 +35,17 @@ def generate_derive_input_topics_for_host_set(config):
 
 
 def generate_input(config):
-    ig = format_isolation_group(config.monster_isolation_group)
-
     if is_fanout_retry(config):
-        return ["--input", "http-driver.monster-queuing.{}.retries:events".format(ig)]
+        return ["--input", "http-driver.monster-queuing.{}.retries:events".format(config.monster_isolation_group)]
 
     # --input provides additional topics that monster-fanout should read from to get events,
     # besides the ones derived from the host-set
     result = [
         "--input",
-        "monster.insert.retries.{}:submission".format(ig)
+        "monster.insert.retries.{}:submission".format(config.monster_isolation_group)
     ]
 
-    if ig == "general":
+    if config.monster_isolation_group == "general":
         result += ["--input", "monster.insert.ffqe-requeue:submission"]
 
     return result
@@ -56,29 +54,27 @@ def generate_input(config):
 def generate_output(config):
     # Fanout's regular "output" is FQEs into Mongo; these output topics are the unhappy paths:
     # retries and deadlettering (at queuing or insertion time)
-    ig = format_isolation_group(config.monster_isolation_group)
     return [
         "--output",
-        "http-driver.monster-queuing.{}.retries:events".format(ig),
+        "http-driver.monster-queuing.{}.retries:events".format(config.monster_isolation_group),
         "--output",
-        "monster.queuing-deadletter.{}:deadletters".format(ig),
+        "monster.queuing-deadletter.{}:deadletters".format(config.monster_isolation_group),
     ]
 
 
 def generate_submission_dead_letter_topic(config):
     return [
         "--submission-dead-letter-topic",
-        "monster.insert.deadletter.{}".format(format_isolation_group(config.monster_isolation_group))
+        "monster.insert.deadletter.{}".format(config.monster_isolation_group)
     ]
 
 
 def generate_destination(config):
-    ig = format_isolation_group(config.monster_isolation_group)
     return [
         "--destination",
         "http://{monster_fanout_workers}/v4/monster/queue/{isolation_group}".format(
-            monster_fanout_workers = get_worker_envoy_address_from_consul(generate_consul_name(ig, "fanout-workers")),
-            isolation_group = ig
+            monster_fanout_workers = get_worker_envoy_address_from_consul(generate_consul_name(config.monster_isolation_group, "fanout-workers")),
+            isolation_group = config.monster_isolation_group
         )
     ]
 
@@ -87,7 +83,7 @@ def generate_monster_config_service(config):
     return [
         "--monster-config-service",
         get_worker_envoy_address_from_consul(
-            generate_consul_name(format_isolation_group(config.monster_isolation_group), "config-workers")
+            generate_consul_name(config.monster_isolation_group, "config-workers")
         ),
     ]
 
@@ -212,7 +208,6 @@ def monster_fanout_deployment(ctx, config):
         configuration applied
     """
 
-    ig = format_isolation_group(config.monster_isolation_group)
     name = generate_name(config)
     mongo_address = "127.0.0.1:10087"
     host_type = "monsterfanout"
@@ -224,7 +219,7 @@ def monster_fanout_deployment(ctx, config):
         generate_derive_input_topics_for_host_set(config),
         generate_input(config),
         generate_output(config),
-        ["--submission-dead-letter-topic", "monster.insert.deadletter.{}".format(ig)],
+        ["--submission-dead-letter-topic", "monster.insert.deadletter.{}".format(config.monster_isolation_group)],
         generate_destination(config),
         generate_monster_config_service(config),
         ["--name", name],
@@ -252,7 +247,7 @@ def monster_fanout_deployment(ctx, config):
     ]
 
     jmx_port = 8086
-    consul_service_name = generate_consul_name(ig, config.monster_service)
+    consul_service_name = generate_consul_name(config.monster_isolation_group, config.monster_service)
 
     deploy = deployment(
         ctx,
@@ -268,7 +263,7 @@ def monster_fanout_deployment(ctx, config):
         container_env_vars(
             vars = {
                 "JAVA_OPTS": " ".join([
-                    "-Xmx{}g".format(config.raw_memory_gb),
+                    "-Xmx{}m".format(config.raw_memory_mb),
                     "-XX:+ExitOnOutOfMemoryError",
                     "-Djava.io.tmpdir=/pay/tmp",
                     "-Djava.util.logging.config.file=/src/scala/com/stripe/monster/fanout/logging.properties",
@@ -308,8 +303,14 @@ def monster_fanout_deployment(ctx, config):
             "kafkahttpconsumer",
             "monsterfanout",
         ),
-
+        prefer_msp_shard("kubeapibb"),
         auto_secrets(),
+        config_srv_sidecar(),
+        # We limit how many previous revisions of ReplicaSet's we keep around to limit
+        # the amount of metadata the k8s control plane has to serve up for Monster
+        # See: https://jira.corp.stripe.com/browse/RUN_ORCH-11446, http://go/ir/gray-fuse, http://go/ir/whim-tangent
+        # And: https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/workloads/controllers/deployment/#revision-history-limit
+        deployment_options(revisionHistoryLimit = 3),
         replicas = config.replicas,
         strategy = config.strategy,
         shared_msp = True,

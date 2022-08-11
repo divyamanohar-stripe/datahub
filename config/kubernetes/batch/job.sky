@@ -12,7 +12,7 @@ load("config/kubernetes/meta/metadata.sky", "render_metadata")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "job_plugin")
 
-def job(ctx, *plugins, **kwargs):
+def job(ctx, *plugins, shared_msp=False, **kwargs):
     """
     Define a batch job that will run once.
 
@@ -25,6 +25,7 @@ def job(ctx, *plugins, **kwargs):
     Args:
         ctx: The Skycfg context from the `main` function.
         *plugins: One or more plugins to configure the job.
+        shared_msp: boolean which is True iff the job should go to shared MSP (default is False)
         **kwargs: Options for the [JobSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#jobspec-v1-batch).
             A shortcut for the `job_options` plugin.
 
@@ -37,6 +38,7 @@ def job(ctx, *plugins, **kwargs):
         "type": "job",
         "metadata": {},
         "kwargs": {},
+        "shared_msp": shared_msp,
     }
 
     all_plugins = [

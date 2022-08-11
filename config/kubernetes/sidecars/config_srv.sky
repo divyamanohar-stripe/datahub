@@ -4,6 +4,8 @@ load("config/kubernetes/core/lifecycle.sky", "render_lifecycle")
 load("config/kubernetes/core/probe.sky", "http_probe")
 load("config/kubernetes/core/volume.sky", "render_volume_mount", "volume_mount")
 load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/security.sky", "use_credentials_proxy", "mount_credentials_proxy")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/variables.sky", "CONFIG_SRV_CONTAINER_ENV", "CONFIG_SRV_CONTAINER_DIGEST")
 
@@ -26,10 +28,13 @@ def config_srv_sidecar(*, http_port = 10104, grpc_port = 10105):
         A plugin that adds the sidecar container to the pod.
     """
 
-    return pod_plugin(
-        _update_pod,
-        http_port = http_port,
-        grpc_port = grpc_port,
+    return compose_plugins(
+        use_credentials_proxy(),
+        pod_plugin(
+            _update_pod,
+            http_port = http_port,
+            grpc_port = grpc_port,
+        )
     )
 
 def _update_pod(ctx, plugin, pod_def):
@@ -49,7 +54,7 @@ def _config_srv_sidecar_container(ctx, container_def, pod):
     container = struct(**container_def)
 
     # credentials-proxy needed to sign aws requests for s3 fallback
-    volume_mounts = [render_volume_mount(ctx, volume_mount("/run/stripe/credentials-proxy"))]
+    volume_mounts = [render_volume_mount(ctx, mount_credentials_proxy())]
 
     container_volumes = container.volume_mounts.values() if 'volume_mounts' in container_def else []
 

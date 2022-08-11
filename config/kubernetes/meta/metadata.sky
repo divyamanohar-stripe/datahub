@@ -6,7 +6,7 @@ Plugins for applying metadata to Kubernetes resources.
 load("config/kubernetes/helpers/tags.sky", "default_annotations", "default_labels", "service_selectors")
 load("config/kubernetes/helpers/context.sky", "get_blue_green_color", "get_function_name", "get_henson_git_commit", "get_name", "get_owner")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-load("config/kubernetes/plugins/types.sky", "any_resource_plugin", "cronjob_plugin", "daemonset_plugin", "deployment_plugin", "job_plugin", "pod_plugin", "statefulset_plugin")
+load("config/kubernetes/plugins/types.sky", "any_resource_plugin", "cronjob_plugin", "daemonset_plugin", "deployment_plugin", "job_plugin", "pod_plugin", "rbac_plugin", "statefulset_plugin")
 
 _meta = proto.package("k8s.io.apimachinery.pkg.apis.meta.v1")
 
@@ -64,6 +64,13 @@ def metadata(namespace, service_name = None, owner = None, selectors_override = 
         ),
         statefulset_plugin(
             _update_statefulset,
+            namespace = namespace,
+            service_name = service_name,
+            owner = owner,
+            selectors = selectors_override,
+        ),
+        rbac_plugin(
+            _update_rbac,
             namespace = namespace,
             service_name = service_name,
             owner = owner,
@@ -189,6 +196,9 @@ def _update_job(ctx, plugin, job_def):
 def _update_cronjob(ctx, plugin, cronjob_def):
     _update_resource(ctx, plugin, cronjob_def, is_cronjob = True)
 
+def _update_rbac(ctx, plugin, rbac_def):
+    _update_resource(ctx, plugin, rbac_def, is_cronjob = False)
+
 def _update_resource(ctx, plugin, resource_def, is_cronjob):
     name = plugin.service_name
     if not name:
@@ -287,7 +297,7 @@ def render_selector(ctx, metadata):
     if labels == None:
         labels = service_selectors(
             metadata.name,
-            blue_green_color=metadata.blue_green_color,
+            blue_green_color = metadata.blue_green_color,
         )
 
     return _meta.LabelSelector(matchLabels = labels)

@@ -1,0 +1,83 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of ClusterRole message please refer to
+https://github.com/kubernetes/api/blob/v0.24.2/rbac/v1/generated.proto#L40-L54
+"""
+
+load("config/kubernetes/meta/metadata.sky", "render_metadata")
+load("config/kubernetes/rbac/rbacschema.sky", "rbac")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "rbac_plugin")
+load("config/kubernetes/rbac/policyrule.sky", "policy_rule")
+load("config/kubernetes/autoscaling/labelselector.sky", "label_selector")
+
+def cluster_role(ctx, *plugins, **kwargs):
+    cluster_role_mapping = {
+        "render": _render_cluster_role,
+        "type": "rbac",
+        "metadata": {},
+        "kwargs": {},
+    }
+
+    all_plugins = []
+    all_plugins.extend(plugins)
+    all_plugins.append(cluster_role_options(**kwargs))
+
+    plugin = compose_plugins(*all_plugins)
+    plugin.update_rbac(ctx, plugin, cluster_role_mapping)
+
+    return cluster_role_mapping["render"](ctx, cluster_role_mapping)
+
+def cluster_role_options(**kwargs):
+    return rbac_plugin(
+        _update_cluster_role_options,
+        kwargs = kwargs,
+    )
+
+def _update_cluster_role_options(ctx, plugin, cluster_role_def):
+    cluster_role_def["kwargs"].update(plugin.kwargs)
+
+def _render_cluster_role(ctx, cluster_role_mapping):
+    cluster_role_mapping["metadata"] = struct(**cluster_role_mapping["metadata"])
+    cluster_role_mapping = struct(**cluster_role_mapping)
+
+    obj_cluster_role = rbac.ClusterRole()
+
+    obj_cluster_role.metadata = render_metadata(ctx, cluster_role_mapping.metadata)
+
+    kargs = struct(**cluster_role_mapping.kwargs)
+
+    if hasattr(kargs, "rules"):
+            if type(kargs.rules) == type([]):
+                obj_rule_list = []
+
+                for rule in kargs.rules:
+                    obj_rule = policy_rule(ctx, rule)
+                    obj_rule_list.append(obj_rule)
+
+                obj_cluster_role.rules = obj_rule_list
+            else:
+                fail("ClusterRole rules field called with non list value")
+
+    if hasattr(kargs, "aggregationRule"):
+        obj_aggregation_rule = rbac.AggregationRule()
+
+        # Nested map must be turned to struct before it can be utilized
+        aggRule = struct(**kargs.aggregationRule)
+
+        if hasattr(aggRule, "clusterRoleSelectors"):
+            if type(aggRule.clusterRoleSelectors) == type([]):
+                obj_cluster_role_selector_list = []
+
+                for role_selector in aggRule.clusterRoleSelectors:
+                    # Use existing label selector code from HPA
+                    obj_cluster_role_selector = label_selector(ctx, role_selector)
+                    obj_cluster_role_selector_list.append(obj_cluster_role_selector)
+
+                obj_aggregation_rule.clusterRoleSelectors = obj_cluster_role_selector_list
+            else:
+                fail("ClusterRole aggregationRule.clusterRoleSelectors field called with non list value")
+
+        obj_cluster_role.aggregationRule = obj_aggregation_rule
+
+    return obj_cluster_role

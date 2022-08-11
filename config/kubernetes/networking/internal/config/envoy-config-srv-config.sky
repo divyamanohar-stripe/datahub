@@ -45,17 +45,17 @@ def _default_sidecar_version(target):
     """
     # Prod sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LKMZPEejTiieEd
-    # Git Commit: 5ee34fa64c6ffd9d696043cbb9489b24920d6bc1
-    # Summary   : Add access log sampling support using a Lua filter (#2218)
-    prod_digest = "db0af06ff1ea8518f5faa2ba80b2a1e56e42219438454bea4efe6c951dcf1228"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_M7m2q1Rl3GMGS4
+    # Git Commit: 985239d538a849828bdf44a8845fe3161d0dc71c
+    # Summary   : 07/25/2022: Bump shared Skycfg libraries to ecc2f5214f9c58bf44a511b513afe1e4f01f0cc5 (#2866)
+    prod_digest = "2e47f855479d486cf29484ce9caa8e7a2001ff646a447e203db9835278b3abf9"
 
     # QA sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/bui_LYCqftJgkCSFaK
-    # Git Commit: 8460610d3db569adc2cb8eb9fab64516922c113a
-    # Summary   : Update circuit-breakers.md (#2483)
-    qa_digest   = "1969e220096c8abfa927ab0a9c3ee32b5ca742cf3dada2ae61cdce4dea1c4915"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_M7m2q1Rl3GMGS4
+    # Git Commit: 985239d538a849828bdf44a8845fe3161d0dc71c
+    # Summary   : 07/25/2022: Bump shared Skycfg libraries to ecc2f5214f9c58bf44a511b513afe1e4f01f0cc5 (#2866)
+    qa_digest   = "2e47f855479d486cf29484ce9caa8e7a2001ff646a447e203db9835278b3abf9"
 
     return {
         "version": match(
@@ -80,6 +80,13 @@ def _default_sidecar_cli_args(target):
         "mproxy_tier": "non-bapi",
         "egress_proxy_tier": "",
         "enable_inbound_websockets": False,
+        # The enable_grpc_web option is technically enabled 100% of the time today at the envoy-config-srv
+        # level, because the envoy-config-srv binary sets the option as default true, and the value is only
+        # set to false if the --no-enable-grpc-web flag is used. We will keep the skycfg option below as
+        # default false to match the behavior in puppet hiera, but we will later update the flag generation
+        # logic in both puppet and skycfg to explicitly pass --no-enable-grpc-web to envoy-config-srv if
+        # the config is set to false.
+        "enable_grpc_web": False,
         "cluster_watch_addr": _designated_envoy_control_srv_addr(target.availability_tier, target.env),
     }
 
@@ -105,12 +112,7 @@ def _default_sidecar_config(target):
                 max_stream_window_size = 1048576,
                 max_connection_window_size = 134217728,
             ),
-            "cluster_healthcheck_opts": cluster_healthcheck_opts(
-                initial_jitter = "3s",
-                interval_jitter = "0.5s",
-                enable_server_side_hc = True,
-                use_sn_internal_hc = True,
-            ),
+            "cluster_healthcheck_opts": cluster_healthcheck_opts(initial_jitter = "3s", interval_jitter = "0.5s", enable_server_side_hc = True, use_sn_internal_hc = True, enable_http2_hc = False),
             "uds_rds_service_allowlist": ["*"],
             "eds_listener_address": match(
                 target,
@@ -138,6 +140,7 @@ def _default_sidecar_config(target):
             "envoy_file_system_flags": ENVOY_SYSTEM_FLAGS_PATH,
             "enable_mproxy_listener_modify_only_drain_type": True,
             "enable_listener_modify_only_drain_type": True,
+            "enable_inbound_listener_modify_only_drain_type": True,
             "nlb_health_check": match(
                 target,
                 None,
@@ -147,14 +150,11 @@ def _default_sidecar_config(target):
             "enable_global_ratelimiter": False,
             "local_rate_limit": None,
             "rollout_watcher": {
-                "enable_rollout_watcher": match(
-                    target,
-                    True,
-                    when(env = "preprod", value = False),
-                ),
+                "enable_rollout_watcher": True,
                 "config_srv_addr": match(
                     target,
                     "configsrvbox.northwest.prod.stripe.io:10101",
+                    when(env = "preprod", value = "configsrvbox.cmh.preprod.stripe.io:10101"),
                     when(env = "qa", value = "configsrvbox.northwest.qa.stripe.io:10101"),
                 ),
                 "config_srv_key": "config/stripe-internal/kube-tools/envoy-config-srv-rollout/rollout_config",
@@ -179,14 +179,8 @@ def _default_sidecar_config(target):
                 success_sample_percent = 10,
                 error_sample_percent = 100,
             ),
+            "enable_grpc_stats": True,
         },
-        # FIXME(jakewang): we use `merge_configs()` to ensure the configuration option `enable_inbound_listener_modify_only_drain_type`
-        # is not introduced when the associated binary has not been updated to support it.
-        match(
-          target,
-          {},
-          when(env = "qa", value = {"enable_inbound_listener_modify_only_drain_type": True}),
-        ),
     )
 
 def http2_options(
@@ -203,29 +197,37 @@ def cluster_healthcheck_opts(
         initial_jitter,
         interval_jitter,
         enable_server_side_hc,
-        use_sn_internal_hc):
+        use_sn_internal_hc,
+        enable_http2_hc):
     return {
         "initial_jitter": initial_jitter,
         "interval_jitter": interval_jitter,
         "enable_server_side_hc": enable_server_side_hc,
         "use_sn_internal_hc": use_sn_internal_hc,
+        "enable_http2_hc": enable_http2_hc,
     }
 
 # Used by config/kubernetes/networking/public/config.sky
 def local_rate_limit(
         max_capacity,
         tokens_per_interval,
-        fill_interval_duration):
+        fill_interval_duration,
+        unavailable_status_code):
     if (type(max_capacity) != "int" or
         type(tokens_per_interval) != "int" or
-        type(fill_interval_duration) != "string"):
+        type(fill_interval_duration) != "string" or
+        type(unavailable_status_code) != "bool"):
         fail("Unexpected argument type. See definition in https://git.corp.stripe.com/stripe-internal/kube-tools/blob/master/envoy-config-srv/proto/config/config.proto#L288")
 
-    return {
+    conf = {
         "max_capacity": max_capacity,
         "tokens_per_interval": tokens_per_interval,
         "fill_interval_duration": fill_interval_duration,
     }
+    if unavailable_status_code:
+        conf.update({"status_unavailable": True})
+
+    return conf
 
 def access_log_filter(
         enabled,

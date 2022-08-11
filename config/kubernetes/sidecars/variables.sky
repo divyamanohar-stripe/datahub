@@ -82,3 +82,34 @@ HEALTH_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
 # gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/f19a7a70686e9b23c89511dd0eaff604825872b3
 WORKER_CONTAINER_FALLBACK_SHA = "f19a7a70686e9b23c89511dd0eaff604825872b3"
 WORKER_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+
+# HEADS UP! Updating these values was never the right way to roll out a new version of the SansShell sidecar.
+#
+# You can rollout a new version of the container image by deploying the `sansshell-sidecar` service:
+#
+# QA: http://go/qa/deploy/sansshell-sidecar
+# Prod: http://go/deploy/sansshell-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# https://git.corp.stripe.com/stripe-private-oss-forks/sansshell/commit/6e6faec4154cb78c19aba0d131922ab4037472e3
+# containers.global.prod.stripe.io/stripe/stripe-private-oss-forks/sansshell@sha256:75ac8f4d0f45edc201cb7447935c6d9381bd827de6c7a0d766edfd183fa2a34c
+SANSSHELL_CONTAINER_FALLBACK_DIGEST = "sha256:75ac8f4d0f45edc201cb7447935c6d9381bd827de6c7a0d766edfd183fa2a34c"
+SANSSHELL_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+
+# HEADS UP! Updating these values is no longer the right way to roll out a new version of the go profiler sidecar.
+#
+# The go profiler sidecar is now using our new support for sidecar deploys! You can rollout a new version of the
+# container image by deploying the `go-profiler-sidecar` service:
+#
+# QA: http://go/qa/deploy/go-profiler-sidecar
+# Prod: http://go/deploy/go-profiler-sidecar
+#
+# The constants below will only be used as a fallback in case Henson does not provide a version for this sidecar
+# for some reason.
+#
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/f19a7a70686e9b23c89511dd0eaff604825872b3
+GO_PROFILER_CONTAINER_FALLBACK_DIGEST = "sha256:9bf38e73f0732592ab9afe90e4bc0c78db154dbe9f156a511434ea716c8094c6"
+GO_PROFILER_CONTAINER_FALLBACK_ENV = DEFUALT_CONTAINER_ENV
+

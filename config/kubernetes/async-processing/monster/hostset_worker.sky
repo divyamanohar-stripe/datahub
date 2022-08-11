@@ -2,7 +2,11 @@
 # This file defines data structures that describe a Monster "host set".
 # See http://go/monster-hostset-decl for detailed documentation.
 
-load("config/kubernetes/async-processing/monster/util.sky", "ALL_CLUSTERS", "dynamic_replicas")
+load("config/kubernetes/async-processing/monster/util.sky", "ALL_CLUSTERS")
+load(
+    "config/kubernetes/helpers/aws_instance_sizes.sky",
+    "m5_2xlarge", "m5_16xlarge", "r5_8xlarge", "r5_xlarge"
+)
 
 DEFAULT_WORKER_COUNT = 2
 DEFAULT_MB_PER_WORKER = 2200
@@ -15,9 +19,37 @@ DEFAULT_WORKER_MEM_SCALES = {
     # on lower throughput clusters, provisioning larger instances,
     # with fewer replicas is currently believed to be superior
     # to adding extra replicas for low traffic use cases
-    "bom": 1100,
-    "cmh": 1100
+    "bom": 1250,
+    "cmh": 1250
 }
+
+# Default instance type per env/cluster
+DEFAULT_INSTANCE_TYPE_BY_ENV_CLUSTER = {
+    "prod": {
+        "northwest": r5_8xlarge,
+    },
+}
+# Any env/cluster not specified will use this by default
+DEFAULT_DEFAULT_INSTANCE_TYPE = r5_xlarge
+
+ALLOWED_INSTANCE_TYPES = [
+    # Default option for clusters with low traffic
+    r5_xlarge,
+    # Default option for clusters with higher traffic
+    r5_8xlarge,
+
+    # For workers that need more CPU, low traffic
+    m5_2xlarge,
+    # For workers that need more CPU, higher traffic
+    m5_16xlarge,
+]
+
+def get_default_instance_type(env, cluster):
+    return DEFAULT_INSTANCE_TYPE_BY_ENV_CLUSTER.get(
+        env, {}
+    ).get(
+        cluster, DEFAULT_DEFAULT_INSTANCE_TYPE
+    )
 
 # Declares a cluster, or template cluster, describing worker replica counts
 # and memory allocation per worker replica. There are varying ways to call
@@ -35,12 +67,14 @@ def cluster(
         fanout_replicas=None,
         config_replicas=None,
         mb_per_worker=None,
+        instance_type=None,
 ):
     return struct(
         consume=consume_replicas,
         fanout=fanout_replicas,
         config=config_replicas,
         mb_per_worker=mb_per_worker,
+        instance_type=instance_type,
     )
 
 # (Private API) Helper function to return the first non-None value from a list
@@ -61,8 +95,9 @@ def _global_default_template_cluster():
     return cluster(
         consume_replicas=DEFAULT_WORKER_COUNT,
         fanout_replicas=DEFAULT_WORKER_COUNT,
-        config_replicas=DEFAULT_WORKER_COUNT,
+        config_replicas=0,
         mb_per_worker=DEFAULT_MB_PER_WORKER,
+        instance_type=None,
     )
 
 # (Test API) Defines a "worker defaults" to hold default values. Only test
@@ -96,6 +131,7 @@ def _merge_templates(new_cluster, old_defs):
         fanout_replicas=_first_set(new_cluster.fanout, old_defs.template.fanout),
         config_replicas=_first_set(new_cluster.config, old_defs.template.config),
         mb_per_worker=_first_set(new_cluster.mb_per_worker, old_defs.template.mb_per_worker),
+        instance_type=_first_set(new_cluster.instance_type, old_defs.template.instance_type),
     )
 
     return worker_defs(template_cluster=template,
@@ -118,14 +154,23 @@ def worker_mem(cluster, cluster_name, defs):
 # (Private API) Creates a final JSON document containing, for a given cluster,
 # all of the properties of a worker relevant to deployments. Final values are
 # looked up according to the default cascade if necessary.
-def render_cluster(cluster_map, cluster_name, defs):
+def render_cluster(env_name, cluster_map, cluster_name, defs):
     c = cluster_map.get(cluster_name, cluster())
+
+    instance_type = _first_set(c.instance_type, defs.template.instance_type)
+    if instance_type == None:
+        instance_type = get_default_instance_type(env_name, cluster_name)
+
+    if instance_type not in ALLOWED_INSTANCE_TYPES:
+        fail(instance_type.name + ": instance_type not in allowlist. Please go/ask/monster for additions")
+
     return {
         cluster_name: {
             "consume": _first_set(c.consume, defs.template.consume),
             "fanout": _first_set(c.fanout, defs.template.fanout),
             "config": _first_set(c.config, defs.template.config),
             "mb_per_worker": worker_mem(c, cluster_name, defs),
+            "instance_type": instance_type,
         }
     }
 
@@ -133,7 +178,7 @@ def render_cluster(cluster_map, cluster_name, defs):
 # environment (prod, qa), all of the worker properties relevant to
 # deployments. This is the union of the result of `render_cluster`, for each
 # cluster known.
-def render_env(env_map, defs):
+def render_env(env_name, env_map, defs):
     # short-hand for per-env default
     if type(env_map) != "dict":
         env_map = {"default": env_map}
@@ -141,19 +186,29 @@ def render_env(env_map, defs):
     defs = _merge_templates(env_map.get("default"), defs)
     json = {}
     for cluster_name in ALL_CLUSTERS:
-        json.update(render_cluster(env_map, cluster_name, defs))
+        json.update(render_cluster(env_name, env_map, cluster_name, defs))
 
     return json
 
 # Creates a deployment declaration for an isolation group (aka host-set). For
 # more details, see the user guide at http://go/monster-hostset-decl.
-def hostset(name, default=None, qa=None, prod=None, is_canary=False, shared_msp=False, defs=worker_defs(), suffix=""):
+def hostset(name,
+            default=None,
+            qa=None,
+            preprod=cluster(consume_replicas=0,
+                            config_replicas=0,
+                            fanout_replicas=0),
+            prod=None,
+            is_canary=False,
+            defs=worker_defs(),
+            suffix=""):
     # Setting suffix will add to it to the k8s service name
     # nothing else would change, so that capacity would share the same consul service name as main capacity
     # Similarly, setting is_canary will add "-canary" (after the suffix, if any)
 
     defs=_merge_templates(default, defs)
-    qa_json = render_env(qa or {}, defs)
-    prod_json = render_env(prod or {}, defs)
+    qa_json = render_env("qa", qa or {}, defs)
+    preprod_json = render_env("preprod", preprod or {}, defs)
+    prod_json = render_env("prod", prod or {}, defs)
 
-    return struct(name=name, qa=qa_json, prod=prod_json, is_canary=is_canary, shared_msp=shared_msp, suffix=suffix)
+    return struct(name=name, qa=qa_json, preprod=preprod_json, prod=prod_json, is_canary=is_canary, suffix=suffix)

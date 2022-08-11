@@ -8,7 +8,8 @@ For Dedicated MSP, `build_networking_config` can be used to construct a configur
 for the `networking` plugin.
 """
 
-load("config/kubernetes/plugins/types.sky", "deployment_plugin")
+load("config/kubernetes/plugins/compose.sky", "compose_plugins")
+load("config/kubernetes/plugins/types.sky", "deployment_plugin", "statefulset_plugin")
 load("config/kubernetes/networking/internal/config/envoy-config-srv-config.sky", "local_rate_limit")
 load(
     "config/kubernetes/networking/internal/config/override.sky",
@@ -119,6 +120,9 @@ def networking_config(
         enable_inbound_websockets = NOT_PROVIDED,
         enable_global_ratelimit = NOT_PROVIDED,
         inbound_ratelimit = NOT_PROVIDED,
+        enable_grpc_web = NOT_PROVIDED,
+        envoy_concurrency = NOT_PROVIDED,
+        envoy_scrape_histogram_metrics = NOT_PROVIDED,
         # enable_tracing = NOT_PROVIDED, # TODO(xyu): go/jira/SN-1059
         # Non-public SN knobs to tweak on a per-workload basis
         _sn_breakglass = breakglass_settings()):
@@ -133,7 +137,7 @@ def networking_config(
             for options.
             (Default: "non-bapi", example: "bapi-p5-canary")
         egress_proxy_tier: name of egress proxy service tier. See
-            https://confluence.corp.stripe.com/display/PLATSEC/Egress+Proxy+Service+Tiers
+            https://confluence.corp.stripe.com/display/SEA/Egress+Proxy+Service+Tiers
             for options. (Default: "", example: "p0")
         enable_inbound_websockets: configure Envoy to allow inbound websocket connections to
             this service.
@@ -143,6 +147,12 @@ def networking_config(
         inbound_ratelimit: Configuration struct controlling the inbound (local)
             rate limiter for requests to your service. Disabled by default; see `inbound_ratelimit`
             for all default values.
+        enable_grpc_web: Configure whether or not to inject the gRPC-web filter into the
+            inbound filter chain.
+        envoy_concurrency: Integer; sets the concurrency (number of workers) of the envoy sidecar container.
+            By default, if not set, envoy will set concurrency to nproc of underlying host.
+        envoy_scrape_histogram_metrics: Boolean value indicating whether to scrape histogram metrics and
+            render them to the statsd sink using the histogram scraper.
 
         _sn_breakglass: these are internal networking customizations for use by the
             Service Networking Team. While service owners are generally not expected
@@ -175,6 +185,15 @@ def networking_config(
             mproxy_tier = mproxy_tier,
             egress_proxy_tier = egress_proxy_tier,
             enable_inbound_websockets = enable_inbound_websockets,
+            enable_grpc_web = enable_grpc_web,
+        ),
+        envoy_concurrency = network_config_updater(
+            _update_envoy_sidecar_cli_args = _override_matching_keys,
+            envoy_concurrency = envoy_concurrency,
+        ),
+        envoy_monitor_cli = network_config_updater(
+            _update_envoy_monitor_cli_args = _override_matching_keys,
+            envoy_scrape_histogram_metrics = envoy_scrape_histogram_metrics,
         ),
         **_sn_breakglass
     )
@@ -192,9 +211,15 @@ def networking_config(
                 "fields set by the public API args to `networking_config`.",
             ]))
 
-    return deployment_plugin(
-        _update_deployment_networking_config,
-        config = user_provided,
+    return compose_plugins(
+        deployment_plugin(
+            _update_deployment_networking_config,
+            config = user_provided,
+        ),
+        statefulset_plugin(
+            _update_statefulset_networking_config,
+            config = user_provided,
+        )
     )
 
 def _update_deployment_networking_config(ctx, plugin, deployment_def):
@@ -202,6 +227,13 @@ def _update_deployment_networking_config(ctx, plugin, deployment_def):
     # If you make changes to how we interact with the deployment IR, update `build_networking_config`
     # accordingly.
     deployment_def["networking_config"] = plugin.config
+
+
+def _update_statefulset_networking_config(ctx, plugin, statefulset_def):
+    # NOTE: `build_networking_config` depends on how this plugin interacts with the `statefulset_def`.
+    # If you make changes to how we interact with the statefulset IR, update `build_networking_config`
+    # accordingly.
+    statefulset_def["networking_config"] = plugin.config
 
 def build_networking_config(**kwargs):
     """
@@ -226,7 +258,8 @@ def inbound_ratelimit(
         enable = False,
         max_capacity = 1000,
         fill_interval_duration = "100ms",
-        tokens_per_interval = 100):
+        tokens_per_interval = 100,
+        unavailable_status_code = False):
     """
     Construct inbound rate limiter configuration.
 
@@ -238,6 +271,7 @@ def inbound_ratelimit(
         max_capacity: Token bucket max capacity (default: 1000).
         fill_interval_duration: What is the unit of time by which we add tokens to bucket (default = 100ms).
         tokens_per_interval: How many tokens are added for each fill_interval_duration (default = 100).
+        unavailable_status_code: If true, dropped rate-limited requests will have the status code of Unavailable (503), otherwise 429. (default = False)
     """
     return network_config_updater(
         _update_envoy_config_srv_config = _set_local_ratelimit,
@@ -245,6 +279,7 @@ def inbound_ratelimit(
         max_capacity = max_capacity,
         fill_interval_duration = fill_interval_duration,
         tokens_per_interval = tokens_per_interval,
+        unavailable_status_code = unavailable_status_code,
     )
 
 def _set_local_ratelimit(args):
@@ -254,6 +289,7 @@ def _set_local_ratelimit(args):
                 max_capacity = args.max_capacity,
                 tokens_per_interval = args.tokens_per_interval,
                 fill_interval_duration = args.fill_interval_duration,
+                unavailable_status_code = args.unavailable_status_code
             )
         ),
     }

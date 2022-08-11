@@ -36,12 +36,14 @@ def cronjob(ctx, *plugins, ttl_secs_after_finish=2592000, **kwargs):
         A [CronJob](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#cronjob-v1beta1-batch)
         Kubernetes protobuf message describing the configuration of the cron job.
     """
+
     cronjob = {
         "render": _render_cronjob,
         "type": "cronjob",
         "metadata": {},
         "kwargs": {},
         "ttl_secs_after_finish": ttl_secs_after_finish,
+        "backoff_limit": 6,
     }
 
     all_plugins = [
@@ -93,10 +95,10 @@ _default_cronjob_kwargs = {
 # cron falls under the SOX controls.
 def _get_sox_control_labels(namespace, name):
     sox_labels = {
-        "stripe.io/sox_control": "enabled",
+        "stripe.io/sox-control": "enabled",
     }
     if cron_in_exceptions(namespace, name):
-        sox_labels["stripe.io/sox_control"] = "disabled"
+        sox_labels["stripe.io/sox-control"] = "disabled"
     return sox_labels
 
 def _update_cronjob_options(ctx, plugin, cronjob_def):
@@ -117,6 +119,7 @@ def _render_cronjob(ctx, cronjob_def):
                 spec = _batch.JobSpec(
                     # Delete the completed Job in specified time.
                     ttlSecondsAfterFinished = cronjob.ttl_secs_after_finish,
+                    backoffLimit = cronjob.backoff_limit,
                     template = pod_template,
                 ),
             ),

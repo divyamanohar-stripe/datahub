@@ -56,6 +56,7 @@ def aws_instance_size(instance_type):
         "c5": 750,
         "m5": 700,
         "r5": 525,
+        "i3": 700,
         # TODO(gregj) this m6 value is copied from m5 -- I didn't actually go look at the memory
         # usage on instances of these actual types, since we're just prototyping m6a instances on
         # AMD in QA for now. We'll need to find the actual value here before actually running gen 6
@@ -1979,3 +1980,72 @@ m6a_xlarge = struct(
     name="m6a.xlarge",
     slack_cpu_millicores=1000,
 )
+
+i3_xlarge = struct(
+    name="i3.xlarge",
+    slack_cpu_millicores=1000,
+)
+
+i3_2xlarge = struct(
+    name="i3.2xlarge",
+    slack_cpu_millicores=1000,
+)
+
+_INSTANCE_TYPES_BY_NAME = {
+    c5_xlarge.name: c5_xlarge,
+    c5_2xlarge.name: c5_2xlarge,
+    c5_4xlarge.name: c5_4xlarge,
+    c5_9xlarge.name: c5_9xlarge,
+    c5_12xlarge.name: c5_12xlarge,
+    c5_18xlarge.name: c5_18xlarge,
+    c5_24xlarge.name: c5_24xlarge,
+    c5d_xlarge.name: c5d_xlarge,
+    c5d_2xlarge.name: c5d_2xlarge,
+    c5d_4xlarge.name: c5d_4xlarge,
+    c5d_9xlarge.name: c5d_9xlarge,
+    c5d_12xlarge.name: c5d_12xlarge,
+    c5d_18xlarge.name: c5d_18xlarge,
+    c5d_24xlarge.name: c5d_24xlarge,
+    m5_large.name: m5_large,
+    m5_xlarge.name: m5_xlarge,
+    m5_2xlarge.name: m5_2xlarge,
+    m5_4xlarge.name: m5_4xlarge,
+    m5_8xlarge.name: m5_8xlarge,
+    m5_12xlarge.name: m5_12xlarge,
+    m5_16xlarge.name: m5_16xlarge,
+    m5_24xlarge.name: m5_24xlarge,
+    m5d_large.name: m5d_large,
+    m5d_xlarge.name: m5d_xlarge,
+    m5d_2xlarge.name: m5d_2xlarge,
+    m5d_4xlarge.name: m5d_4xlarge,
+    m5d_8xlarge.name: m5d_8xlarge,
+    m5d_12xlarge.name: m5d_12xlarge,
+    m5d_16xlarge.name: m5d_16xlarge,
+    m5d_24xlarge.name: m5d_24xlarge,
+    r5_large.name: r5_large,
+    r5_xlarge.name: r5_xlarge,
+    r5_2xlarge.name: r5_2xlarge,
+    r5_4xlarge.name: r5_4xlarge,
+    r5_8xlarge.name: r5_8xlarge,
+    r5_12xlarge.name: r5_12xlarge,
+    r5_16xlarge.name: r5_16xlarge,
+    r5_24xlarge.name: r5_24xlarge,
+    r5d_large.name: r5d_large,
+    r5d_xlarge.name: r5d_xlarge,
+    r5d_2xlarge.name: r5d_2xlarge,
+    r5d_4xlarge.name: r5d_4xlarge,
+    r5d_8xlarge.name: r5d_8xlarge,
+    r5d_12xlarge.name: r5d_12xlarge,
+    r5d_16xlarge.name: r5d_16xlarge,
+    r5d_24xlarge.name: r5d_24xlarge,
+    m6a_xlarge.name: m6a_xlarge,
+    i3_xlarge.name: i3_xlarge,
+    i3_2xlarge.name: i3_2xlarge,
+}
+
+def get_instance_type_by_name(name):
+    instance_type_from_name = _INSTANCE_TYPES_BY_NAME.get(name)
+    if instance_type_from_name != None:
+        return instance_type_from_name
+
+    fail("Invalid instance type: {}".format(name))

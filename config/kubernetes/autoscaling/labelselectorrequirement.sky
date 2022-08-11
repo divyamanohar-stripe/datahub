@@ -1,0 +1,31 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of LabelSelectorRequirement message please refer to
+https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/generated.proto#L426-L444
+"""
+
+load("config/kubernetes/autoscaling/schema.sky", "meta")
+
+def label_selector_requirement(ctx, requirement):
+    obj_label_selector_requirement = meta.LabelSelectorRequirement()
+    requirement = struct(**requirement)
+
+    if hasattr(requirement, "key"):
+        if type(requirement.key) == "string":
+            obj_label_selector_requirement.key = requirement.key
+        else:
+            fail("LabelSelectorRequirement key field called with non string value")
+
+    if hasattr(requirement, "operator"):
+        if type(requirement.operator) == "string":
+            obj_label_selector_requirement.operator = requirement.operator
+        else:
+            fail("LabelSelectorRequirement operator field called with non string value")
+
+    if hasattr(requirement, "values"):
+        if type(requirement.values) == "string":
+            obj_label_selector_requirement.values = requirement.values
+        else:
+            fail("LabelSelectorRequirement values field called with non string value")
+
+    return obj_label_selector_requirement

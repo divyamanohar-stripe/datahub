@@ -1,0 +1,35 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of HPAScalingRules message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L81-L106
+"""
+
+load("config/kubernetes/autoscaling/hpascalingpolicy.sky", "scaling_policy")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def scaling_rules(ctx, scaling_rules):
+    obj_scaling_rules = hpa.HPAScalingRules()
+    scaling_rules = struct(**scaling_rules)
+
+    if hasattr(scaling_rules, "stabilizationWindowSeconds"):
+        if type(scaling_rules.stabilizationWindowSeconds) == "int":
+            obj_scaling_rules.stabilizationWindowSeconds = scaling_rules.stabilizationWindowSeconds
+        else:
+            fail("HPAScalingRules stabilizationWindowSeconds field called with non integer value")
+
+    if hasattr(scaling_rules, "selectPolicy"):
+        if type(scaling_rules.selectPolicy) == "string":
+            obj_scaling_rules.selectPolicy = scaling_rules.selectPolicy
+        else:
+            fail("HPAScalingRules selectPolicy field called with non string value")
+
+    if hasattr(scaling_rules, "policies"):
+        if type(scaling_rules.policies) == type([]):  # is a list
+            policies = []
+            for policy in scaling_rules.policies:
+                policies.append(scaling_policy(ctx, policy))
+            obj_scaling_rules.policies = policies
+        else:
+            fail("HPAScalingRules policies field called with non list value")
+
+    return obj_scaling_rules

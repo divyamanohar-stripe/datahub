@@ -1,14 +1,16 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/apps/deployment.sky", "deployment", "deployment_options")
+load("config/kubernetes/core/container.sky", "container_port")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/helpers/security.sky", "add_security_groups")
 load("config/kubernetes/networking/public/config.sky", "networking_config")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
+load("config/kubernetes/sidecars/config_srv.sky", "config_srv_sidecar")
 load("config/kubernetes/sidecars/consul.sky", "consul_service", "consul_grpc_check")
 load("config/kubernetes/stripe.sky", "stripe_pod")
-load("config/kubernetes/core/container.sky", "container_port")
+
 
 load("config/kubernetes/async-processing/monster/config.sky", "get_msp_availability_tier")
 load(
@@ -51,7 +53,7 @@ def monster_api_deployment(ctx, config):
     mongo_connection_pool_max_size = 5
 
     java_opts = [
-        "-Xmx{}g".format(config.raw_memory_gb),
+        "-Xmx{}m".format(config.raw_memory_mb),
         "-XX:+ExitOnOutOfMemoryError",
         "-XX:+UseG1GC",
         "-XX:MaxGCPauseMillis=50",
@@ -115,9 +117,14 @@ def monster_api_deployment(ctx, config):
             tags = ["grpc"],
             checks = [consul_grpc_check(port = port)],
         ),
-
         auto_secrets(),
+        config_srv_sidecar(),
         networking_config(mproxy_tier = "monster"),
+        # We limit how many previous revisions of ReplicaSet's we keep around to limit
+        # the amount of metadata the k8s control plane has to serve up for Monster
+        # See: https://jira.corp.stripe.com/browse/RUN_ORCH-11446, http://go/ir/gray-fuse, http://go/ir/whim-tangent
+        # And: https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/workloads/controllers/deployment/#revision-history-limit
+        deployment_options(revisionHistoryLimit = 3),
         replicas = config.replicas,
         strategy = config.strategy,
         shared_msp = True,

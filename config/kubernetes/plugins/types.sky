@@ -121,7 +121,7 @@ def any_resource_plugin(updater, **kwargs):
     """
     Create a new plugin that modifies the top-level resource being created.
 
-    Top-level resources include deployments, cron jobs, daemonsets and stateful sets, currently.
+    Top-level resources include deployments, cron jobs, daemonsets, stateful sets, and RBAC objects, currently.
 
     Args:
         updater: A function that will update the resource definition when the
@@ -138,6 +138,7 @@ def any_resource_plugin(updater, **kwargs):
         update_daemonset = updater,
         update_job = updater,
         update_statefulset = updater,
+        update_rbac = updater,
         **kwargs
     )
 
@@ -235,3 +236,19 @@ def pod_or_container_plugin(pod_updater, container_updater, container_name = Non
             **kwargs
         )
 
+def rbac_plugin(updater, **kwargs):
+    """
+    Create a new plugin that modifies the RBAC object being created.
+
+    Args:
+        updater: A function that will update the RBAC definition when the
+            plugin runs. Example signature: `def updater(ctx, arguments, rbac_def)`
+        **kwargs: Arguments to pass to the updater function when running the plugin.
+
+    Returns:
+        A new plugin that updates a RBAC object.
+    """
+    return struct(
+        update_rbac = updater,
+        **kwargs
+    )

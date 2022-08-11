@@ -1,0 +1,23 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of ResourceMetricSource message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L411-L424
+"""
+
+load("config/kubernetes/autoscaling/metrictarget.sky", "metric_target")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def resource_metric_source(ctx, resource, target = None):
+    obj_metric_source = hpa.ResourceMetricSource()
+    resource = struct(**resource)
+
+    if hasattr(resource, "name"):
+        if type(resource.name) == "string":
+            obj_metric_source.name = resource.name
+        else:
+            fail("ResourceMetricSource name field called with non string value")
+
+    if target:
+        obj_metric_source.target = metric_target(ctx, target)
+
+    return obj_metric_source

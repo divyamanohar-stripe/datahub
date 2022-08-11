@@ -21,8 +21,6 @@ review_requirements:
   - codeowners-infra-platform
   - codeowners-fleet-management
   - codeowners-async-processing # for vendor mirroring
-
-  - codeowners-all              # added by codemod, feel free to remove
 - files:
   - sidecars/envoy_ratelimit.sky
   - sidecars/envoy_ratelimit_test.sky

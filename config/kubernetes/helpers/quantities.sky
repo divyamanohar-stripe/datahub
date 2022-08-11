@@ -5,6 +5,21 @@ Helpers for defining quantities of resources for Kubernetes limits and requests.
 
 Quantity = proto.package("k8s.io.apimachinery.pkg.api.resource").Quantity
 
+def percents(val):
+    """
+    Create a quantity for percents of CPU.
+
+    Args:
+        val: An integer for the number of percents to be represented.
+
+    Returns:
+        A quantity that can be passed to the `target` parameter of a `metric target object`.
+    """
+    if type(val) != "int":
+        fail("Called percents with a non-integer")
+
+    return Quantity(string = "%d" % val)
+
 def cores(val):
     """
     Create a quantity for a whole number of CPU cores.
@@ -36,9 +51,50 @@ def millicores(val):
     # Our dialect of skylark doesn't support floats, so we need to generate a float string
     # manually
     whole_cores = val // 1000
-    sub_cores = val - whole_cores * 1000
+    sub_cores = val % 1000
+    sub_cores_str = str(sub_cores)
 
-    return Quantity(string = "%d.%d" % (whole_cores, sub_cores))
+    # make sure leading zeros are correct in sub_cores
+    for _ in range(len(sub_cores_str), 3):
+        sub_cores_str = "0" + sub_cores_str
+
+    # remove tailing zeros in sub_cores
+    for _ in range(2):
+        if sub_cores_str[-1] != "0":
+            break
+        sub_cores_str = sub_cores_str[:-1]
+
+    return Quantity(string = "%d.%s" % (whole_cores, sub_cores_str))
+
+def kilo(val):
+    """
+    Create a quantity for a whole number of kilo.
+
+    Args:
+        val: An integer for the number of kilo that should be represented.
+
+    Returns:
+        A quantity that can be passed to the `packets-per-second` parameter of a HPA pod.
+    """
+    if type(val) != "int":
+        fail("Called kilo with a non-integer")
+
+    return Quantity(string = "%dk" % val)
+
+def count(val):
+    """
+    Create a quantity for a whole number of integer value.
+
+    Args:
+        val: An integer for the count that should be represented.
+
+    Returns:
+        A quantity that can be passed to the `packets-per-second` parameter of a HPA pod.
+    """
+    if type(val) != "int":
+        fail("Called count with a non-integer")
+
+    return Quantity(string = "%d" % val)
 
 def megabytes(val):
     """

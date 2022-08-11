@@ -9,6 +9,7 @@ load("config/kubernetes/core/volume.sky", "render_volume", "volume_reason_annota
 load("config/kubernetes/plugins/types.sky", "any_resource_plugin", "pod_plugin")
 load("config/kubernetes/helpers/security.sky", "render_pod_security_context")
 load("config/kubernetes/helpers/sidecars.sky", "generate_sidecars_annotation")
+load("config/kubernetes/helpers/tolerations.sky", "render_pod_toleration")
 load("config/kubernetes/core/affinity.sky", "empty_affinity", "render_affinity")
 
 _core = proto.package("k8s.io.api.core.v1")
@@ -66,6 +67,8 @@ def _update_resource(ctx, plugin, resource_def):
         "affinity": empty_affinity(),
         "node_selectors": plugin.node_selectors,
         "shared_msp": resource_def.get("shared_msp", False), # inherit from the parent resource
+        "host_aliases": None,
+        "tolerations": None,
     }
 
 def _render_pod(ctx, pod_def):
@@ -113,6 +116,12 @@ def _render_pod(ctx, pod_def):
     topology_spreading = render_topology_spreading(ctx, pod)
     if topology_spreading != None:
         pod_template.spec.topologySpreadConstraints = topology_spreading
+
+    if pod.host_aliases != None:
+        pod_template.spec.hostAliases = pod.host_aliases
+
+    if pod.tolerations != None:
+        pod_template.spec.tolerations = [render_pod_toleration(ctx, toleration) for toleration in pod.tolerations]
 
     return pod_template
 

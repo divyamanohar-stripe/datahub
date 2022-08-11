@@ -2,67 +2,14 @@
 load("config/kubernetes/helpers/context.sky", "get_cluster", "get_env")
 load(
     "config/kubernetes/helpers/aws_instance_sizes.sky",
-    "c5_2xlarge", "c5d_4xlarge", "m5d_16xlarge", "m5_xlarge", "m5d_xlarge", "r5d_8xlarge", "r5d_xlarge"
+    "c5_2xlarge", "c5d_4xlarge", "m5_2xlarge", "m5d_xlarge",
+    "aws_instance_size"
 )
-load("config/kubernetes/async-processing/monster/config.sky", "AVAILABILITY_TIER_A100", "AVAILABILITY_TIER_A200", "AVAILABILITY_TIER_A200_LOW_CPU","AVAILABILITY_TIER_A400", "AVAILABILITY_TIER_A400_AUTO")
+load("config/kubernetes/async-processing/monster/config.sky", "AVAILABILITY_TIER_A100", "AVAILABILITY_TIER_A200", "AVAILABILITY_TIER_A400", "AVAILABILITY_TIER_A400_AUTO")
 load("config/kubernetes/meta/metadata.sky", "labels")
 
 ALL_CLUSTERS = ["northwest", "bom", "east", "cmh"]
-
-INSTANCE_TYPES = {
-    "m5d.16xlarge": {
-        "name": "m5d.16xlarge",
-        "aws_instance_size": m5d_16xlarge,
-        "cpu": 63,
-        "mem_gb": 256,
-        # We provide some buffer for the OS hosting the pod
-        # Actual memory available per instance is lower than listed due to AWS memory usage
-        # See: https://jira.corp.stripe.com/browse/ASYNCPROCESSING-2296
-        "usable_mem_gb": 235,
-    },
-    "r5d.xlarge": {
-        "name": "r5d.xlarge",
-        "aws_instance_size": r5d_xlarge,
-        "cpu": 4,
-        "mem_gb": 32,
-        "usable_mem_gb": 24,
-    },
-    "r5d.8xlarge": {
-        "name": "r5d.8xlarge",
-        "aws_instance_size": r5d_8xlarge,
-        "cpu": 31,
-        "mem_gb": 256,
-        "usable_mem_gb": 235,
-    },
-    "c5d.4xlarge": {
-        "name": "c5d.4xlarge",
-        "aws_instance_size": c5d_4xlarge,
-        "cpu": 15,
-        "mem_gb": 32,
-        "usable_mem_gb": 24,
-    },
-    "m5d.xlarge": {
-        "name": "m5d.xlarge",
-        "aws_instance_size": m5d_xlarge,
-        "cpu": 4,
-        "mem_gb": 16,
-        "usable_mem_gb": 10,
-    },
-    "m5.xlarge": {
-        "name": "m5.xlarge",
-        "aws_instance_size": m5_xlarge,
-        "cpu": 4,
-        "mem_gb": 16,
-        "usable_mem_gb": 10,
-    },
-    "c5.2xlarge": {
-        "name": "c5.2xlarge",
-        "aws_instance_size": c5_2xlarge,
-        "cpu": 8,
-        "mem_gb": 16,
-        "usable_mem_gb": 10,
-    }
-}
+SIDECAR_OVERHEAD_MIB = 6 * 1024
 
 # "High" replica counts are > 4 and can have a max_unavailable rollout strategy of 25%.
 # This ensures we can have at least 1 unavailable pod (25% of 4).
@@ -73,35 +20,36 @@ INSTANCE_TYPES = {
 # We do not allow replica counts < 2
 ROLLING_UPDATE_STRATEGIES = {
     "canary": {"max_unavailable_percent": 75, "max_surge_percent": 100}, # canary can use main stage surge capacity
-    "sigma": {"max_unavailable_percent": 50, "max_surge_percent": 100},
+    "sigma": {"max_unavailable_percent": 25, "max_surge_percent": 50},
     "worker_config_low_replica": {"max_unavailable_percent": 50, "max_surge_percent": 50},
     "worker_config_high_replica": {"max_unavailable_percent": 25, "max_surge_percent": 50},
-    "qa": {"max_unavailable_percent": 100, "max_surge_percent": 0},
+    "qa": {"max_unavailable_percent": 75, "max_surge_percent": 0},
     "default_low_replica": {"max_unavailable_percent": 50, "max_surge_percent": 25},
     "default_high_replica": {"max_unavailable_percent": 25, "max_surge_percent": 25}
 }
 
 def generate_consul_name(monster_isolation_group, monster_service):
+    # Isolation group must not contain underscores for consul name:
+    formatted_isolation_group = format_isolation_group(monster_isolation_group)
     # Matches our existing Consul names + Einhorn names
     return {
-        "consume-workers": "monster-workers-http2-{}-msp".format(monster_isolation_group),
-        "fanout-workers": "monster-fanout-workers-{}-msp".format(monster_isolation_group),
-        "config-workers": "monster-config-workers-{}-msp".format(monster_isolation_group),
-        "sweeper": "monster-fqe-sweeper-{}".format(monster_isolation_group),
-        "feeder": "monster-feeder-{}".format(monster_isolation_group),
-        "express": "monster-express-{}".format(monster_isolation_group),
-        "fanout": "monster-fanout-{}".format(monster_isolation_group),
-        "fanout-retry": "monster-fanout-retry-{}".format(monster_isolation_group),
-        "api": "monster-api-{}".format(monster_isolation_group)
+        "consume-workers": "monster-workers-http2-{}-msp".format(formatted_isolation_group),
+        "fanout-workers": "monster-fanout-workers-{}-msp".format(formatted_isolation_group),
+        "config-workers": "monster-config-workers-{}-msp".format(formatted_isolation_group),
+        "sweeper": "monster-fqe-sweeper-{}".format(formatted_isolation_group),
+        "feeder": "monster-feeder-{}".format(formatted_isolation_group),
+        "express": "monster-express-{}".format(formatted_isolation_group),
+        "fanout": "monster-fanout-{}".format(formatted_isolation_group),
+        "fanout-retry": "monster-fanout-retry-{}".format(formatted_isolation_group),
+        "api": "monster-api-{}".format(formatted_isolation_group)
     }[monster_service]
 
-def get_all_tier(instance_size):
+def get_all_tier(instance):
     return {
-        AVAILABILITY_TIER_A100: instance_size,
-        AVAILABILITY_TIER_A200: instance_size,
-        AVAILABILITY_TIER_A200_LOW_CPU: instance_size,
-        AVAILABILITY_TIER_A400: instance_size,
-        AVAILABILITY_TIER_A400_AUTO: instance_size,
+        AVAILABILITY_TIER_A100: instance,
+        AVAILABILITY_TIER_A200: instance,
+        AVAILABILITY_TIER_A400: instance,
+        AVAILABILITY_TIER_A400_AUTO: instance,
     }
 
 def get_all_cluster(mapping):
@@ -109,72 +57,58 @@ def get_all_cluster(mapping):
         "qa.cmh": mapping,
         "qa.bom": mapping,
         "qa.northwest": mapping,
+        "preprod.cmh": mapping,
         "prod.bom": mapping,
         "prod.cmh": mapping,
         "prod.northwest": mapping
     }
 
 # Maps an (env, availability_tier) to a concrete instance type for placement
-def get_instance_type(ctx, availability_tier, monster_service="worker"):
-    r5d_xlarge_all_tier = get_all_tier("r5d.xlarge")
-
-    worker_mapping = {
-        "qa.cmh": r5d_xlarge_all_tier,
-        "qa.bom": r5d_xlarge_all_tier,
-        "qa.northwest": r5d_xlarge_all_tier,
-        "prod.bom": {
-            AVAILABILITY_TIER_A100: "c5d.4xlarge",
-            AVAILABILITY_TIER_A200: "c5d.4xlarge",
-            AVAILABILITY_TIER_A200_LOW_CPU: "c5d.4xlarge",
-            AVAILABILITY_TIER_A400: "m5d.16xlarge",
-            AVAILABILITY_TIER_A400_AUTO: "r5d.8xlarge",
-        },
-        "prod.cmh": get_all_tier("c5d.4xlarge"),
-        "prod.northwest": {
-            AVAILABILITY_TIER_A100: "m5d.16xlarge",
-            AVAILABILITY_TIER_A200: "m5d.16xlarge",
-            AVAILABILITY_TIER_A200_LOW_CPU: "r5d.8xlarge",
-            AVAILABILITY_TIER_A400: "m5d.16xlarge",
-            AVAILABILITY_TIER_A400_AUTO: "r5d.8xlarge",
-        }
-    }
-
+# Only used for control-plane services
+def get_instance_type(ctx, availability_tier, monster_service):
     mapping = {
-        "worker": worker_mapping,
-        "sweeper": get_all_cluster(get_all_tier("c5.2xlarge")),
+        "sweeper": get_all_cluster(get_all_tier(c5_2xlarge)),
         "feeder": get_all_cluster({
-            AVAILABILITY_TIER_A100: "c5.2xlarge",
-            AVAILABILITY_TIER_A200: "c5.2xlarge",
-            AVAILABILITY_TIER_A200_LOW_CPU: "c5.2xlarge",
-            AVAILABILITY_TIER_A400: "c5d.4xlarge",
-            AVAILABILITY_TIER_A400_AUTO: "c5.2xlarge",
+            AVAILABILITY_TIER_A100: c5_2xlarge,
+            AVAILABILITY_TIER_A200: c5_2xlarge,
+            AVAILABILITY_TIER_A400: c5d_4xlarge,
+            AVAILABILITY_TIER_A400_AUTO: c5_2xlarge,
         }),
-        "fanout": get_all_cluster(get_all_tier("c5.2xlarge")),
-        "fanout-retry": get_all_cluster(get_all_tier("c5.2xlarge")),
-        "api": get_all_cluster(get_all_tier("m5d.xlarge")),
-        "express": get_all_cluster(get_all_tier("m5.xlarge")),
+        "fanout": get_all_cluster(get_all_tier(c5_2xlarge)),
+        "fanout-retry": get_all_cluster(get_all_tier(c5_2xlarge)),
+        "api": get_all_cluster(get_all_tier(m5d_xlarge)),
+        "express": get_all_cluster(get_all_tier(m5_2xlarge)),
     }
 
     key = "%s.%s" % (get_env(ctx), get_cluster(ctx))
     return mapping[monster_service][key][availability_tier]
 
+def workers_per_pod(description, available_mib, mb_per_worker):
+    if mb_per_worker == 0:
+        fail("on {}: mb_per_worker has illegal zero value".format(description))
+
+    if available_mib < mb_per_worker:
+        fail("on {}: usable memory of {} MiB less than mb_per_worker ({} MiB) -- cannot proceed!".format(
+            description, available_mib, mb_per_worker))
+
+    # if we can, reserve one "dead" worker as a fudge factor for copy-on-write
+    # nonlinearity
+    return max(1, (available_mib // mb_per_worker) - 1)
+
 # struct representing a pod-to-be-created
 # if mb_per_worker is None, workers will be None, for non-einhorn use cases
-def pod(instance, mb_per_worker=None, scale=1):
-    return struct(
-        cpu = instance["cpu"] - 2 // scale,
-        mem_gb = instance["usable_mem_gb"] // scale,
-        # convert to megabytes here to get around floating point requirement
-        workers = instance["usable_mem_gb"] * 1000 // mb_per_worker // scale if mb_per_worker else None,
-        instance = instance["name"],
-        aws_instance_size = instance["aws_instance_size"], # instance size as defined by skycfg library
-        scale = scale,
-    )
+def pod(description, instance, mb_per_worker=None):
+    instance_limits = aws_instance_size(instance.name)
+    instance_usable_memory_mib = instance_limits.memory_mib - SIDECAR_OVERHEAD_MIB
 
-# Declares an auto-scaling replica group, with defined "desired", "max", and
-# "min" replica counts.
-def dynamic_replicas(desired, max, min):
-    return struct(desired=desired, max=max, min=min)
+    return struct(
+        workers =
+            workers_per_pod(description, instance_usable_memory_mib, mb_per_worker) if mb_per_worker else None,
+        # reservation of "slack" same as in config/kubernetes/stripe.sky
+        cpu_millicores = instance_limits.cpu_millicores - instance.slack_cpu_millicores,
+        memory_mib = instance_usable_memory_mib,
+        aws_instance_size = instance,
+    )
 
 # Standardizes isolation group name
 def format_isolation_group(raw):
@@ -210,5 +144,19 @@ def monster_deployment_labels(config):
     return labels({
         "monster.stripe.io/ig": config.monster_isolation_group,
         "monster.stripe.io/tier": config.monster_availability_tier,
-        "monster.stripe.io/service": config.monster_service,
+        "monster.stripe.io/service": worker_type(config.monster_service),
     })
+
+def replicas_from_factor(replicas, replica_factor_percentage, round_up = True):
+    if not round_up:
+        return int(replicas * replica_factor_percentage / 100)
+
+    return replicas - int(replicas * (100 - replica_factor_percentage) / 100)
+
+def worker_type(monster_service):
+    # map workers, but fall-through/pass-through control plane service names
+    return {
+        "consume-workers": "workers",
+        "fanout-workers": "fanout",
+        "config-workers": "config",
+    }.get(monster_service, monster_service)

@@ -3,13 +3,12 @@
 # control plane
 # See http://go/monster-hostset-decl for detailed documentation.
 
-load("config/kubernetes/async-processing/monster/util.sky",
-     "ALL_CLUSTERS", "dynamic_replicas")
+load("config/kubernetes/async-processing/monster/util.sky", "ALL_CLUSTERS")
 
 # TODO: change after more broad control plane rollout
 DEFAULT_FANOUT_COUNT = 0
 DEFAULT_FANOUT_RETRY_COUNT = 0
-DEFAULT_FEEDER_COUNT = 0
+DEFAULT_FEEDER_COUNT = 2
 DEFAULT_SWEEPER_COUNT = 2
 
 # These should remain 0 because we only run monster-express and monster-api for some isolation groups
@@ -156,9 +155,10 @@ def render_env(env_map, defs):
 # When is_canary set to True, it would be included in the canary stage of a control plane deployment
 
 
-def host_set(name, default=None, qa=None, prod=None, is_canary=False, defs=worker_defs()):
+def host_set(name, default=None, qa=None, preprod=no_replicas_cluster(), prod=None, is_canary=False, defs=worker_defs()):
     defs = _merge_templates(default, defs)
     qa_json = render_env(qa or {}, defs)
+    preprod_json = render_env(preprod or {}, defs)
     prod_json = render_env(prod or {}, defs)
 
-    return struct(name=name, qa=qa_json, prod=prod_json, is_canary=is_canary, shared_msp=True)
+    return struct(name=name, qa=qa_json, preprod=preprod_json, prod=prod_json, is_canary=is_canary, shared_msp=True)

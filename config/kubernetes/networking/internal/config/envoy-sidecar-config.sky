@@ -20,7 +20,7 @@ load(
 )
 
 
-def default_envoy_bootstrap_config_flags(target):
+def _default_envoy_bootstrap_config_flags(target):
     """
     Args:
         target: deploy-time properties about the current workload. Used to match
@@ -41,5 +41,14 @@ def default_envoy_bootstrap_config_flags(target):
     }
 
 def generate_envoy_bootstrap_opts(target, user_overrides):
-    cfg = default_envoy_bootstrap_config_flags(target)
+    cfg = _default_envoy_bootstrap_config_flags(target)
     return populate_config(cfg, user_overrides, "_update_envoy_bootstrap_config")
+
+def _default_cli_args(target):
+    return {
+        "envoy_concurrency": None,
+    }
+
+def generate_cli_args(target, user_overrides):
+    cfg = _default_cli_args(target)
+    return populate_config(cfg, user_overrides, "_update_envoy_sidecar_cli_args")

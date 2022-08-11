@@ -1,8 +1,8 @@
 # DO NOT EDIT: http://go/vendor-skycfg
 """
-Helper functions for extracting information from the Henson context.
+Helper functions for extracting information from the Henson and Centralized Service Configuration context.
 
-The Henson context is the single `ctx` argument passed to the `main` function when
+The context is the single `ctx` argument passed to the `main` function when
 deploying a Henson service with Skycfg. It contains a dictionary of data that can be
 useful when defining a workload. These functions provide a consistent interface for
 accessing that data.
@@ -15,7 +15,7 @@ def get_name(ctx):
     Fails if the service name is too long to safely use as a Kubernetes resource name.
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The service name
@@ -33,22 +33,26 @@ def get_name(ctx):
 def has_availability_tier(ctx):
     """
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         a boolean indicating if the service's availability_tier is defined in the henson config.
     """
-    return get_henson_config(ctx).availability_tier != ''
+    return get_availability_tier(ctx) != ''
 
 def get_availability_tier(ctx):
     """
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         A string representing the availability tier of the service (ex. "A400"). May return an empty
         string if the availability tier is undefined in henson.
     """
+    availability_tier_name_from_csc = ctx.vars.get("service.config.availability_tier")
+    if availability_tier_name_from_csc != None and availability_tier_name_from_csc != '':
+        return availability_tier_name_from_csc
+
     return get_henson_config(ctx).availability_tier
 
 def get_owner(ctx):
@@ -58,11 +62,15 @@ def get_owner(ctx):
     This comes from the `contact.responsible_team` key in the Henson service YAML.
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The service owner.
     """
+    contact_info_from_csc = ctx.vars.get("service.config.contact")
+    if contact_info_from_csc != None:
+        return contact_info_from_csc.responsible_team
+
     return get_henson_config(ctx).contact.responsible_team
 
 def get_cluster(ctx):
@@ -70,7 +78,7 @@ def get_cluster(ctx):
     Get the name of the Stripe cluster being deployed to.
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The name of the Stripe cluster. For example: "northwest".
@@ -86,7 +94,7 @@ def get_deploy_time(ctx):
     NOTE: this requires setting provide_deploy_time_in_ctx in your henson configs
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         A string containing a timestamp of the time the current deploy started.
@@ -101,7 +109,7 @@ def get_henson_git_commit(ctx):
     Get the revision of the Git commit being deployed.
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The SHA1 hash of the Git commit.
@@ -113,10 +121,10 @@ def get_env(ctx):
     Get the environment being deployed to.
 
     Args:
-        ctx: The Henson context.
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
-        Either "prod" or "qa"
+        "qa", "preprod", or "prod"
     """
     return ctx.vars["stripe.environment"]
 
@@ -127,11 +135,15 @@ def get_henson_repo(ctx):
     This maps to the `repo` key in the Henson service YAML.
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The repository name.
     """
+    service_repo_from_csc = get_repo(ctx)
+    if service_repo_from_csc != None and service_repo_from_csc != "":
+        return service_repo_from_csc
+
     return get_henson_config(ctx).repo
 
 def get_container_images(ctx):
@@ -139,7 +151,7 @@ def get_container_images(ctx):
     Gets the service's mapping of container image build artifacts to ECR repository URLs.
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         A dictionary where the keys are build artifact names for container images and the values
@@ -152,7 +164,7 @@ def get_sidecar_container_images(ctx):
     Gets the service's mapping of sidecar service names to container image URLs.
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         A dictionary where the keys are names of sidecar services and the values
@@ -165,7 +177,7 @@ def get_blue_green_color(ctx):
     Gets the service's "colour", for blue/green deploys.
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The colour as a string, or None if there is no colour provided
@@ -177,7 +189,7 @@ def get_aws_region(ctx):
     Gets the AWS region that the service is being deployed to, e.g. us-west-2
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         An AWS region, e.g. us-west-2
@@ -189,7 +201,7 @@ def get_rolling_speed_override(ctx):
     Gets the rolling speed override for this deployment
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The rolling speed override, an int between 0 and 100 (inclusive)
@@ -201,7 +213,7 @@ def get_function_name(ctx):
     Gets the skycfg function name used to generate the protos for this deployment.
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
 
     Returns:
         The name of the skycfg function passed into the ctx
@@ -213,8 +225,133 @@ def get_target_shard(ctx):
     Gets the target shard to which the evaluated resource should be deployed
 
     Args:
-        ctx: The Henson context
+        ctx: The context containing Henson and Centralized Service Configurations.
     Returns:
         The name of the shard
     """
     return ctx.vars.get("stripe.shard", "kubemaster")
+
+def get_repo(ctx):
+    """
+    Gets the name of the repo where the service is defined
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The name of the repo where the service is defined (e.g. stripe-internal/zoolander)
+    """
+    return ctx.vars.get("service.config.repo")
+
+def get_identity(ctx):
+    """
+    Gets the identity name of the service, used for MSP namespacing
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The identity name of the service
+    """
+    return ctx.vars.get("service.config.identity")
+
+def get_entrypoint_command(ctx):
+    """
+    Gets the path to the entrypoint that boots the service
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The entry point command of the service
+    """
+    return ctx.vars.get("service.config.compute").entrypoint_command
+
+def get_puma_port(ctx):
+    """
+    Gets the port on which Puma will listen to connections
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The port on which Puma will listen to connections
+    """
+    return ctx.vars.get("service.config.compute").puma_cluster_config.port
+
+def get_puma_num_workers(ctx):
+    """
+    Gets the number of Puma workers that the service should boot
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The number of workers in the Puma cluster
+    """
+    return ctx.vars.get("service.config.compute").puma_cluster_config.num_workers
+
+def get_puma_tags(ctx):
+    """
+    Gets the tags to initialize Puma processes
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The tags to initialize your Puma processes with
+    """
+    return ctx.vars.get("service.config.compute").puma_cluster_config.tags
+
+def get_puma_worker_shutdown_timeout_seconds(ctx):
+    """
+    Gets the timeout for gracefully shutting down Puma workers
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The graceful worker shutdown timeout in seconds
+    """
+    return ctx.vars.get("service.config.compute").puma_cluster_config.worker_shutdown_timeout_seconds
+
+def get_resource_allocations(ctx):
+    environment = get_env(ctx)
+    compute_config = ctx.vars.get("service.config.compute")
+
+    if environment == "qa":
+        return compute_config.qa_config
+    elif environment == "preprod":
+        return compute_config.preprod_config
+    else:
+        return compute_config.prod_config
+
+
+def get_num_replicas(ctx):
+    """
+    Gets the number of replicas requested for the environment present in ctx
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The number of replicas requested
+    """
+    return get_resource_allocations(ctx).num_replicas
+
+def get_instance_type(ctx):
+    """
+    Gets the instance type requested for the environment present in ctx
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The instance type requested in the given environment
+    """
+    # TODO(moe): convert this string to a struct defined in aws_instance_sizes.sky
+    return get_resource_allocations(ctx).instance_type
+
+def get_fail_on_warnings(ctx):
+    """
+    Returns whether all warnings should result in a failure during Skycfg rendering,
+    rather than print a warning to the console.
+
+    Args:
+        ctx: The context containing Henson and the Centralized Service Configurations.
+    Returns:
+        The value of the context variable or None if not specified
+    """
+
+    return ctx.vars.get("henson.fail_on_warnings", None)

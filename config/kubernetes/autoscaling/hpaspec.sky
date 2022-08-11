@@ -1,0 +1,45 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of HorizontalPodAutoscalerSpec message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L180-L214
+}
+"""
+
+load("config/kubernetes/autoscaling/crossversionobjectreference.sky", "object_reference")
+load("config/kubernetes/autoscaling/metricspec.sky", "metricspec")
+load("config/kubernetes/autoscaling/hpabehavior.sky", "hpa_behavior")
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def hpa_spec(ctx, spec):
+    obj_spec = hpa.HorizontalPodAutoscalerSpec()
+    spec = struct(**spec)
+
+    if hasattr(spec, "metrics"):
+        if type(spec.metrics) == type([]):  # is a list
+            metrics_spec_list = []
+            for metric in spec.metrics:
+                metrics_spec = metricspec(ctx, metric)
+                metrics_spec_list.append(metrics_spec)
+            obj_spec.metrics = metrics_spec_list
+        else:
+            fail("HorizontalPodAutoscalerSpec metrics field called with non list value")
+
+    if hasattr(spec, "minReplicas"):
+        if type(spec.minReplicas) == "int":
+            obj_spec.minReplicas = spec.minReplicas
+        else:
+            fail("HorizontalPodAutoscalerSpec minReplicas field called with non integer value")
+
+    if hasattr(spec, "maxReplicas"):
+        if type(spec.maxReplicas) == "int":
+            obj_spec.maxReplicas = spec.maxReplicas
+        else:
+            fail("HorizontalPodAutoscalerSpec maxReplicas field called with non integer value")
+
+    if hasattr(spec, "scaleTargetRef"):
+        obj_spec.scaleTargetRef = object_reference(ctx, spec.scaleTargetRef)
+
+    if hasattr(spec, "behavior"):
+        obj_spec.behavior = hpa_behavior(ctx, spec.behavior)
+
+    return obj_spec

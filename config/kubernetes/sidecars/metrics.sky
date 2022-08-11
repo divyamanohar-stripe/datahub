@@ -1,7 +1,6 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/helpers/images.sky", "image")
-load("config/kubernetes/helpers/quantities.sky", "millicores", "megabytes")
-load("config/kubernetes/helpers/context.sky", "get_owner", "get_env", "get_cluster", "get_blue_green_color")
+load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
+load("config/kubernetes/helpers/context.sky", "get_owner", "get_env", "get_cluster", "get_blue_green_color", "get_availability_tier")
 
 load("config/kubernetes/core/container.sky", "container")
 load("config/kubernetes/core/volume.sky", "pod_volume", "volume_mount")
@@ -11,9 +10,8 @@ load("config/kubernetes/core/probe.sky", "http_probe", "probes")
 load("config/kubernetes/sidecars/confidant.sky", "mustache_secret")
 
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-load("config/kubernetes/plugins/types.sky", "container_plugin")
 load("config/kubernetes/helpers/constants.sky", "METRICS_SIDECAR_CONTAINER_NAME")
-load("config/kubernetes/plugins/types.sky", "deployment_plugin")
+load("config/kubernetes/plugins/types.sky", "deployment_plugin", "statefulset_plugin")
 
 
 
@@ -32,7 +30,7 @@ DEFAULT_VERSION = "git-3d7d7b7da9209ce580c3965dc1dcbcbf84b92d94" # 14.1.0
 DEFAULT_IMAGE_NAME = "stripe/observability/veneur"
 
 # This is the version of veneur that supports prometheus & metrics routing
-PROMETHEUS_ENABLED_VERSION = "git-fb976c7c58780498636be7be16466b31921e8400"
+PROMETHEUS_ENABLED_VERSION = "git-e6204e90501a8db6c438e9c13cd163545474f2d0"
 PROMETHEUS_ENABLED_IMAGE_NAME = "stripe/observability/veneur-shared-msp"
 
 # Defines how to extract the kubernetes namespace value and pass it to veneur-init
@@ -109,6 +107,12 @@ _SENTRY_DSNS = {
     "qa": "https://9fe6cbf689204b4f862ae4c83a541213:ba8f532e46e44bb7a445b3babcbe6da7@errors.qa.stripe.io/65",
 }
 
+PROBER_WORKSPACE_URL = {
+    "prod": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-69168fe9-225c-4564-8662-c9ed56fe0b78",
+    "preprod": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-69168fe9-225c-4564-8662-c9ed56fe0b78",
+    "qa": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-7ae97410-e2dd-445f-9d7a-9eaad94bf1bf",
+}
+
 def metrics(
     ctx,
     label=DEFAULT_VERSION,
@@ -123,6 +127,7 @@ def metrics(
     image_name=DEFAULT_IMAGE_NAME,
     allow_name_modification=True,
     config=None,
+    enable_prober=False,
 ):
     """
     Adds a Veneur instance as a sidecar to receive and forward metrics.
@@ -159,8 +164,10 @@ def metrics(
             Defaults to `10s`
         image_name: `string` name of image to pull. Defaults to "stripe/observability/veneur"
         allow_name_modification: `bool` whether we'll allow the image_name to be modified by the image() func. Default: True
+        enable_prober: `bool` whether to enable the prober (should be used only by veneur-prober-srv); Default: False
         config: struct of configuration options passed to the deployment, defined in `metrics_config`, these
             will override args passed to the function
+
     Returns:
         A plugin that installs a Veneur sidecar to receive metrics
     """
@@ -171,6 +178,7 @@ def metrics(
         label = config.label
         image_name = config.image_name
         allow_name_modification = config.allow_name_modification
+        enable_prober = config.enable_prober
 
     # deployment.sky has been modified to accept a veneur image label that defaults to none
     # its always passed to us so lets deal with that value here
@@ -232,6 +240,43 @@ def metrics(
         # this wont't do anything if -attach-routing-rules isn't passed
         command = command + ["-config-timeout", config_timeout]
 
+    if enable_prober:
+        command = command + [
+            "-enable-prober=true",
+            "-prober-id=$(STRIPE_POD_NAME)",
+            "-prober-emit-interval-s=60",
+            "-prober-fetch-interval-ms=100",
+            "-prober-fetch-timeout-s=45",
+            "-prober-synchronized-server-interval-s=10",
+            "-prober-workspace-url=" + PROBER_WORKSPACE_URL[get_env(ctx)],
+        ]
+
+    fallback_image = image(
+        ctx,
+        name = image_name,
+        label = label,
+        modify_name = allow_name_modification,
+    )
+
+    sidecar_img = sidecar_image(
+        ctx,
+        name = "veneur-image",
+        fallback = fallback_image,
+    )
+
+    target_image = fallback_image
+
+    if get_env(ctx) == "qa" or get_env(ctx) == "preprod" or get_availability_tier(ctx) == "A400" or get_availability_tier(ctx) == "A300" or get_availability_tier(ctx) == "A200":
+        target_image = sidecar_img
+
+        if attach_routing_rules == False:
+            # We are always allowing veneur-init to access secret value in QA as of 7/12/2022.
+            # This change is required due to the fact that we are onboarding veneur in shared MSP
+            # to the new sidecar deployment process, which would require us to only have one unified
+            # version of veneur across the shared MSP fleet in a given environment.
+            # This config determines the behavior of the string_secrets.go file within the veneur
+            # codebase: https://github.com/stripe/veneur/blob/master/util/string_secret.go
+            command = command + ["-print-secrets"]
 
     return compose_plugins(
         pod_volume(
@@ -245,12 +290,7 @@ def metrics(
 
         container(
             name = METRICS_SIDECAR_CONTAINER_NAME,
-            image = image(
-                ctx,
-                name = image_name,
-                label = label,
-                modify_name = allow_name_modification,
-            ),
+            image = target_image,
             # Fleetwide max cpu/memory seen in production
             # https://docs.google.com/spreadsheets/d/158qk0xg16xRe0W0YhMtwi8Y-8l6fyYlWDvt3uRLyJcI/edit?usp=sharing
             #
@@ -260,7 +300,7 @@ def metrics(
             # cpu = millicores(500),
             # memory = megabytes(250),
             command = command,
-            sidecar_service = "metrics-sidecar",
+            sidecar_service = "veneur-image",
             plugins = [
                 volume_mount(
                     name = _VOLUME_NAME,
@@ -271,14 +311,6 @@ def metrics(
                     container_name = METRICS_SIDECAR_CONTAINER_NAME,
                     path = _UNIX_SOCKET_DIR,
                     read_only = False,
-                ),
-                # ensure we have the latest copy of the image, so consumers don't
-                # need to constantly change their image labels to reference different
-                # git commits
-                container_plugin(
-                    _image_pull_always,
-                    container_name = METRICS_SIDECAR_CONTAINER_NAME,
-                    policy = "Always",
                 ),
                 container_env_vars(from_fields = {
                     NAMESPACE.env_var: NAMESPACE.field,
@@ -311,16 +343,12 @@ def metrics(
         ),
     )
 
-def metrics_config(
-    label=DEFAULT_VERSION,
-    config_timeout=DEFAULT_CONFIG_TIMEOUT,
-    attach_routing_rules=False,
-    image_name=DEFAULT_IMAGE_NAME,
-    allow_name_modification=True,
-    enable_vnext_metrics=False,
-):
+def metrics_config(**kwargs):
     """
-    Allows for overriding metrics configurations from the deployment
+    Allows for overriding metrics configurations from the deployment; modifies the deployment's definition to
+    initialize metrics(...) with a non-None `config` struct. Note that passing in any `config` value is all
+    or nothing. There is no way to override only one value in the config struct, so make sure the defaults in
+    metrics_config(...) match those of metrics(...).
 
     Args:
         label: `string` The version of the sidecar image to deploy. Use `dev` for the
@@ -332,10 +360,29 @@ def metrics_config(
         image_name: `string` image name to pull down. Defaults to stripe/observability/veneur
         allow_name_modification: `bool` whether we'll allow the image_name to be modified by the image() func. Default: True
         enable_vnext_metrics: `bool` whether to enable vnext metrics
+        enable_prober: `bool` whether to enable the prober (should be used only by veneur-prober-srv); Default: False
+
     Returns:
         deployment plugin containing struct with passed config options
     """
+    return _metrics_config(deployment_plugin, **kwargs)
 
+def metrics_config_statefulset(**kwargs):
+    """
+    Same as metrics_config, but for a `statefulset` rather than a `deployment`.
+    """
+    return _metrics_config(statefulset_plugin, **kwargs)
+
+def _metrics_config(
+    plugin,
+    label=DEFAULT_VERSION,
+    config_timeout=DEFAULT_CONFIG_TIMEOUT,
+    attach_routing_rules=False,
+    image_name=DEFAULT_IMAGE_NAME,
+    allow_name_modification=True,
+    enable_vnext_metrics=False,
+    enable_prober=False,
+):
     if enable_vnext_metrics:
       attach_routing_rules = True
 
@@ -347,7 +394,7 @@ def metrics_config(
       image_name = PROMETHEUS_ENABLED_IMAGE_NAME
       allow_name_modification = False
 
-    return deployment_plugin(
+    return plugin(
         _update_deployment_metrics_config,
         config = struct(
             label=label,
@@ -355,16 +402,13 @@ def metrics_config(
             attach_routing_rules=attach_routing_rules,
             allow_name_modification=allow_name_modification,
             image_name=image_name,
+            enable_prober=enable_prober,
         )
     )
 
 
 def _update_deployment_metrics_config(ctx, plugin, deployment_def):
     deployment_def["metrics_config"] = plugin.config
-
-# TODO: clean up when https://jira.corp.stripe.com/browse/ORCH-1919 is done
-def _image_pull_always(ctx, args, container_def):
-    container_def["probes"]["imagePullPolicy"] = args.policy
 
 def unix_socket_metric_listeners(container_name=None):
     """

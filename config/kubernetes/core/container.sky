@@ -6,7 +6,7 @@ Plugins for working with containers in pods.
 load("config/kubernetes/core/env_var.sky", "render_env_vars")
 load("config/kubernetes/core/lifecycle.sky", "render_lifecycle")
 load("config/kubernetes/core/volume.sky", "render_volume_mount")
-load("config/kubernetes/helpers/images.sky", "image")
+load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/helpers/security.sky", "render_security_context")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin")
@@ -130,6 +130,62 @@ def init_container(
         plugins = plugins,
     )
 
+def sidecar_container(
+        name,
+        sidecar_service = None,
+        container_image = None,
+        fallback_label = None,
+        fallback_env = None,
+        ports = {},
+        is_init_container = False,
+        plugins = (),
+        **kwargs):
+    """
+    Add a sidecar container to the pod.
+
+    Services running on MSP usually run with a handful of additional containers beyond the main container that runs the
+    service code. These additional containers are known as sidecars and provide common infrastructure features, like
+    secrets, metrics, or service networking, to the service they're running with.
+
+    Most of the time, you won't need to define one of these yourself. They are usually provided by infrastructure teams.
+
+    Args:
+        name: A name given to the container. This name will be visible in Amp.
+        sidecar_service: The name of the sidecar service that deploys the image for this container. If not specified, it
+            defaults to `name`.
+        container_image: key used to fetch container image URL for the sidecar service from the context
+        fallback_label: if the image specified by `container_image` cannot be found, this will be used instead
+        fallback_env: if the image specified by `container_image` cannot be found, this value will be used instead
+        ports: a dictionary mapping port numbers that the sidecar is requesting to their symbolic names
+        is_init_container: if `True`, the sidecar will be added as an init container
+        plugins: An optional list of container plugins that should be applied to this container. This is a shortcut that
+            can be used to avoid having to pass the container name to each plugin.
+
+        All other named arguments (e.g., `command`) are passed to the `container` plugin (or `init_container` if
+        `is_init_container` is `True`)..
+
+    Returns:
+        A plugin that adds the sidecar container to the pod.
+    """
+    base_plugins = [
+            container_plugin(
+                _set_sidecar_image,
+                container_name = name,
+                container_image = container_image,
+                fallback_label = fallback_label,
+                fallback_env = fallback_env)
+    ]
+
+    for port, port_name in ports.items():
+        base_plugins.append(container_port(port, port_name = port_name))
+
+    builder = init_container if is_init_container else container
+    return builder(
+            name = name,
+            sidecar_service = sidecar_service or name,
+            plugins = plugins + base_plugins,
+            **kwargs)
+
 def container_port(port, container_name = None, port_name = None):
     """
     Register a port for a container.
@@ -232,6 +288,8 @@ def _update_pod(ctx, plugin, pod_def):
         "lifecycle": {},
         "volume_mounts": {},
         "security": None,
+        "image_pull_policy": "IfNotPresent",
+        "working_dir": None,
         "shared_msp": pod_def.get("shared_msp", False), # inherit from the parent resource
     }
 
@@ -249,6 +307,11 @@ def _update_pod(ctx, plugin, pod_def):
         pod_def["init_containers"].append(container)
     else:
         pod_def["containers"].append(container)
+
+    # ensure the correct default value for imagePullPolicy field
+    # kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#container-v1-core
+    if str(container["image"]).endswith(":latest"):
+        container["image_pull_policy"] = "Always"
 
 def _update_container(ctx, plugin, container_def):
     for container_plugin in plugin.plugins:
@@ -296,6 +359,12 @@ def _render_container(ctx, container_def, pod):
     if container.security != None:
         rendered.securityContext = render_security_context(container.security, pod)
 
+    if container.image_pull_policy in ("Always", "Never", "IfNotPresent"):
+        rendered.imagePullPolicy = container.image_pull_policy
+
+    if container.working_dir != None:
+        rendered.workingDir = container.working_dir
+
     return rendered
 
 def _get_volume_mount_path(volume_mount):
@@ -322,3 +391,9 @@ def container_resources(*, cpu, memory, container_name=None):
 def _set_container_resources(ctx, arguments, container_def):
     container_def["cpu"] = arguments.cpu
     container_def["memory"] = arguments.memory
+
+def _set_sidecar_image(ctx, arguments, container_def):
+    container_def["image"] = sidecar_image(ctx, name = arguments.container_name, fallback = image(
+            ctx, name = arguments.container_image,
+            label = arguments.fallback_label,
+            env = arguments.fallback_env))

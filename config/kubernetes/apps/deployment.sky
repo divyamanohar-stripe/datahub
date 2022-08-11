@@ -8,6 +8,7 @@ we run long-running service workloads on Kubernetes.
 load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
 load("config/kubernetes/core/pod.sky", "all_containers", "main_container")
 load("config/kubernetes/helpers/bluegreen.sky", "with_blue_green_traffic_shifting", "add_blue_green_strategy")
+load("config/kubernetes/helpers/warning.sky", "warn")
 load("config/kubernetes/core/lifecycle.sky", "prestop_all_containers", "prestop_all_infra_sidecars", "DEFAULT_GRACE_PERIOD_SECONDS", "grace_period", "generate_prestop_sleep_action", "DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME")
 load("config/kubernetes/helpers/rolling.sky", "add_rolling_speed_override")
 load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector", "get_availability_tier_from_metadata")
@@ -15,11 +16,11 @@ load("config/kubernetes/networking/public/networking.sky", "networking")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "deployment_plugin")
 load("config/kubernetes/sidecars/metrics.sky", "metrics")
-load("config/kubernetes/helpers/context.sky", "get_env")
+load("config/kubernetes/helpers/context.sky", "get_env", "get_blue_green_color")
 load("config/kubernetes/core/volume.sky", "volume_mount_all_containers")
 load("config/kubernetes/helpers/ldap.sky", "mount_ldap_host_volumes", "LDAP_MOUNT_NAME")
 
-def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwargs):
+def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, disable_default_metrics_sidecar=False, **kwargs):
     """
     Schedule one or more instances of a stateless service.
 
@@ -51,7 +52,7 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwarg
         "registered_services": [],
         "kwargs": {},
         "networking_config": None,
-        "metrics_config": None
+        "metrics_config": None,
     }
 
     all_plugins = [
@@ -72,6 +73,9 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwarg
 
     plugin = compose_plugins(*all_plugins)
     _apply_plugin(ctx, plugin, deployment)
+
+    # Raise warnings if the deployment strategy is not recommended
+    _validate_strategy(ctx, deployment)
 
     # for shared msp, services get registered at update time, but the plugin needs them
     # at create time, so we init and update the networking plugin after all the others
@@ -96,7 +100,8 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwarg
         _apply_plugin(ctx, networking_plugin, deployment)
         # Automatically add the metrics sidecar to any deployments. If we encounter a service that
         # wants to disable this we can add a flag.
-        _apply_plugin(ctx, metrics(ctx, config=deployment["metrics_config"]), deployment)
+        if not disable_default_metrics_sidecar:
+            _apply_plugin(ctx, metrics(ctx, config=deployment["metrics_config"]), deployment)
 
         _apply_plugin(ctx, compose_plugins(
             prestop_all_infra_sidecars(pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
@@ -130,6 +135,70 @@ def _apply_plugin(ctx, plugin, deployment):
         plugin.update_containers(ctx, plugin, container)
 
 
+# max_unavailable must be less than 1/6th the number of total pods to ensure
+# uptime availability across AZs during deployment events (ir-aqua-factorial)
+MAX_PERCENT = 16
+MIN_REPLICAS_FOR_CHECK = 6
+def _validate_strategy(ctx, deployment):
+    name = deployment["metadata"].get("name", None)
+    replicas = deployment["kwargs"].get("replicas", None)
+    strategy = deployment["kwargs"].get("strategy", None)
+    if name == None or replicas == None or strategy == None:
+        return
+
+    # Only RollingUpdate deployment strategies are checked.
+    if strategy.type != "RollingUpdate":
+        return
+
+    max_unavailable = strategy.rollingUpdate.maxUnavailable
+    if max_unavailable == None:
+        fail("Deployment %s specifies a RollingUpdate strategy without maxUnavailable" % name)
+
+    if max_unavailable.type == 1 and len(max_unavailable.strVal) > 0:
+        if "%" in max_unavailable.strVal:
+            percent = int(max_unavailable.strVal.split("%")[0])
+            _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent)
+        else:
+            literal = int(max_unavailable.strVal)
+            percent = 0
+            if replicas > 0:
+                percent = 100 * literal // replicas
+            _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
+    elif max_unavailable.intVal != None:
+        literal = max_unavailable.intVal
+        percent = 0
+        if replicas > 0:
+            percent = 100 * literal // replicas
+        _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
+
+def _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal=None):
+    if replicas < MIN_REPLICAS_FOR_CHECK:
+        return
+
+    # Skip for blue-green services
+    if percent == 100 and get_blue_green_color(ctx) != None:
+        return
+
+    if percent > MAX_PERCENT:
+        if literal != None:
+            minLiteral = (MAX_PERCENT * replicas) // 100
+            warn(ctx, "".join([
+                "WARNING: The MaxUnavailable value for %s " % name,
+                "is above the threshold of %d%% " % MAX_PERCENT,
+                "for Deployments with more than %d replicas. " % MIN_REPLICAS_FOR_CHECK,
+                "The specified value is %d, corresponding to %d%% of %d replicas. " % (literal, percent, replicas),
+                "Please reduce the MaxUnavailable value to %d or below. " % minLiteral
+            ]))
+        else:
+            warn(ctx, "".join([
+                "WARNING: The MaxUnavailable value for %s " % name,
+                "is above the threshold of %d%% " % MAX_PERCENT,
+                "for Deployments with more than %d replicas. " % MIN_REPLICAS_FOR_CHECK,
+                "The specified value is %d%%. " % percent,
+                "Please reduce the MaxUnavailable percent below the threshold."
+            ]))
+
+
 def deployment_options(**kwargs):
     """
     Defines options for a deployment.
@@ -160,6 +229,7 @@ def _render_deployment(ctx, deployment_def):
     deployment = struct(**deployment_def)
 
     pod_template = deployment.pod["render"](ctx, deployment.pod)
+    _validate_pod_container_resources(ctx, pod_template)
 
     return _apps.Deployment(
         metadata = render_metadata(ctx, deployment.metadata),
@@ -169,3 +239,34 @@ def _render_deployment(ctx, deployment_def):
             **deployment.kwargs
         ),
     )
+
+def _validate_pod_container_resources(ctx, pod_template):
+    containers_with_resources = 0
+    first_container_with_resources = None
+    for container in pod_template.spec.containers:
+        if _container_has_resources(container):
+            containers_with_resources += 1
+
+        if containers_with_resources > 1:
+            warn(ctx, "".join([
+                "More than one container in a Deployment specified requests or limits on resources, which will soon be disallowed. ",
+                "The sidecar container with name " + container.name + " needs to have its CPU and memory resource requirements removed: ",
+                "container with name " + first_container_with_resources + " already specified CPU or memory resources for this Deployment. ",
+            ]))
+        else:
+            first_container_with_resources = container.name
+
+def _container_has_resources(container):
+    if not container.resources:
+        return False
+
+    if container.resources.limits:
+        if container.resources.limits["cpu"] or container.resources.limits["memory"]:
+            return True
+
+    if container.resources.requests:
+        if container.resources.requests["cpu"] or container.resources.requests["memory"]:
+            return True
+
+    return False
+

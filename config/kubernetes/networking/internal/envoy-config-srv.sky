@@ -133,6 +133,8 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         "--allowed-clusters=east",
         "--allowed-clusters=bom",
         "--allowed-clusters=cmh",
+        "--allowed-clusters=dub",
+        "--allowed-clusters=cdg",
         "--allowed-clusters=pdx",
         "--enable-fallback",
         "--enable-outbound",
@@ -155,6 +157,8 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
     if args["enable_inbound_websockets"]:
         command.append("--enable-websockets")
 
+    if args["enable_grpc_web"]:
+        command.append("--enable-grpc-web")
 
     return container(
         name = self,

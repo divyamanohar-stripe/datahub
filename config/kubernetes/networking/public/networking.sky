@@ -152,7 +152,7 @@ def networking(ctx, namespace, pod_termination_grace_period_seconds, availabilit
             envoy_sidecar(ctx, namespace, config_target, config),
             envoy_config_srv_sidecar(ctx, namespace, xds_static_consul_config, config_target, config),
             pre_stop(exec_action(*exec_command), container_name = ENVOY_CONFIG_SRV_SIDECAR_NAME),
-            envoy_monitor_sidecar(ctx, namespace),
+            envoy_monitor_sidecar(ctx, namespace, config),
         ])
 
         # NB: This is a bit of an abstraction violation, but safe to do since

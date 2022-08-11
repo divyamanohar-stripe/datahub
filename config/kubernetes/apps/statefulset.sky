@@ -51,7 +51,9 @@ def statefulset(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwar
         "metadata": {},
         "shared_msp": shared_msp,
         "registered_services": [],
+        "networking_config": None,
         "kwargs": {},
+        "metrics_config": None,
     }
 
     all_plugins = []
@@ -78,12 +80,13 @@ def statefulset(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwar
             availability_tier=get_availability_tier_from_metadata(statefulset["metadata"]),
             host_network=False,
             register_services=statefulset['registered_services'],
+            config=statefulset["networking_config"],
             pod_termination_grace_period_seconds=pod_termination_grace_period_seconds,
         )
         _apply_plugin(ctx, networking_plugin, statefulset)
         # Automatically add the metrics sidecar to any statefulsets. If we encounter a service that
         # wants to disable this we can add a flag.
-        _apply_plugin(ctx, metrics(ctx), statefulset)
+        _apply_plugin(ctx, metrics(ctx, config=statefulset["metrics_config"]), statefulset)
 
         _apply_plugin(ctx, compose_plugins(
             prestop_all_infra_sidecars(pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),

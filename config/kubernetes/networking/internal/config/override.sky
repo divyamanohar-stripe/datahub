@@ -103,6 +103,7 @@ def network_config_updater(
         _update_envoy_sidecar_config = None,
         _update_envoy_bootstrap_config = None,
         _update_envoy_sidecar_cli_args = None,
+        _update_envoy_monitor_cli_args = None,
         **kwargs):
     """
     Returns:
@@ -133,6 +134,7 @@ def network_config_updater(
         _update_envoy_sidecar_config = _update_envoy_sidecar_config,
         _update_envoy_bootstrap_config = _update_envoy_bootstrap_config,
         _update_envoy_sidecar_cli_args = _update_envoy_sidecar_cli_args,
+        _update_envoy_monitor_cli_args = _update_envoy_monitor_cli_args,
         kwargs = struct(**kwargs),
     )
 

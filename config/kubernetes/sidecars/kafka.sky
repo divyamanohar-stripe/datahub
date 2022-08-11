@@ -21,17 +21,21 @@ def kafka_credentials(
     output_owner = "kubernetes-pod",
     output_group = "kubernetes-pod",
     machine_cas_path = "/etc/ssl/certs/stripe-cas/machine-cas.pem",
+    include_pem = False, # whether to include PEM certificate, for non-JVM services
 ):
+    sidecar_args = [
+        "--output-path", output_path,
+        "--output-owner", output_owner,
+        "--output-group", output_group,
+        "--machine-cas-path", machine_cas_path,
+    ]
+    if include_pem:
+        sidecar_args.append('--include-pem')
     return _kafka_sidecar(
         container_name = container_name,
         credentials_volume_path = output_path,
         machine_cas_path = machine_cas_path,
-        sidecar_args = [
-            "--output-path", output_path,
-            "--output-owner", output_owner,
-            "--output-group", output_group,
-            "--machine-cas-path", machine_cas_path,
-        ],
+        sidecar_args = sidecar_args,
     )
 
 def _kafka_sidecar(
@@ -52,7 +56,7 @@ def _kafka_sidecar(
         fallback = image(
             ctx,
             name = "stripe/zoolander/kafka-sidecar",
-            label = "sha256:2c9c802b96e511e1da235637f11e80065e6e448ac938532d7a8bdb6754191dac",
+            label = "sha256:8c9dc9fa32c5ca06dd858065b6c09a84aceb3371d3093715e60416fe7c67e0c8",
             env = "prod",
         )
         volume_mounts = [

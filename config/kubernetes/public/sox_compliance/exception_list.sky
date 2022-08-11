@@ -16,9 +16,44 @@
 #
 _CRONS = [
     {
+        # "cronjob-disabling-test-job" is a MSP cron which does not handle any financial data
+        "name": "cronjob-disabling-test-job",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # "orchestration-plus-plus-email-summary-job" is a MSP cron which does not handle any financial data
+        "name": "orchestration-plus-plus-email-summary-job",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # "orchestration-test-aws-iam" is a MSP cron which does not handle any financial data
+        "name": "orchestration-test-aws-iam",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # "orchestration-test-persistent-disk" is a MSP cron which does not handle any financial data
+        "name": "orchestration-test-persistent-disk",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # "orchestration-test-kube-heartbeat" cron performs heartbeats for testing and does not handle any financial data
+        "name": "orchestration-test-kube-heartbeat",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # "test-generated-secret-templates" is a MSP cron which does not handle any financial data
+        "name": "test-generated-secret-templates",
+        "namespace": "kubeacronnoegress",
+    },
+    {
         # "test-cron-sox-control-false" cron does not exist. Only used for testing.
         "name": "test-cron-sox-control-false",
         "namespace": "test-system",
+    },
+    {
+        # "skycfg-doc-index-doc-pages" cron mainly handles the skycfg docs and does not handle any financial data
+        "name": "skycfg-doc-index-doc-pages",
+        "namespace": "kubeacronnoegress",
     },
     {
         # "sox-ticket-assigner-cron" only observes Jira ticket state, and does not load or mutate any sensitive financial data

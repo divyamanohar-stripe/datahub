@@ -1,0 +1,30 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of LabelSelector message please refer to
+https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/generated.proto#L410-L424
+"""
+
+load("config/kubernetes/autoscaling/labelselectorrequirement.sky", "label_selector_requirement")
+load("config/kubernetes/autoscaling/schema.sky", "meta")
+
+def label_selector(ctx, object):
+    obj_label_selector = meta.LabelSelector()
+    object = struct(**object)
+
+    if hasattr(object, "matchLabels"):
+        if type(object.matchLabels) == type({}):  # is a map
+            obj_label_selector.matchLabels = object.matchLabels
+        else:
+            fail("LabelSelector matchLabels field called with non map value")
+
+    if hasattr(object, "matchExpressions"):
+        if type(object.matchExpressions) == type([]):  # is a list
+            expressions = []
+            for expression in object.matchExpressions:
+                obj_expression = label_selector_requirement(ctx, expression)
+                expressions.append(obj_expression)
+            obj_label_selector.matchExpressions = expressions
+        else:
+            fail("LabelSelector matchExpressions field called with non list value")
+
+    return obj_label_selector

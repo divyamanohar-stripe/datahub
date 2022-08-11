@@ -1,0 +1,85 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+load("config/kubernetes/autoscaling/horizontalpodautoscaler.sky", "horizontalpodautoscaler")
+load("config/kubernetes/autoscaling/schema.sky", "apps")
+
+def horizontal_pod_autoscaler_defaults(
+        ctx,
+        autoscale_target,
+        metrics,
+        behavior,
+        min_replicas = 1,
+        max_replicas = 10,
+        scale_up_stabilization_window_seconds = 0,
+        scale_down_stabilization_window_seconds = 300,
+        scale_up_select_policy = "Max",
+        scale_down_select_policy = "Min",
+        api_version = "apps/v1"):
+    name = autoscale_target.metadata.name
+
+    if type(autoscale_target) == type(apps.StatefulSet()):
+        autoscale_target_kind = "StatefulSet"
+    elif type(autoscale_target) == type(apps.Deployment()):
+        autoscale_target_kind = "Deployment"
+    else:
+        autoscale_target_kind = "Deployment"
+
+    spec = {"scaleTargetRef": {
+        "apiVersion": api_version,
+        "kind": autoscale_target_kind,
+        "name": name,
+    }}
+    spec["minReplicas"] = min_replicas
+    spec["maxReplicas"] = max_replicas
+
+    if metrics:
+        metrics_list = []
+        for metric in metrics:
+            if list(metric.keys())[0].lower() == "cpu":
+                metrics_list.append({
+                    "type": "Resource",
+                    "resource": {"name": "cpu"},
+                    "target": {
+                        "type": "Utilization",
+                        "averageUtilization": list(metric.values())[0],
+                    },
+                })
+            if list(metric.keys())[0].lower() == "memory":
+                metrics_list.append({
+                    "type": "Resource",
+                    "resource": {"name": "memory"},
+                    "target": {
+                        "type": "AverageValue",
+                        "averageValue": list(metric.values())[0],
+                    },
+                })
+        spec["metrics"] = metrics_list
+
+    if behavior:
+        behavior_obj = {}
+        if "scaleUp" in behavior:
+            scale_up = {}
+            scale_up["policies"] = policy_handler(behavior["scaleUp"])
+            scale_up["selectPolicy"] = scale_up_select_policy
+            scale_up["stabilizationWindowSeconds"] = scale_up_stabilization_window_seconds
+            behavior_obj["scaleUp"] = scale_up
+        if "scaleDown" in behavior:
+            scale_down = {}
+            scale_down["policies"] = policy_handler(behavior["scaleDown"])
+            scale_down["selectPolicy"] = scale_down_select_policy
+            scale_down["stabilizationWindowSeconds"] = scale_down_stabilization_window_seconds
+            behavior_obj["scaleDown"] = scale_down
+        spec["behavior"] = behavior_obj
+
+    return horizontalpodautoscaler(ctx, {"metadata": autoscale_target.metadata, "spec": spec})
+
+def policy_handler(policy_list):
+    policies = []
+    for policy in policy_list:
+        policies.append(
+            {
+                "type": list(policy.keys())[0],
+                "value": list(policy.values())[0],
+                "periodSeconds": policy["seconds"],
+            },
+        )
+    return policies

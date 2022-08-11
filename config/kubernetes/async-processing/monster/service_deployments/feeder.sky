@@ -1,5 +1,5 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/apps/deployment.sky", "deployment")
+load("config/kubernetes/apps/deployment.sky", "deployment", "deployment_options")
 load("config/kubernetes/core/container.sky", "container_port")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
@@ -7,6 +7,7 @@ load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/helpers/security.sky", "add_security_groups")
 load("config/kubernetes/networking/public/config.sky", "networking_config")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
+load("config/kubernetes/sidecars/config_srv.sky", "config_srv_sidecar")
 load("config/kubernetes/sidecars/consul.sky", "consul_service")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 
@@ -28,6 +29,17 @@ def generate_workers_per_shard(config):
         return [arg_name, "1"]
     else:
         return []
+
+
+def generate_max_connection_pool_size(config):
+    """
+    This is the maximum size of the connection pool for Feeder. Default is 1024.
+    Reducing this to prevent a Feeder host from overwhelming Mongo.
+    """
+    ig = format_isolation_group(config.monster_isolation_group)
+    arg_name = "--mongo-connections"
+
+    return [arg_name, "300"]
 
 
 def generate_fqe_lock_preemption_s(config):
@@ -113,6 +125,7 @@ def monster_feeder_deployment(ctx, config):
     mongo_address = "127.0.0.1:10087"
     port = 8080
     jmx_port = 8086
+    jvm_heap_max_mb = int(config.raw_memory_mb * 0.9)
 
     runtime_args = [
         ["./src/scala/com/stripe/monster/feeder/main"],
@@ -126,6 +139,7 @@ def monster_feeder_deployment(ctx, config):
         generate_max_restart_downtime_ms(config),
         generate_feeder_consul_poll_ms(config),
         generate_max_poll_sleep_ms(config),
+        generate_max_connection_pool_size(config),
         get_monster_env_cmd_arguments(ctx, config.monster_isolation_group, host_type),
     ]
 
@@ -144,7 +158,7 @@ def monster_feeder_deployment(ctx, config):
             vars = {
                 "JAVA_OPTS": " ".join([
                     "-XX:+ExitOnOutOfMemoryError",
-                    "-Xmx{}g".format(config.raw_memory_gb),
+                    "-Xmx{}m".format(jvm_heap_max_mb),
                     "-Djava.io.tmpdir=/pay/tmp",
                     "-Djava.util.logging.config.file=/src/scala/com/stripe/monster/feeder/logging.properties",
                 ] + get_jmx_java_options(jmx_port)),
@@ -153,25 +167,26 @@ def monster_feeder_deployment(ctx, config):
         container_port(jmx_port),
         add_jmxfetch_sidecar(ctx, "monster-feeder", jmx_port),
         monster_deployment_labels(config),
-        # generic healthcheck for deployment control
+        # Generic healthcheck for deployment control
         healthchecked_service(
             port = port,
             name = "monster-feeder",
-            # When we're instructed to shutdown by a SIGTERM, this is how long we'll wait (in seconds)
-            # to gracefully drain traffic before we're forcibly stopped by a SIGKILL
-            #
-            # monster-feeder needs to match the consumer timeout, so that in-flight consumptions are not dropped:
-            # https://git.corp.stripe.com/stripe-internal/pay-server/blob/de9bbe8d1da32be6c813e8e8e9551fc5416d3f33/lib/event/framework/abstract_consumer.rb#L19
-            #
-            # Context:
-            # https://paper.dropbox.com/doc/Investigation-Traffic-Draining-for-Monster-on-Shared-MSP-byFrxy0nX26Vz51t28ois
-            # https://confluence.corp.stripe.com/display/CDS/Safe+Draining+on+Shared+MSP
-            request_drain_grace_period_seconds = 300,
+            # Feeder initiates outbound requests rather than receiving inbound requests
+            # The relevant timeout is set in its shutdown setttings at https://git.corp.stripe.com/stripe-internal/zoolander/blob/master/src/scala/com/stripe/monster/feeder/Main.scala#L133
+            # To avoid confusion, this timeout is set to match that one
+            # Context: https://paper.dropbox.com/doc/Investigation-Dropped-FQEs--BmjR2ZtcRz5y8Ti6xV39Dxv6Ag-PMxGFUlHgby3fudTy0pwy
+            request_drain_grace_period_seconds = 360,
         ),
         consul_service(port = port, name = consul_service_name),
         add_security_groups("monsterfeeder"),
         auto_secrets(),
+        config_srv_sidecar(),
         networking_config(mproxy_tier = "monster"),
+        # We limit how many previous revisions of ReplicaSet's we keep around to limit
+        # the amount of metadata the k8s control plane has to serve up for Monster
+        # See: https://jira.corp.stripe.com/browse/RUN_ORCH-11446, http://go/ir/gray-fuse, http://go/ir/whim-tangent
+        # And: https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/workloads/controllers/deployment/#revision-history-limit
+        deployment_options(revisionHistoryLimit = 3),
         replicas = config.replicas,
         strategy = config.strategy,
         shared_msp = True,

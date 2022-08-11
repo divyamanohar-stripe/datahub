@@ -1,0 +1,31 @@
+# DO NOT EDIT: http://go/vendor-skycfg
+"""
+For the structure of HPAScalingPolicy message please refer to
+https://github.com/kubernetes/api/blob/v0.18.6/autoscaling/v2beta2/generated.proto#L67-L79
+"""
+
+load("config/kubernetes/autoscaling/schema.sky", "hpa")
+
+def scaling_policy(ctx, policy):
+    obj_scaling_policy = hpa.HPAScalingPolicy()
+    policy = struct(**policy)
+
+    if hasattr(policy, "type"):
+        if type(policy.type) == "string":
+            obj_scaling_policy.type = policy.type
+        else:
+            fail("HPAScalingPolicy type field called with non string value")
+
+    if hasattr(policy, "value"):
+        if type(policy.value) == "int":
+            obj_scaling_policy.value = policy.value
+        else:
+            fail("HPAScalingPolicy value field called with non integer value")
+
+    if hasattr(policy, "periodSeconds"):
+        if type(policy.periodSeconds) == "int":
+            obj_scaling_policy.periodSeconds = policy.periodSeconds
+        else:
+            fail("HPAScalingPolicy periodSeconds field called with non integer value")
+
+    return obj_scaling_policy
