@@ -33,6 +33,7 @@ export const getExecutionRequestStatusIcon = (status: string) => {
         (status === 'SUCCESS' && CheckCircleOutlined) ||
         (status === 'FAILURE' && CloseCircleOutlined) ||
         (status === 'CANCELLED' && CloseCircleOutlined) ||
+        (status === 'UP_FOR_RETRY' && CloseCircleOutlined) ||
         undefined
     );
 };
@@ -43,6 +44,7 @@ export const getExecutionRequestStatusDisplayText = (status: string) => {
         (status === 'SUCCESS' && 'Succeeded') ||
         (status === 'FAILURE' && 'Failed') ||
         (status === 'CANCELLED' && 'Cancelled') ||
+        (status === 'UP_FOR_RETRY' && 'Up for Retry') ||
         status
     );
 };
@@ -52,6 +54,7 @@ export const getExecutionRequestStatusDisplayColor = (status: string) => {
         (status === 'RUNNING' && REDESIGN_COLORS.BLUE) ||
         (status === 'SUCCESS' && 'green') ||
         (status === 'FAILURE' && 'red') ||
+        (status === 'UP_FOR_RETRY' && 'orange') ||
         (status === 'CANCELLED' && ANTD_GRAY[9]) ||
         ANTD_GRAY[7]
     );
