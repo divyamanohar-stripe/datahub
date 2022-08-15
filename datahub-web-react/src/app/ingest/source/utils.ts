@@ -1,5 +1,5 @@
 import YAML from 'yamljs';
-import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { ANTD_GRAY, REDESIGN_COLORS } from '../../entity/shared/constants';
 import { SOURCE_TEMPLATE_CONFIGS } from './conf/sources';
 
@@ -33,7 +33,7 @@ export const getExecutionRequestStatusIcon = (status: string) => {
         (status === 'SUCCESS' && CheckCircleOutlined) ||
         (status === 'FAILURE' && CloseCircleOutlined) ||
         (status === 'CANCELLED' && CloseCircleOutlined) ||
-        (status === 'UP_FOR_RETRY' && CloseCircleOutlined) ||
+        (status === 'UP_FOR_RETRY' && ClockCircleOutlined) ||
         undefined
     );
 };
