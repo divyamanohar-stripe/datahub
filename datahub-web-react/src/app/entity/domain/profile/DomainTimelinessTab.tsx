@@ -4,7 +4,7 @@ import { DatePicker, Descriptions, Layout, Steps, Table, Tag, Tooltip } from 'an
 import { groupBy } from 'lodash';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
-import { useGetDomainQuery } from '../../../../graphql/domain.generated';
+import { useGetDomainTimelinessQuery } from '../../../../graphql/domain.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { useEntityData } from '../../shared/EntityContext';
@@ -737,12 +737,10 @@ export const DomainTimelinessTab = () => {
     const { urn } = useEntityData();
     const [domainDate, setDomainDate] = useState(moment.utc().startOf('day'));
     const [segmentId, setSegmentId] = useState(0);
-
-    // NOTE: Max number of entities within domain. If actual count exceeds, there will be missing data.
-    // This setting is used to limit the size of GraphQL query, adjust as needed.
     const maxEntityCount = 50;
-    const { loading: isLoadingDomain, data: domainQueryResponse } = useGetDomainQuery({
-        variables: { urn, entityStart: 0, entityCount: maxEntityCount },
+    const maxRunCount = 31;
+    const { loading: isLoadingDomain, data: domainQueryResponse } = useGetDomainTimelinessQuery({
+        variables: { urn, entityStart: 0, entityCount: maxEntityCount, runStart: 0, runCount: maxRunCount },
     });
     if (isLoadingDomain) return loadingPage;
     console.log('domainQueryResponse', domainQueryResponse);
