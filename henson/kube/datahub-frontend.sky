@@ -17,15 +17,25 @@ def env_configs(ctx):
     # connect via consul as attempting to connect via envoy results in an error:
     # HTTP 431: Request Header Fields Too Large
     # More details: https://jira.corp.stripe.com/browse/SCHMAQUERY-1522
+    es_sproxy_host = "sproxy.service.envoy"
+    es_sproxy_port = "10080"
     if get_env(ctx) == "qa":
+        kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.qa-northwest.consul:9092"
         return {
             "replicas": 1,
             "gms_host": "datahub-gms.service.qa-northwest.consul",
+            "kafka_bootstrap_server": kafka_datahub,
+            "elastic_client_host": es_sproxy_host,
+            "elastic_client_port": es_sproxy_port,
         }
     else:
+        kafka_datahub = "PLAINTEXT://kafka-datahub-northwest-green.service.northwest.consul:9092"
         return {
             "replicas": 2,
             "gms_host": "datahub-gms.service.northwest.consul",
+            "kafka_bootstrap_server": kafka_datahub,
+            "elastic_client_host": es_sproxy_host,
+            "elastic_client_port": es_sproxy_port,
         }
 
 # Canary to one replica
@@ -49,8 +59,13 @@ def _service(ctx, replicas, suffix = ""):
         "DATAHUB_PLAY_MEM_BUFFER_SIZE": "10MB",
         "LOG_DIR": "/datahub/datahub-frontend/logs",
         "AUTH_JAAS_ENABLED": "false",
-        "DATAHUB_ANALYTICS_ENABLED": "false",
         "JAVA_OPTS": "-Xms4g -Xmx4g -Dhttp.port=9002 -Dconfig.file=datahub-frontend/conf/application.conf -Djava.security.auth.login.config=datahub-frontend/conf/jaas.conf -Dlogback.configurationFile=datahub-frontend/conf/logback.xml -Dlogback.debug=false -Dpidfile.path=/dev/null",
+        # Required Elastic Client Configuration (Analytics)
+        "DATAHUB_ANALYTICS_ENABLED": "true",
+        "KAFKA_BOOTSTRAP_SERVER": env_configs(ctx)["kafka_bootstrap_server"],
+        "DATAHUB_TRACKING_TOPIC": "datahub.usage_event",
+        "ELASTIC_CLIENT_HOST": env_configs(ctx)["elastic_client_host"],
+        "ELASTIC_CLIENT_PORT": env_configs(ctx)["elastic_client_port"],
     }
     service_port = 9002
     deploy = deployment(

@@ -62,6 +62,11 @@ cp docker/mysql-setup/stripe-init.sh /build/mysql_init.sh
 cp docker/mysql-setup/init.sql /build/mysql_init.sql
 cp Dockerfile.deploy /build
 
+# enable analytics
+cp docker/elasticsearch-setup/create-indices.sh /build/create-indices.sh
+cp metadata-service/restli-servlet-impl/src/main/resources/index/usage-event/policy.json /build/policy.json
+cp metadata-service/restli-servlet-impl/src/main/resources/index/usage-event/index_template.json /build/index_template.json
+
 ./gradlew :metadata-ingestion:codegen
 
 pushd metadata-ingestion

@@ -28,22 +28,29 @@ function create_datahub_usage_event_datastream() {
     PREFIX="${INDEX_PREFIX}_"
   fi
 
-  if [ $(curl -o /dev/null -s -w "%{http_code}" --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT/_ilm/policy/${PREFIX}datahub_usage_event_policy") -eq 404 ]
+  if [ $(curl -o /dev/null -s -w "%{http_code}" --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/_ilm/policy/${PREFIX}datahub_usage_event_policy") -eq 404 ]
   then
     echo -e "\ncreating datahub_usage_event_policy"
-    sed -e "s/PREFIX/${PREFIX}/g" /index/usage-event/policy.json | tee -a /tmp/policy.json
-    curl -XPUT --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT/_ilm/policy/${PREFIX}datahub_usage_event_policy" -H 'Content-Type: application/json' --data @/tmp/policy.json
+    sed -e "s/PREFIX/${PREFIX}/g" /datahub/datahub-gms/resources/policy.json | tee -a /tmp/policy.json
+    curl -XPUT --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/_ilm/policy/${PREFIX}datahub_usage_event_policy" -H 'Content-Type: application/json' --data @/tmp/policy.json
   else
     echo -e "\ndatahub_usage_event_policy exists"
   fi
-  if [ $(curl -o /dev/null -s -w "%{http_code}" --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT/_index_template/${PREFIX}datahub_usage_event_index_template") -eq 404 ]
+  if [ $(curl -o /dev/null -s -w "%{http_code}" --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/_index_template/${PREFIX}datahub_usage_event_index_template") -eq 404 ]
   then
     echo -e "\ncreating datahub_usage_event_index_template"
-    sed -e "s/PREFIX/${PREFIX}/g" /index/usage-event/index_template.json | tee -a /tmp/index_template.json
-    curl -XPUT --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT/_index_template/${PREFIX}datahub_usage_event_index_template" -H 'Content-Type: application/json' --data @/tmp/index_template.json
+    sed -e "s/PREFIX/${PREFIX}/g" /datahub/datahub-gms/resources/index_template.json | tee -a /tmp/index_template.json
+    curl -XPUT --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/_index_template/${PREFIX}datahub_usage_event_index_template" -H 'Content-Type: application/json' --data @/tmp/index_template.json
   else
     echo -e "\ndatahub_usage_event_index_template exists"
   fi
+  if [ $(curl -o /dev/null -s -w "%{http_code}" --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/${PREFIX}datahub_usage_event") -eq 404 ]
+    then
+      echo -e "\ncreating datahub_usage_event index"
+      curl -XPUT --header "$ELASTICSEARCH_AUTH_HEADER" "$ELASTICSEARCH_PROTOCOL://$ELASTICSEARCH_HOST:$ELASTICSEARCH_PORT$ELASTICSEARCH_PATH_PREFIX/_data_stream/${PREFIX}datahub_usage_event"
+    else
+      echo -e "\ndatahub_usage_event index exists"
+    fi
 }
 
 function create_datahub_usage_event_aws_elasticsearch() {

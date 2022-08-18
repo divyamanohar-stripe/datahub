@@ -10,9 +10,12 @@
           "urn:li:corpuser:datahub"
         ]
       },
-      "privileges":["MANAGE_DOMAINS"],
-      "displayName":"Root User - No Platform Privileges",
-      "description":"Cuts down platform privileges to default datahub user.",
+      "privileges":[
+        "MANAGE_DOMAINS",
+        "VIEW_ANALYTICS"
+      ],
+      "displayName":"Default User - Manage domains and view Analytics",
+      "description":"Grants viewing analytics dashboard and managing domains privileges to default datahub user.",
       "state":"ACTIVE",
       "type":"PLATFORM",
       "editable":false
@@ -63,7 +66,7 @@
         "allUsers":true,
         "allGroups":false
       },
-      "privileges":["MANAGE_DOMAINS"],
+      "privileges":["MANAGE_DOMAINS", "VIEW_ANALYTICS"],
       "displayName":"All Users - Some Platform Privileges",
       "description":"Grant some platform privleges to datahub users",
       "state":"ACTIVE",
