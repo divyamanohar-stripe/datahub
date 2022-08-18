@@ -1,4 +1,4 @@
-query getDomain($urn: String!) {
+query getDomain($urn: String!, $entityStart: Int, $entityCount: Int) {
     domain(urn: $urn) {
         urn
         id
@@ -23,7 +23,7 @@ query getDomain($urn: String!) {
                 }
             }
         }
-        entities(input: {}) {
+        entities(input: { start: $entityStart, count: $entityCount }) {
             ...searchResults
         }
     }

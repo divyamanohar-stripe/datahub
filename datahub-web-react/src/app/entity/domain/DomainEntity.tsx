@@ -10,6 +10,7 @@ import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Owners
 import { getDataForEntityType } from '../shared/containers/profile/utils';
 import { useGetDomainQuery } from '../../../graphql/domain.generated';
 import { DomainEntitiesTab } from './DomainEntitiesTab';
+import { DomainTimelinessTab } from './profile/DomainTimelinessTab';
 
 /**
  * Definition of the DataHub Domain entity.
@@ -71,6 +72,10 @@ export class DomainEntity implements Entity<Domain> {
                 {
                     name: 'Documentation',
                     component: DocumentationTab,
+                },
+                {
+                    name: 'Domain Timeliness',
+                    component: DomainTimelinessTab,
                 },
             ]}
             sidebarSections={[

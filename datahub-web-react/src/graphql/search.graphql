@@ -227,6 +227,10 @@ fragment searchResultFields on Entity {
         properties {
             name
             description
+            customProperties {
+                key
+                value
+            }
         }
         globalTags {
             ...globalTagsFields
@@ -242,6 +246,9 @@ fragment searchResultFields on Entity {
         }
         deprecation {
             ...deprecationFields
+        }
+        runs(start: 0, count: 31) {
+            ...runResults
         }
     }
     ... on GlossaryTerm {
