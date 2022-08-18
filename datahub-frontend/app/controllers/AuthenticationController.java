@@ -78,9 +78,12 @@ public class AuthenticationController extends Controller {
         final Optional<String> maybeRedirectPath = Optional.ofNullable(ctx().request().getQueryString(AUTH_REDIRECT_URI_PARAM));
         final String redirectPath = maybeRedirectPath.orElse("/");
 
-        if (AuthUtils.hasValidSessionCookie(ctx())) {
-            return redirect(redirectPath);
-        }
+        // [stripe] Temporarily disable this check to allow us to sidestep existing cookies
+        // with the DataHub user actor (expiry is 30d). We can yank this out after we give users
+        // a week or so to switch to the updated stripe username cookie
+        //if (AuthUtils.hasValidSessionCookie(ctx())) {
+        //    return redirect(redirectPath);
+        //}
 
         // 1. If SSO is enabled, redirect to IdP if not authenticated.
         if (_ssoManager.isSsoEnabled()) {
@@ -92,12 +95,18 @@ public class AuthenticationController extends Controller {
             return redirect(LOGIN_ROUTE + String.format("?%s=%s", AUTH_REDIRECT_URI_PARAM,  encodeRedirectUri(redirectPath)));
         }
 
-        // 3. If no auth enabled, fallback to using default user account & redirect.
+        // 3. [stripe] If we're passed a peoplefe header, we use that as authentication.
+        // We should explore with the upstream community a way to allow pluggable authentication
+        Optional<String> maybeStripeUserHeader = ctx().request().header(STRIPE_USER_HEADER);
+
+        // 4. If no auth token present, fallback to using default user account & redirect.
+        CorpuserUrn actorUrn = maybeStripeUserHeader.map(u -> new CorpuserUrn(u)).orElse(DEFAULT_ACTOR_URN);
+
         // Generate GMS session token, TODO:
-        final String accessToken = _authClient.generateSessionTokenForUser(DEFAULT_ACTOR_URN.getId());
+        final String accessToken = _authClient.generateSessionTokenForUser(actorUrn.getId());
         session().put(ACCESS_TOKEN, accessToken);
-        session().put(ACTOR, DEFAULT_ACTOR_URN.toString());
-        return redirect(redirectPath).withCookies(createActorCookie(DEFAULT_ACTOR_URN.toString(), _configs.hasPath(SESSION_TTL_CONFIG_PATH)
+        session().put(ACTOR, actorUrn.toString());
+        return redirect(redirectPath).withCookies(createActorCookie(actorUrn.toString(), _configs.hasPath(SESSION_TTL_CONFIG_PATH)
                 ? _configs.getInt(SESSION_TTL_CONFIG_PATH)
                 : DEFAULT_SESSION_TTL_HOURS));
     }

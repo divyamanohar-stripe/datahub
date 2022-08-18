@@ -46,6 +46,7 @@ public class AuthUtils {
     public static final String USER_NAME = "username";
     public static final String PASSWORD = "password";
     public static final String ACTOR = "actor";
+    public static final String STRIPE_USER_HEADER = "X-SSL-CLIENT-S-DN-CN";
     public static final String ACCESS_TOKEN = "token";
 
     /**
