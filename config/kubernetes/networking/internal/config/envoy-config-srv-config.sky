@@ -45,17 +45,17 @@ def _default_sidecar_version(target):
     """
     # Prod sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_M7m2q1Rl3GMGS4
-    # Git Commit: 985239d538a849828bdf44a8845fe3161d0dc71c
-    # Summary   : 07/25/2022: Bump shared Skycfg libraries to ecc2f5214f9c58bf44a511b513afe1e4f01f0cc5 (#2866)
-    prod_digest = "2e47f855479d486cf29484ce9caa8e7a2001ff646a447e203db9835278b3abf9"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MD39NkrvMahLyP
+    # Git Commit: 3b70375e40528029e7ae04cea26e2c35aaab28cb
+    # Summary   : 08/08/2022: Remove unused zookeeper listeners (queuekeeper & menagerie) (#2947)
+    prod_digest   = "37f79ed4fa9e3caac5d79d971d6e88becc034f1482bd11ddcae5ce012473c485"
 
     # QA sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_M7m2q1Rl3GMGS4
-    # Git Commit: 985239d538a849828bdf44a8845fe3161d0dc71c
-    # Summary   : 07/25/2022: Bump shared Skycfg libraries to ecc2f5214f9c58bf44a511b513afe1e4f01f0cc5 (#2866)
-    qa_digest   = "2e47f855479d486cf29484ce9caa8e7a2001ff646a447e203db9835278b3abf9"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MD39NkrvMahLyP
+    # Git Commit: 3b70375e40528029e7ae04cea26e2c35aaab28cb
+    # Summary   : 08/08/2022: Remove unused zookeeper listeners (queuekeeper & menagerie) (#2947)
+    qa_digest   = "37f79ed4fa9e3caac5d79d971d6e88becc034f1482bd11ddcae5ce012473c485"
 
     return {
         "version": match(
@@ -88,6 +88,7 @@ def _default_sidecar_cli_args(target):
         # the config is set to false.
         "enable_grpc_web": False,
         "cluster_watch_addr": _designated_envoy_control_srv_addr(target.availability_tier, target.env),
+        "allowed_machine_orgs": ["030465607062"],
     }
 
 def _default_sidecar_config(target):

@@ -157,7 +157,7 @@ def use_shared_msp(*, namespace, name, instance_type, availability_tier):
     total_resources = aws_instance_size(instance_type.name)
     cpu = millicores(total_resources.cpu_millicores - instance_type.slack_cpu_millicores)
     memory = megabytes(total_resources.memory_mib)
-    shard_plugin = autoset_shard_shared_msp() if ( availability_tier.pod_tier == "A400" or availability_tier.pod_tier == "A300") else prefer_msp_shard("kubeapiaa")
+    shard_plugin = autoset_shard_shared_msp()
 
     return compose_plugins(
         pod_plugin(_set_shared_msp),

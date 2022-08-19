@@ -123,6 +123,7 @@ def networking_config(
         enable_grpc_web = NOT_PROVIDED,
         envoy_concurrency = NOT_PROVIDED,
         envoy_scrape_histogram_metrics = NOT_PROVIDED,
+        allowed_machine_orgs = NOT_PROVIDED,
         # enable_tracing = NOT_PROVIDED, # TODO(xyu): go/jira/SN-1059
         # Non-public SN knobs to tweak on a per-workload basis
         _sn_breakglass = breakglass_settings()):
@@ -153,6 +154,10 @@ def networking_config(
             By default, if not set, envoy will set concurrency to nproc of underlying host.
         envoy_scrape_histogram_metrics: Boolean value indicating whether to scrape histogram metrics and
             render them to the statsd sink using the histogram scraper.
+        allowed_machine_orgs: Allowed Amazon account IDs for ingress into this pod. Client certificates
+            must present a matching org (`O` field) for inbound requests to be authorized. This field
+            should be specified as a list of strings. This sets the --allowed-machine-orgs command line
+            flag for envoy-config-srv.
 
         _sn_breakglass: these are internal networking customizations for use by the
             Service Networking Team. While service owners are generally not expected
@@ -186,6 +191,7 @@ def networking_config(
             egress_proxy_tier = egress_proxy_tier,
             enable_inbound_websockets = enable_inbound_websockets,
             enable_grpc_web = enable_grpc_web,
+            allowed_machine_orgs = allowed_machine_orgs,
         ),
         envoy_concurrency = network_config_updater(
             _update_envoy_sidecar_cli_args = _override_matching_keys,

@@ -71,7 +71,8 @@ A200_HOST_SETS = struct(
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2500),
                 prod={
-                    "northwest":    cluster(consume_replicas=8),
+                    "northwest":    cluster(consume_replicas=8,
+                                            fanout_replicas=4),
                 }),
         hostset("capital",
                 suffix="low-cpu",
@@ -94,7 +95,7 @@ A200_HOST_SETS = struct(
                     "northwest":    cluster(consume_replicas=63,
                                             fanout_replicas=6,
                                             mb_per_worker=4800),
-                    "bom":          cluster(consume_replicas=24),
+                    "bom":          cluster(consume_replicas=18),
                 }),
         hostset("connect",
                 suffix="low-cpu",
@@ -235,6 +236,7 @@ A200_HOST_SETS = struct(
                 qa=                 cluster(mb_per_worker=2500),
                 prod={
                     "northwest":    cluster(consume_replicas=31,
+                                            fanout_replicas=4,
                                             mb_per_worker=2300),
                     "bom":          cluster(consume_replicas=3),
                 }
@@ -245,7 +247,7 @@ A200_HOST_SETS = struct(
                 qa=                 cluster(mb_per_worker=2500),
                 prod={
                     "northwest":    cluster(consume_replicas=201,
-                                            fanout_replicas=6,
+                                            fanout_replicas=9,
                                             mb_per_worker=2300),
                     "bom":          cluster(consume_replicas=21),
                 }
@@ -265,6 +267,8 @@ A400_HOST_SETS = struct(
                 preprod={
                     "northwest":    empty_worker_cluster(),
                     "bom":          empty_worker_cluster(),
+                    "cmh":          cluster(consume_replicas=4,
+                                            instance_type=r5_8xlarge),
                 },
                 prod={
                     "cmh":          empty_worker_cluster(),

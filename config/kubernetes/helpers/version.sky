@@ -5,5 +5,5 @@
 # Skycfg version, used to track whether a specific change has been rolled out
 # everywhere or what skycfg version a pod is using.
 # Bump this version by 1 for every change (PR) and update the digest.
-SKYCFG_VERSION = "46"
-SKYCFG_DIGEST = "1bfde5e63adff6a3edac3d3d7fafece34eb59452aa1010b3c8dcc62558864f74"
+SKYCFG_VERSION = "47"
+SKYCFG_DIGEST = "4778e22ad79f2ffbe5df18629571266e5fdbaed7d06068f9135daed10011bc43"

@@ -22,7 +22,7 @@ ENV_CLUSTER_SHARDS = {
         "bom": [_shard("kubemaster")],
         "cmh": [_shard("kubemaster")],
         "east": [_shard("kubemaster")],
-        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb"), _shard("kubeapicc")],
+        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb"), _shard("kubeapicc"), _shard("kubeapidd")],
     },
     "preprod": {
         "cmh": [_shard("kubemaster")]
@@ -31,7 +31,7 @@ ENV_CLUSTER_SHARDS = {
         "bom": [_shard("kubemaster")],
         "cmh": [_shard("kubemaster")],
         "east": [_shard("kubemaster")],
-        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb"), _shard("kubeapicc")],
+        "northwest": [_shard("kubemaster", shared_msp=False), _shard("kubeapiaa"), _shard("kubeapibb"), _shard("kubeapicc"), _shard("kubeapidd")],
     },
 }
 

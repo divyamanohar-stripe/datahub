@@ -264,19 +264,14 @@ def metrics(
         fallback = fallback_image,
     )
 
-    target_image = fallback_image
-
-    if get_env(ctx) == "qa" or get_env(ctx) == "preprod" or get_availability_tier(ctx) == "A400" or get_availability_tier(ctx) == "A300" or get_availability_tier(ctx) == "A200":
-        target_image = sidecar_img
-
-        if attach_routing_rules == False:
-            # We are always allowing veneur-init to access secret value in QA as of 7/12/2022.
-            # This change is required due to the fact that we are onboarding veneur in shared MSP
-            # to the new sidecar deployment process, which would require us to only have one unified
-            # version of veneur across the shared MSP fleet in a given environment.
-            # This config determines the behavior of the string_secrets.go file within the veneur
-            # codebase: https://github.com/stripe/veneur/blob/master/util/string_secret.go
-            command = command + ["-print-secrets"]
+    if attach_routing_rules == False:
+        # We are always allowing veneur-init to access secret value as of 8/11/2022.
+        # This change is required due to the fact that we are onboarding veneur in shared MSP
+        # to the new sidecar deployment process, which would require us to only have one unified
+        # version of veneur across the shared MSP fleet in a given environment.
+        # This config determines the behavior of the string_secrets.go file within the veneur
+        # codebase: https://github.com/stripe/veneur/blob/master/util/string_secret.go
+        command = command + ["-print-secrets"]
 
     return compose_plugins(
         pod_volume(
@@ -290,7 +285,7 @@ def metrics(
 
         container(
             name = METRICS_SIDECAR_CONTAINER_NAME,
-            image = target_image,
+            image = sidecar_img,
             # Fleetwide max cpu/memory seen in production
             # https://docs.google.com/spreadsheets/d/158qk0xg16xRe0W0YhMtwi8Y-8l6fyYlWDvt3uRLyJcI/edit?usp=sharing
             #

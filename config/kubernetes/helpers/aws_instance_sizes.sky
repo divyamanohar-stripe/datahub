@@ -5,13 +5,19 @@ def _instance_family(instance_type):
 def base_instance_family(instance_type):
     family = _instance_family(instance_type)
 
-    # Iterate backwards until we find the first digit
+    # We consider c5, c5n, c5d, c5nd instances as all being of the same base family type.
+    # They all have the same CPU and memory charactersitics but might have different
+    # modifications such as d for nvme drives or n for better networking. Generally
+    # speaking the base instance family type ends in a number. This assumption breaks
+    # with the new c6/m6/r6 instances as they have a letter modifier at the end of i/a/g
+    # to represent the CPU they have (Intel, AMD or Graviton respectively). We want to
+    # return those instance modifiers as their corresponding hypervisors might actually
+    # use different amounts of memory.
     for i in range(len(family)-1, 0, -1):
-        if family[i].isdigit():
+        if family[i].isdigit() or (family[i] in ["i", "a", "g"] and family[i-1].isdigit()):
             return family[0:i+1]
 
     return family
-
 
 def aws_instance_size(instance_type):
     """
@@ -54,14 +60,16 @@ def aws_instance_size(instance_type):
     # is equal to 1% (625 basis points = 6.25%).
     base_instance_family_memory_reduction_basis_points = {
         "c5": 750,
+        "c6i": 750, # Assuming same values as c5
         "m5": 700,
+        "m6i": 700, # Assuming same values as m5
         "r5": 525,
         "i3": 700,
-        # TODO(gregj) this m6 value is copied from m5 -- I didn't actually go look at the memory
+        # TODO(gregj) this m6a value is copied from m5 -- I didn't actually go look at the memory
         # usage on instances of these actual types, since we're just prototyping m6a instances on
         # AMD in QA for now. We'll need to find the actual value here before actually running gen 6
         # types.
-        "m6": 700,
+        "m6a": 700,
     }
 
     reduction_basis_points = base_instance_family_memory_reduction_basis_points.get(base_instance_family(instance_type), 0)
@@ -1746,6 +1754,11 @@ _AWS_INSTANCE_SIZES = {
   }
 }
 
+# The Vantage API currently doesn't expose details for c6i and m6i instances
+# so we're manually adding it to the map we create above from the API response.
+_AWS_INSTANCE_SIZES["c6i.12xlarge"] = { "vcpu": 48, "memory_mib": 98304 }
+_AWS_INSTANCE_SIZES["m6i.12xlarge"] = { "vcpu": 48, "memory_mib": 196608 }
+
 c5_xlarge = struct(
     name="c5.xlarge",
     slack_cpu_millicores=1000,
@@ -1991,6 +2004,16 @@ i3_2xlarge = struct(
     slack_cpu_millicores=1000,
 )
 
+c6i_12xlarge = struct(
+    name="c6i.12xlarge",
+    slack_cpu_millicores=1000,
+)
+
+m6i_12xlarge = struct(
+    name="m6i.12xlarge",
+    slack_cpu_millicores=1000,
+)
+
 _INSTANCE_TYPES_BY_NAME = {
     c5_xlarge.name: c5_xlarge,
     c5_2xlarge.name: c5_2xlarge,
@@ -2041,6 +2064,8 @@ _INSTANCE_TYPES_BY_NAME = {
     m6a_xlarge.name: m6a_xlarge,
     i3_xlarge.name: i3_xlarge,
     i3_2xlarge.name: i3_2xlarge,
+    c6i_12xlarge.name: c6i_12xlarge,
+    m6i_12xlarge.name: m6i_12xlarge,
 }
 
 def get_instance_type_by_name(name):

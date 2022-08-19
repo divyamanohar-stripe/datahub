@@ -60,6 +60,342 @@ _CRONS = [
         "name": "sox-ticket-assigner-cron",
         "namespace": "cpecronbox",
     },
+    {
+        "name": "ae-detection-reliability-metric-exfiltration",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-detection-reliability-metric-osx",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-detection-reliability-metric-servers",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-generate-detection-reliability-metric-hubble",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-misp-intel-production",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-misp-sync",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-simulation-technique-metrics",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ae-util-prune-aiq-assessment",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "alert-to-case-enrichment",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-abnormal-s3-get-object-volume",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-anon-access-s3-bucket-mgmt-event",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-anonymous-access-non-public-s3-bucket",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-auth-failure-console",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-brute-force-errors",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-cli-non-bastion-ec2",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-cloudtrail-disabled",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-iam-creation-non-bastion",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-instance-cred-non-host",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-network-discovery",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-open-security-group",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-permissions-discovery",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-public-stripe-ami",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-root-account-mfa-changed",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-root-login",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-acl-bucket-mod",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-bucket-policy-deletion",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-bucket-policy-mod",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-exfil-copy-object",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-exfil-upload-copy-object",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-s3-public-access-block-mod",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-shared-snapshot-ext",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "aws-valid-accounts",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "censys-query-engine",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "con-mon-v2",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "correlation-rule-model-user-level",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "correlation-rule-model-user-level-retraining",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "crowdstrike-query-engine-iocs",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "crowdstrike-query-engine-pdfs",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "curl-to-interpreter",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "disable-gatekeeper-cmdline",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "disable-sip",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "dns-punycode-phishing",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "dropbox-http-upload",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "er-relaxed-anxious-material-analysis",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "exfil-by-curl-wget",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "external-drive-sharing",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "external-email-forwarding-rule",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "flashpoint-community-query-engine",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "historic-threat-intel-feed-dns-high",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "historic-threat-intel-feed-dns-medium",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "hosts-with-all-severities",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "hubble-anomalous-csv-download",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "itd-daily-access-risk-score-v001",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "itd-daily-access-risk-score-v002",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "itd-threatsignal-daily-report-v2",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "itd-weekly-access-risk-score-training-v001",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "itd-weekly-access-risk-score-training-v002",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "jupiterone-daily-pull",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "mitre-attck-hunt-daily",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "ofac-vpn-usage",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "osquery-osx-cpu-daily-report",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "osquery-osx-denylist-daily-report",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "qatesting-threatclients",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "salesforce-ingest-hourly-run",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "servers-uptycs-vt",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "shadow-infra-material-conf-email",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "shared-msp-login",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "shodan-route53-sync",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "stripe-specific-dns-threat-intel",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "suspicious-mounts",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "suspicious-scp",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "telegram-desktop-repeat-usage",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "telegram-desktop-usage",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "thehive-cases-weekly-report",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "thehive-es-dump-srv",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "threat-actor-sync",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "threat-intel-metrics",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "threat-intel-signal-daily-report",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "threatsignal-daily-report",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "threatsignal-daily-report-v2",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "uptycs-alert-delay-metrics",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "uptycs-disabled",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "vt-query-engine",
+        "namespace": "threatpapermillbox"
+    },
+    {
+        "name": "yoyo-offboard-failures",
+        "namespace": "threatpapermillbox"
+    },
 ]
 
 def cron_in_exceptions(namespace, name):

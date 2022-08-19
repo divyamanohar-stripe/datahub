@@ -105,7 +105,6 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         #
         # For now, just hardcode or decide to use the defaults
         "--machine-org=030465607062",
-        "--allowed-machine-orgs=030465607062",
         # NB(xyu): Clear --env-path to remove its default value so that the
         # combination of --cluster and --env are used instead.
         # This means we are determining cluster and env using *deploy-time*
@@ -159,6 +158,11 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
 
     if args["enable_grpc_web"]:
         command.append("--enable-grpc-web")
+
+    allowed_machine_orgs = []
+    for allowed_machine_org in args["allowed_machine_orgs"]:
+        allowed_machine_orgs.append("--allowed-machine-orgs=%s" % allowed_machine_org)
+    command.extend(allowed_machine_orgs)
 
     return container(
         name = self,
