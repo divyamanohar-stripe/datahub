@@ -143,6 +143,8 @@ enum UnitOfTime {
     SECONDS = 'seconds',
 }
 
+const CLIENT_TZ = moment.tz.guess();
+
 // Helper functions
 function convertSecsToHumanReadable(seconds: number) {
     const oriSeconds = seconds;
@@ -512,7 +514,12 @@ function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
     return formattedSegments;
 }
 
-function renderDomainHeader(domainDate: moment.Moment, setDomainDate, segments: FormattedSegment[]) {
+function renderDomainHeader(
+    domainDate: moment.Moment,
+    setDomainDate,
+    segments: FormattedSegment[],
+    domainName: string | undefined,
+) {
     const lastSegment = segments[segments.length - 1];
     const segmentStates = segments.map((s) => s.segmentState);
 
@@ -531,24 +538,40 @@ function renderDomainHeader(domainDate: moment.Moment, setDomainDate, segments: 
     }
 
     const { segmentActualLandingMoment, segmentEstimatedLandingMoment } = lastSegment;
+
     let domainLandingTimeText = 'N/A';
+    let domainLandingTimeToolTip;
     if (segmentActualLandingMoment !== null) {
         domainLandingTimeText = `T+${convertSecsToHumanReadable(
             segmentActualLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
         )}`;
+        domainLandingTimeToolTip = `UTC: ${segmentActualLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+        domainLandingTimeToolTip += `Local: ${moment
+            .tz(segmentActualLandingMoment, CLIENT_TZ)
+            .format('MM/DD/YYYY HH:mm:ss')}`;
     } else if (segmentEstimatedLandingMoment !== null) {
         domainLandingTimeText = `ETA: T+${convertSecsToHumanReadable(
             segmentEstimatedLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
         )}`;
+        domainLandingTimeToolTip = `UTC: ${segmentEstimatedLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+        domainLandingTimeToolTip += `Local: ${moment
+            .tz(segmentEstimatedLandingMoment, CLIENT_TZ)
+            .format('MM/DD/YYYY HH:mm:ss')}`;
     }
 
     return (
         <Descriptions title="" bordered size="small">
-            <Descriptions.Item label="Domain execution date">
-                <DatePicker onChange={setDomainDate} defaultValue={domainDate} />
+            <Descriptions.Item label={`${domainName} Execution Date`}>
+                <Tooltip title={`UTC scheduled run of tasks in ${domainName}`}>
+                    <DatePicker onChange={setDomainDate} defaultValue={domainDate} />
+                </Tooltip>
             </Descriptions.Item>
-            <Descriptions.Item label="Domain overall status">{domainOverallStatusTag}</Descriptions.Item>
-            <Descriptions.Item label="Domain landing time">{domainLandingTimeText}</Descriptions.Item>
+            <Descriptions.Item label={`${domainName} Status`}>{domainOverallStatusTag}</Descriptions.Item>
+            <Descriptions.Item label={`${domainName} Landing Time`}>
+                <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${domainLandingTimeToolTip}`}>
+                    {domainLandingTimeText}
+                </Tooltip>
+            </Descriptions.Item>
         </Descriptions>
     );
 }
@@ -625,7 +648,7 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
             },
         },
         {
-            title: 'Will miss SLA?',
+            title: 'Will Miss SLA?',
             dataIndex: 'willMissSLA',
             render: (willMissSLA) => {
                 if (willMissSLA === false) return <Tag color="blue">No</Tag>;
@@ -634,7 +657,7 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
             },
         },
         {
-            title: 'Average landing time',
+            title: 'Average Landing Time',
             dataIndex: 'averageLandingMoment',
             render: (averageLandingMoment) => {
                 if (averageLandingMoment === null) return <>N/A</>;
@@ -642,21 +665,52 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
             },
         },
         {
-            title: 'Estimated landing time',
-            dataIndex: 'estimatedLandingMoment',
-            render: (estimatedLandingMoment) => {
-                if (estimatedLandingMoment === null) return <>N/A</>;
-                return <>T+{convertSecsToHumanReadable(estimatedLandingMoment.diff(domainDate, UnitOfTime.SECONDS))}</>;
+            title: 'Current Run Landing Time',
+            render: (segmentTask) => {
+                if (segmentTask.currentRun !== null && segmentTask.currentRun.endDate !== null) {
+                    const utcExecutionDate = moment.utc(segmentTask.currentRun.endDate);
+                    let toolTipText = `UTC: ${utcExecutionDate.format('MM/DD/YYYY HH:mm:ss')}\n`;
+                    toolTipText += `Local: ${moment.tz(utcExecutionDate, CLIENT_TZ).format('MM/DD/YYYY HH:mm:ss')}`;
+                    return (
+                        <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${toolTipText}`}>
+                            T+
+                            {convertSecsToHumanReadable(utcExecutionDate.diff(domainDate, UnitOfTime.SECONDS))}
+                        </Tooltip>
+                    );
+                }
+                if (segmentTask.estimatedLandingMoment !== null) {
+                    let toolTipText = `UTC: ${segmentTask.estimatedLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+                    toolTipText += `Local: ${moment
+                        .tz(segmentTask.estimatedLandingMoment, CLIENT_TZ)
+                        .format('MM/DD/YYYY HH:mm:ss')}`;
+                    return (
+                        <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${toolTipText}`}>
+                            ETA: T+
+                            {convertSecsToHumanReadable(
+                                segmentTask.estimatedLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
+                            )}
+                        </Tooltip>
+                    );
+                }
+                return <>N/A</>;
             },
         },
         {
-            title: 'Airflow link',
-            dataIndex: 'currentRun',
-            render: (currentRun) => {
-                if (currentRun === null) return <>N/A</>;
+            title: 'Airflow Link',
+            render: (segmentTask) => {
+                if (segmentTask.currentRun === null)
+                    return (
+                        <Tooltip title="View task details">
+                            <ExternalUrlLink
+                                href={`https://airflow.corp.stripe.com/admin/tasks/${segmentTask.dataJobEntity?.jobId}`}
+                            >
+                                <DeliveredProcedureOutlined />
+                            </ExternalUrlLink>
+                        </Tooltip>
+                    );
                 return (
                     <Tooltip title="View task run details">
-                        <ExternalUrlLink href={currentRun.externalUrl}>
+                        <ExternalUrlLink href={segmentTask.currentRun.externalUrl}>
                             <DeliveredProcedureOutlined />
                         </ExternalUrlLink>
                     </Tooltip>
@@ -745,6 +799,9 @@ export const DomainTimelinessTab = () => {
     if (isLoadingDomain) return loadingPage;
     console.log('domainQueryResponse', domainQueryResponse);
 
+    const domainName = domainQueryResponse?.domain?.properties?.name;
+    console.log(domainName);
+
     const dataJobEntities = domainQueryResponse?.domain?.entities?.searchResults
         ?.filter((e) => {
             return e.entity.type === 'DATA_JOB';
@@ -766,7 +823,7 @@ export const DomainTimelinessTab = () => {
     return (
         <>
             <Layout>
-                <Header>{renderDomainHeader(domainDate, setDomainDate, formattedSegments)}</Header>
+                <Header>{renderDomainHeader(domainDate, setDomainDate, formattedSegments, domainName)}</Header>
                 <Layout>
                     <Sider
                         width={260}

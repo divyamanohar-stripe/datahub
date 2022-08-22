@@ -33,6 +33,9 @@ query getDomainTimeliness($urn: String!, $entityStart: Int, $entityCount: Int, $
   domain(urn: $urn) {
     urn
     id
+    properties {
+        name
+    }
     entities(input: {start: $entityStart, count: $entityCount}) {
       start
       count
@@ -45,6 +48,11 @@ query getDomainTimeliness($urn: String!, $entityStart: Int, $entityCount: Int, $
             urn
             type
             jobId
+            dataFlow {
+              platform {
+                  ...platformFields
+              }
+            }
             properties {
               name
               description
