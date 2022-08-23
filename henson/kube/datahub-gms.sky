@@ -12,7 +12,6 @@ load("config/kubernetes/helpers/security.sky", "add_security_groups", "run_as_un
 load("config/kubernetes/sidecars/confidant.sky", "raw_secret")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 
 def env_configs(ctx):
     mysql_datasource_url_template = "jdbc:mysql://%s:%s/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
@@ -202,7 +201,6 @@ def _service(ctx, replicas, suffix = ""):
             vars = common_gms_env_vars,
             container_name = "datahub-gms-canary",
         ),
-        prefer_msp_shard("kubeapibb"),
         run_as_unprivileged(),  # this runs the containers as 'stripe-service'
         replicas = replicas,
         # details on this: https://skycfg.corp.stripe.com/rollouts
