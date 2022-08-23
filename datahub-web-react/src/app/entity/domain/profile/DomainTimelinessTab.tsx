@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { DatePicker, Descriptions, Layout, Steps, Table, Tag, Tooltip } from 'antd';
 import { groupBy, orderBy } from 'lodash';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
+import { useHistory } from 'react-router';
 import { useGetDomainTimelinessQuery } from '../../../../graphql/domain.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
@@ -12,6 +13,33 @@ import analytics, { EventType } from '../../../analytics';
 
 const { Header, Sider, Content } = Layout;
 const { Step } = Steps;
+
+const useSearchParams = () => {
+    const history = useHistory();
+
+    const setSearchParam = useCallback(
+        (key: string, value: string | undefined, addToHistory = false) => {
+            const newParams = new URLSearchParams(history.location.search);
+            if (typeof value === 'string') newParams.set(key, value);
+            if (value === undefined) newParams.delete(key);
+            history[addToHistory ? 'push' : 'replace']({
+                ...history.location,
+                search: `?${newParams.toString()}`,
+            });
+        },
+        [history],
+    );
+
+    const getSearchParam = useCallback(
+        (key: string) => new URLSearchParams(history.location.search).get(key),
+        [history],
+    );
+
+    return {
+        setSearchParam,
+        getSearchParam,
+    };
+};
 
 //  Styles
 const LoadingText = styled.div`
@@ -145,6 +173,8 @@ enum UnitOfTime {
 }
 
 const CLIENT_TZ = moment.tz.guess();
+const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD';
+const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY HH:mm:ss';
 
 // Helper functions
 function convertSecsToHumanReadable(seconds: number) {
@@ -546,18 +576,18 @@ function renderDomainHeader(
         domainLandingTimeText = `T+${convertSecsToHumanReadable(
             segmentActualLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
         )}`;
-        domainLandingTimeToolTip = `UTC: ${segmentActualLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+        domainLandingTimeToolTip = `UTC: ${segmentActualLandingMoment.format(DATE_DISPLAY_FORMAT)}\n`;
         domainLandingTimeToolTip += `Local: ${moment
             .tz(segmentActualLandingMoment, CLIENT_TZ)
-            .format('MM/DD/YYYY HH:mm:ss')}`;
+            .format(DATE_DISPLAY_FORMAT)}`;
     } else if (segmentEstimatedLandingMoment !== null) {
         domainLandingTimeText = `ETA: T+${convertSecsToHumanReadable(
             segmentEstimatedLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
         )}`;
-        domainLandingTimeToolTip = `UTC: ${segmentEstimatedLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+        domainLandingTimeToolTip = `UTC: ${segmentEstimatedLandingMoment.format(DATE_DISPLAY_FORMAT)}\n`;
         domainLandingTimeToolTip += `Local: ${moment
             .tz(segmentEstimatedLandingMoment, CLIENT_TZ)
-            .format('MM/DD/YYYY HH:mm:ss')}`;
+            .format(DATE_DISPLAY_FORMAT)}`;
     }
 
     return (
@@ -685,8 +715,8 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
             render: (segmentTask) => {
                 if (segmentTask.currentRun !== null && segmentTask.currentRun.endDate !== null) {
                     const utcExecutionDate = moment.utc(segmentTask.currentRun.endDate);
-                    let toolTipText = `UTC: ${utcExecutionDate.format('MM/DD/YYYY HH:mm:ss')}\n`;
-                    toolTipText += `Local: ${moment.tz(utcExecutionDate, CLIENT_TZ).format('MM/DD/YYYY HH:mm:ss')}`;
+                    let toolTipText = `UTC: ${utcExecutionDate.format(DATE_DISPLAY_FORMAT)}\n`;
+                    toolTipText += `Local: ${moment.tz(utcExecutionDate, CLIENT_TZ).format(DATE_DISPLAY_FORMAT)}`;
                     return (
                         <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${toolTipText}`}>
                             T+
@@ -695,10 +725,10 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
                     );
                 }
                 if (segmentTask.estimatedLandingMoment !== null) {
-                    let toolTipText = `UTC: ${segmentTask.estimatedLandingMoment.format('MM/DD/YYYY HH:mm:ss')}\n`;
+                    let toolTipText = `UTC: ${segmentTask.estimatedLandingMoment.format(DATE_DISPLAY_FORMAT)}\n`;
                     toolTipText += `Local: ${moment
                         .tz(segmentTask.estimatedLandingMoment, CLIENT_TZ)
-                        .format('MM/DD/YYYY HH:mm:ss')}`;
+                        .format(DATE_DISPLAY_FORMAT)}`;
                     return (
                         <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${toolTipText}`}>
                             ETA: T+
@@ -805,8 +835,22 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
 
 export const DomainTimelinessTab = () => {
     const { urn } = useEntityData();
-    const [domainDate, setDomainDate] = useState(moment.utc().startOf('day'));
     const [segmentId, setSegmentId] = useState(0);
+    const { getSearchParam, setSearchParam } = useSearchParams();
+    const getDomainDate = (): moment.Moment => {
+        const domainParam = getSearchParam('domainDate');
+        if (domainParam === null || !moment(domainParam, DATE_SEARCH_PARAM_FORMAT, true).isValid()) {
+            const newDomainParam = moment.utc().startOf('day').format(DATE_SEARCH_PARAM_FORMAT);
+            setSearchParam('domainDate', newDomainParam);
+            return moment(newDomainParam);
+        }
+        return moment.utc(domainParam);
+    };
+    const domainDate = getDomainDate();
+    const setDomainDate = (newDomainDate: moment.Moment) => {
+        setSearchParam('domainDate', newDomainDate.format(DATE_SEARCH_PARAM_FORMAT));
+    };
+
     const maxEntityCount = 50;
     const maxRunCount = 31;
     const { loading: isLoadingDomain, data: domainQueryResponse } = useGetDomainTimelinessQuery({
