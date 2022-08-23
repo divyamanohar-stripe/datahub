@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { DatePicker, Descriptions, Layout, Steps, Table, Tag, Tooltip } from 'antd';
-import { groupBy } from 'lodash';
+import { groupBy, orderBy } from 'lodash';
 import moment from 'moment-timezone';
 import styled from 'styled-components';
 import { useGetDomainTimelinessQuery } from '../../../../graphql/domain.generated';
@@ -466,12 +466,12 @@ function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
 
     const groupedDataJobs = groupBy(dataJobs, (j) => j.segmentName);
     const sortedSegments = Object.entries(groupedDataJobs)
-        .map(([segmentName, segmentTasks]) => {
-            const segmentState = getSegmentState(segmentTasks);
-            const segmentAverageLandingMoment = getSegmentAverageLandingMoment(segmentTasks);
-            const segmentAverageStartMoment = getSegmentAverageStartMoment(segmentTasks);
-            const segmentActualLandingMoment = getSegmentActualLandingMoment(segmentTasks);
-
+        .map(([segmentName, unorderedSegmentTasks]) => {
+            const segmentState = getSegmentState(unorderedSegmentTasks);
+            const segmentAverageLandingMoment = getSegmentAverageLandingMoment(unorderedSegmentTasks);
+            const segmentAverageStartMoment = getSegmentAverageStartMoment(unorderedSegmentTasks);
+            const segmentActualLandingMoment = getSegmentActualLandingMoment(unorderedSegmentTasks);
+            const segmentTasks = orderBy(unorderedSegmentTasks, 'averageLandingMoment');
             return {
                 segmentName,
                 segmentAverageLandingMoment,
