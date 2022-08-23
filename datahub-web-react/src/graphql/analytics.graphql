@@ -22,6 +22,16 @@ query getMetadataAnalyticsCharts($input: MetadataAnalyticsInput!) {
     }
 }
 
+query getDataObservabilityCharts {
+    getDataObservabilityCharts {
+        groupId
+        title
+        charts {
+            ...analyticsChart
+        }
+    }
+}
+
 fragment analyticsChart on AnalyticsChart {
     ... on TimeSeriesChart {
         title

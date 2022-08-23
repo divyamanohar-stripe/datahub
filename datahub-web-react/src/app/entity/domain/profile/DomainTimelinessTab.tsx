@@ -8,6 +8,7 @@ import { useGetDomainTimelinessQuery } from '../../../../graphql/domain.generate
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { useEntityData } from '../../shared/EntityContext';
+import analytics, { EventType } from '../../../analytics';
 
 const { Header, Sider, Content } = Layout;
 const { Step } = Steps;
@@ -576,7 +577,13 @@ function renderDomainHeader(
     );
 }
 
-function renderSegmentTimeline(domainDate: moment.Moment, segments: FormattedSegment[], setSegmentId) {
+function renderSegmentTimeline(
+    domainDate: moment.Moment,
+    domainId,
+    domainUrn: string,
+    segments: FormattedSegment[],
+    setSegmentId,
+) {
     function renderSegmentTimelineStep(segment: FormattedSegment) {
         let status: 'error' | 'process' | 'finish' | 'wait';
         if (segment.segmentState === SegmentState.COMPLETED) {
@@ -611,8 +618,17 @@ function renderSegmentTimeline(domainDate: moment.Moment, segments: FormattedSeg
         );
     }
 
+    const logAndUpdateSegment = (segmentId: number) => {
+        setSegmentId(segmentId);
+        analytics.event({
+            type: EventType.DomainTimelinessSegmentClickEvent,
+            entityUrn: domainUrn,
+            segment: `${domainId}:${segments[segmentId].segmentName}`,
+        });
+    };
+
     return (
-        <Steps direction="vertical" progressDot current={-1} onChange={setSegmentId} size="small">
+        <Steps direction="vertical" progressDot current={-1} onChange={logAndUpdateSegment} size="small">
             {segments.map(renderSegmentTimelineStep)}
         </Steps>
     );
@@ -820,6 +836,11 @@ export const DomainTimelinessTab = () => {
     const formattedSegments = formatSegments(dataJobsWithTimeliness);
     console.log('formattedSegments', formattedSegments);
 
+    analytics.event({
+        type: EventType.DomainTimelinessViewEvent,
+        entityUrn: urn,
+    });
+
     return (
         <>
             <Layout>
@@ -834,7 +855,13 @@ export const DomainTimelinessTab = () => {
                             marginLeft: 30,
                         }}
                     >
-                        {renderSegmentTimeline(domainDate, formattedSegments, setSegmentId)}
+                        {renderSegmentTimeline(
+                            domainDate,
+                            domainQueryResponse?.domain?.id,
+                            urn,
+                            formattedSegments,
+                            setSegmentId,
+                        )}
                     </Sider>
                     <Layout
                         style={{

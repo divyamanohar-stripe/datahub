@@ -5,6 +5,7 @@ import com.datahub.authorization.AuthorizationConfiguration;
 import com.google.common.collect.ImmutableList;
 import com.linkedin.datahub.graphql.analytics.resolver.AnalyticsChartTypeResolver;
 import com.linkedin.datahub.graphql.analytics.resolver.GetChartsResolver;
+import com.linkedin.datahub.graphql.analytics.resolver.GetDataObservabilityAnalyticsResolver;
 import com.linkedin.datahub.graphql.analytics.resolver.GetHighlightsResolver;
 import com.linkedin.datahub.graphql.analytics.resolver.GetMetadataAnalyticsResolver;
 import com.linkedin.datahub.graphql.analytics.resolver.IsAnalyticsEnabledResolver;
@@ -531,7 +532,8 @@ public class GmsGraphQLEngine {
             builder.type("Query", typeWiring -> typeWiring.dataFetcher("getAnalyticsCharts",
                 new GetChartsResolver(analyticsService, entityClient))
                 .dataFetcher("getHighlights", new GetHighlightsResolver(analyticsService))
-                .dataFetcher("getMetadataAnalyticsCharts", new GetMetadataAnalyticsResolver(entityClient)));
+                .dataFetcher("getMetadataAnalyticsCharts", new GetMetadataAnalyticsResolver(entityClient))
+                .dataFetcher("getDataObservabilityCharts", new GetDataObservabilityAnalyticsResolver(analyticsService)));
         }
     }
 

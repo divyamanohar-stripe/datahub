@@ -21,6 +21,11 @@ extend type Query {
     Retrieves a set of charts regarding the ingested metadata
     """
     getMetadataAnalyticsCharts(input: MetadataAnalyticsInput!): [AnalyticsChartGroup!]!
+
+    """
+    Retrieves a set of server driven charts related to Data Observability
+    """
+    getDataObservabilityCharts: [AnalyticsChartGroup!]!
 }
 
 """

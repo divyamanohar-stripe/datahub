@@ -5,7 +5,11 @@ import { SearchOutlined } from '@ant-design/icons';
 
 import { SearchablePage } from '../../search/SearchablePage';
 import { ChartGroup } from './ChartGroup';
-import { useGetAnalyticsChartsQuery, useGetMetadataAnalyticsChartsQuery } from '../../../graphql/analytics.generated';
+import {
+    useGetAnalyticsChartsQuery,
+    useGetMetadataAnalyticsChartsQuery,
+    useGetDataObservabilityChartsQuery,
+} from '../../../graphql/analytics.generated';
 import { useGetHighlightsQuery } from '../../../graphql/highlights.generated';
 import { Highlight } from './Highlight';
 import { Message } from '../../shared/Message';
@@ -49,6 +53,11 @@ const StyledSearchBar = styled(Input)`
 
 export const AnalyticsPage = () => {
     const { data: chartData, loading: chartLoading, error: chartError } = useGetAnalyticsChartsQuery();
+    const {
+        data: dataObsChartData,
+        loading: dataObsChartLoading,
+        error: dataObsChartError,
+    } = useGetDataObservabilityChartsQuery();
     const { data: highlightData, loading: highlightLoading, error: highlightError } = useGetHighlightsQuery();
     const {
         loading: domainLoading,
@@ -172,6 +181,21 @@ export const AnalyticsPage = () => {
                 {!chartLoading &&
                     chartData?.getAnalyticsCharts
                         ?.filter((chartGroup) => chartGroup.groupId === 'DataHubUsageAnalytics')
+                        .map((chartGroup) => (
+                            <>
+                                <Divider />
+                                <ChartGroup chartGroup={chartGroup} />
+                            </>
+                        ))}
+            </>
+            <>
+                {dataObsChartLoading && (
+                    <Message type="loading" content="Loading Charts..." style={{ marginTop: '10%' }} />
+                )}
+                {dataObsChartError && <Alert type="error" message={chartError?.message || 'Charts failed to load'} />}
+                {!dataObsChartLoading &&
+                    dataObsChartData?.getDataObservabilityCharts
+                        ?.filter((chartGroup) => chartGroup.groupId === 'DataObservabilityAnalytics')
                         .map((chartGroup) => (
                             <>
                                 <Divider />

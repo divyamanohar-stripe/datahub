@@ -20,6 +20,8 @@ export enum EventType {
     SearchAcrossLineageEvent,
     SearchAcrossLineageResultsViewEvent,
     DownloadAsCsvEvent,
+    DomainTimelinessViewEvent,
+    DomainTimelinessSegmentClickEvent,
 }
 
 /**
@@ -185,6 +187,23 @@ export interface DownloadAsCsvEvent extends BaseEvent {
 }
 
 /**
+ * Logged when a user views the domain timeliness tab
+ */
+export interface DomainTimelinessViewEvent extends BaseEvent {
+    type: EventType.DomainTimelinessViewEvent;
+    entityUrn: string;
+}
+
+/**
+ * Logged when a user clicks on a given segment in the domain timeliness view
+ */
+export interface DomainTimelinessSegmentClickEvent extends BaseEvent {
+    type: EventType.DomainTimelinessSegmentClickEvent;
+    entityUrn: string;
+    segment: string;
+}
+
+/**
  * Event consisting of a union of specific event types.
  */
 export type Event =
@@ -202,4 +221,6 @@ export type Event =
     | SearchAcrossLineageEvent
     | SearchAcrossLineageResultsViewEvent
     | DownloadAsCsvEvent
-    | RecommendationClickEvent;
+    | RecommendationClickEvent
+    | DomainTimelinessViewEvent
+    | DomainTimelinessSegmentClickEvent;
