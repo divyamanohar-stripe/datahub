@@ -148,7 +148,8 @@ type FormattedSegment = {
     segmentAverageStartMoment: moment.Moment | null;
     segmentActualLandingMoment: moment.Moment | null;
     segmentEstimatedLandingMoment: moment.Moment | null;
-    segmentState: SegmentState;
+    segmentTimelinessState: SegmentTimelinessState;
+    segmentRunState: SegmentRunState;
     segmentTasks: DataJobWithTimeliness[];
 };
 
@@ -159,13 +160,16 @@ enum RunState {
     FAILED = 'failed',
 }
 
-enum SegmentState {
-    RUNNING = 'running',
+enum SegmentTimelinessState {
+    ON_TIME = 'on time',
     DELAYED = 'delayed',
     AT_RISK = 'at risk',
+}
+
+enum SegmentRunState {
+    RUNNING = 'in progress',
     COMPLETED = 'completed',
     NOT_STARTED = 'not started',
-    UNKNOWN = 'unknown',
 }
 
 enum UnitOfTime {
@@ -458,17 +462,20 @@ function getDataJobWithTimeliness(dataJob: FormattedDataJob): DataJobWithTimelin
 }
 
 function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
-    function getSegmentState(jobs: DataJobWithTimeliness[]) {
-        const currentRunStates = jobs.map((j) => j.currentRunState);
+    function getSegmentTimelinessState(jobs: DataJobWithTimeliness[]) {
         const missedSLAs = jobs.map((j) => j.missedSLA);
         const willMissedSLAs = jobs.map((j) => j.willMissSLA);
 
-        if (missedSLAs.some((b) => b)) return SegmentState.DELAYED;
-        if (willMissedSLAs.some((b) => b)) return SegmentState.AT_RISK;
-        if (currentRunStates.every((s) => s === RunState.SUCCESS)) return SegmentState.COMPLETED;
-        if (currentRunStates.every((s) => s === RunState.NOT_STARTED)) return SegmentState.NOT_STARTED;
-        if (currentRunStates.some((s) => s === RunState.RUNNING)) return SegmentState.RUNNING;
-        return SegmentState.UNKNOWN;
+        if (missedSLAs.some((b) => b)) return SegmentTimelinessState.DELAYED;
+        if (willMissedSLAs.some((b) => b)) return SegmentTimelinessState.AT_RISK;
+        return SegmentTimelinessState.ON_TIME;
+    }
+
+    function getSegmentRunState(jobs: DataJobWithTimeliness[]) {
+        const currentRunStates = jobs.map((j) => j.currentRunState);
+        if (currentRunStates.every((s) => s === RunState.SUCCESS)) return SegmentRunState.COMPLETED;
+        if (currentRunStates.every((s) => s === RunState.NOT_STARTED)) return SegmentRunState.NOT_STARTED;
+        return SegmentRunState.RUNNING;
     }
 
     function getSegmentAverageLandingMoment(jobs: DataJobWithTimeliness[]) {
@@ -508,7 +515,8 @@ function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
     const groupedDataJobs = groupBy(dataJobs, (j) => j.segmentName);
     const sortedSegments = Object.entries(groupedDataJobs)
         .map(([segmentName, unorderedSegmentTasks]) => {
-            const segmentState = getSegmentState(unorderedSegmentTasks);
+            const segmentTimelinessState = getSegmentTimelinessState(unorderedSegmentTasks);
+            const segmentRunState = getSegmentRunState(unorderedSegmentTasks);
             const segmentAverageLandingMoment = getSegmentAverageLandingMoment(unorderedSegmentTasks);
             const segmentAverageStartMoment = getSegmentAverageStartMoment(unorderedSegmentTasks);
             const segmentActualLandingMoment = getSegmentActualLandingMoment(unorderedSegmentTasks);
@@ -518,7 +526,8 @@ function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
                 segmentAverageLandingMoment,
                 segmentAverageStartMoment,
                 segmentActualLandingMoment,
-                segmentState,
+                segmentTimelinessState,
+                segmentRunState,
                 segmentTasks,
             };
         })
@@ -563,20 +572,23 @@ function renderDomainHeader(
     domainName: string | undefined,
 ) {
     const lastSegment = segments[segments.length - 1];
-    const segmentStates = segments.map((s) => s.segmentState);
+    const segmentRunStates = segments.map((s) => s.segmentRunState);
+    const segmentTimelinessStates = segments.map((s) => s.segmentTimelinessState);
 
     let domainOverallStatusTag;
-    if (segmentStates.every((s) => s === SegmentState.NOT_STARTED)) {
-        domainOverallStatusTag = <Tag color="default">{SegmentState.NOT_STARTED}</Tag>;
-    } else if (lastSegment.segmentState === SegmentState.DELAYED) {
-        domainOverallStatusTag = <Tag color="red">{SegmentState.DELAYED}</Tag>;
+    if (segmentRunStates.every((s) => s === SegmentRunState.NOT_STARTED)) {
+        domainOverallStatusTag = <Tag color="default">{SegmentRunState.NOT_STARTED}</Tag>;
+    } else if (lastSegment.segmentTimelinessState === SegmentTimelinessState.DELAYED) {
+        domainOverallStatusTag = <Tag color="red">{SegmentTimelinessState.DELAYED}</Tag>;
     } else if (
-        lastSegment.segmentState === SegmentState.AT_RISK ||
-        segmentStates.some((s) => s === SegmentState.DELAYED || s === SegmentState.AT_RISK)
+        lastSegment.segmentTimelinessState === SegmentTimelinessState.AT_RISK ||
+        segmentTimelinessStates.some(
+            (s) => s === SegmentTimelinessState.DELAYED || s === SegmentTimelinessState.AT_RISK,
+        )
     ) {
-        domainOverallStatusTag = <Tag color="yellow">{SegmentState.AT_RISK}</Tag>;
+        domainOverallStatusTag = <Tag color="yellow">{SegmentTimelinessState.AT_RISK}</Tag>;
     } else {
-        domainOverallStatusTag = <Tag color="blue">{SegmentState.RUNNING}</Tag>;
+        domainOverallStatusTag = <Tag color="blue">{SegmentRunState.RUNNING}</Tag>;
     }
 
     const { segmentActualLandingMoment, segmentEstimatedLandingMoment } = lastSegment;
@@ -626,15 +638,19 @@ function renderSegmentTimeline(
     setSegmentId,
 ) {
     function renderSegmentTimelineStep(segment: FormattedSegment) {
-        let status: 'error' | 'process' | 'finish' | 'wait';
-        if (segment.segmentState === SegmentState.COMPLETED) {
-            status = 'finish';
-        } else if (segment.segmentState === SegmentState.NOT_STARTED) {
-            status = 'wait';
-        } else if (segment.segmentState === SegmentState.RUNNING) {
-            status = 'process';
-        } else {
-            status = 'error';
+        function getSegmentStepStatus(): 'error' | 'process' | 'finish' | 'wait' {
+            if (
+                segment.segmentTimelinessState === SegmentTimelinessState.DELAYED ||
+                segment.segmentTimelinessState === SegmentTimelinessState.AT_RISK
+            )
+                return 'error';
+            if (segment.segmentRunState === SegmentRunState.COMPLETED) {
+                return 'finish';
+            }
+            if (segment.segmentRunState === SegmentRunState.NOT_STARTED) return 'wait';
+
+            // else we are in the SegmentRunState.RUNNING state
+            return 'process';
         }
 
         const { segmentActualLandingMoment, segmentEstimatedLandingMoment } = segment;
@@ -652,9 +668,9 @@ function renderSegmentTimeline(
         return (
             <Step
                 title={segment.segmentName}
-                subTitle={segment.segmentState}
+                subTitle={segment.segmentRunState}
                 description={segmentTimelinessDescription}
-                status={status}
+                status={getSegmentStepStatus()}
             />
         );
     }
