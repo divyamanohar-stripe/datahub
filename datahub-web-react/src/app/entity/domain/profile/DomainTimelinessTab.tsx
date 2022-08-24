@@ -246,11 +246,22 @@ function formatRun(runEntity: RunEntity): FormattedRun {
     };
 }
 
-function formatDataJob(domainDate: moment.Moment, dataJob: DataJobEntity): FormattedDataJob {
+function formatDataJob(
+    domainDate: moment.Moment,
+    dataJob: DataJobEntity,
+    domainName: string | undefined,
+): FormattedDataJob {
     function getSegmentName(j: DataJobEntity) {
         if (j.globalTags === undefined || j.globalTags.tags.length === 0) return 'Segment undefined';
-        // TODO: using the first tag as the segment is not extensible.
-        return j.globalTags.tags[0].tag.name;
+
+        for (let idx = 0; idx < j.globalTags.tags.length; idx++) {
+            let tagName = j.globalTags.tags[idx].tag.name;
+            if (tagName.startsWith(`${domainName}:`)) {
+                tagName = tagName.replace(`${domainName}:`, '').trim();
+                return tagName;
+            }
+        }
+        return 'Segment undefined';
     }
 
     function getRunsAverageStartMoment(runs: FormattedRun[], currentDate: moment.Moment) {
@@ -870,7 +881,7 @@ export const DomainTimelinessTab = () => {
     console.log('dataJobEntities', dataJobEntities);
 
     const formattedDataJobs: FormattedDataJob[] = dataJobEntities.map((j) => {
-        return formatDataJob(domainDate, j);
+        return formatDataJob(domainDate, j, domainName);
     });
     console.log('formattedDataJobs', formattedDataJobs);
 
