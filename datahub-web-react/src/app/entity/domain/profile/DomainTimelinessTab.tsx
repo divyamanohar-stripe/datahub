@@ -782,6 +782,7 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
                         <Tooltip title="View task details">
                             <ExternalUrlLink
                                 href={`https://airflow.corp.stripe.com/admin/tasks/${segmentTask.dataJobEntity?.jobId}`}
+                                target="_blank"
                             >
                                 <DeliveredProcedureOutlined />
                             </ExternalUrlLink>
@@ -789,7 +790,7 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
                     );
                 return (
                     <Tooltip title="View task run details">
-                        <ExternalUrlLink href={segmentTask.currentRun.externalUrl}>
+                        <ExternalUrlLink href={segmentTask.currentRun.externalUrl} target="_blank">
                             <DeliveredProcedureOutlined />
                         </ExternalUrlLink>
                     </Tooltip>
