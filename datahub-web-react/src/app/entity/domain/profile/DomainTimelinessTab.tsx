@@ -403,25 +403,23 @@ function formatDataJob(
     };
 }
 
-function getDataJobWithTimeliness(dataJob: FormattedDataJob): DataJobWithTimeliness {
+function getDataJobWithTimeliness(dataJob: FormattedDataJob, currentMoment: moment.Moment): DataJobWithTimeliness {
     function checkMissedSLA(j: FormattedDataJob): boolean | null {
         const { dataJobSLAMoment, currentRun, currentRunState } = j;
-        const now = moment.utc();
         if (dataJobSLAMoment === null) return null;
-        if (currentRunState === RunState.NOT_STARTED || currentRun === null) return now > dataJobSLAMoment;
+        if (currentRunState === RunState.NOT_STARTED || currentRun === null) return currentMoment > dataJobSLAMoment;
 
         const { endDate } = currentRun;
-        if (endDate === 'None') return now > dataJobSLAMoment;
+        if (endDate === 'None') return currentMoment > dataJobSLAMoment;
         return moment.utc(endDate) > dataJobSLAMoment;
     }
 
     function checkWillMissSLA(j: FormattedDataJob): boolean | null {
         const { dataJobSLAMoment, currentRun, currentRunState, averageDuration } = j;
-        const now = moment.utc();
         if (dataJobSLAMoment === null) return null;
 
         if (currentRunState === RunState.NOT_STARTED || currentRun === null) {
-            const landingTimeIfStartsNow = moment.utc(now).add(averageDuration, UnitOfTime.SECONDS);
+            const landingTimeIfStartsNow = moment.utc(currentMoment).add(averageDuration, UnitOfTime.SECONDS);
             return landingTimeIfStartsNow > dataJobSLAMoment;
         }
         if (currentRunState === RunState.RUNNING) {
@@ -434,12 +432,11 @@ function getDataJobWithTimeliness(dataJob: FormattedDataJob): DataJobWithTimelin
 
     function estimateLandingMoment(j: FormattedDataJob): moment.Moment | null {
         const { currentRun, currentRunState, averageDuration, averageStartMoment, averageLandingMoment } = j;
-        const now = moment.utc();
 
         if (currentRunState === RunState.NOT_STARTED) {
             if (averageStartMoment === null) return null;
-            if (now <= averageStartMoment) return averageLandingMoment;
-            return moment.utc(now).add(averageDuration, UnitOfTime.SECONDS);
+            if (currentMoment <= averageStartMoment) return averageLandingMoment;
+            return moment.utc(currentMoment).add(averageDuration, UnitOfTime.SECONDS);
         }
         if (currentRunState === RunState.RUNNING && currentRun !== null) {
             const { startDate } = currentRun;
@@ -570,6 +567,7 @@ function renderDomainHeader(
     setDomainDate,
     segments: FormattedSegment[],
     domainName: string | undefined,
+    currentMoment: moment.Moment,
 ) {
     const lastSegment = segments[segments.length - 1];
     const segmentRunStates = segments.map((s) => s.segmentRunState);
@@ -612,9 +610,12 @@ function renderDomainHeader(
             .tz(segmentEstimatedLandingMoment, CLIENT_TZ)
             .format(DATE_DISPLAY_FORMAT)}`;
     }
+    const currentRelativeMoment = `T+${convertSecsToHumanReadable(currentMoment.diff(domainDate, UnitOfTime.SECONDS))}`;
+    let currentRelativeMomentToolTip = `UTC: ${currentMoment.format(DATE_DISPLAY_FORMAT)}\n`;
+    currentRelativeMomentToolTip += `Local: ${moment.tz(currentMoment, CLIENT_TZ).format(DATE_DISPLAY_FORMAT)}`;
 
     return (
-        <Descriptions title="" bordered size="small">
+        <Descriptions title="" bordered size="small" column={{ md: 4 }}>
             <Descriptions.Item label={`${domainName} Execution Date`}>
                 <Tooltip title={`UTC scheduled run of tasks in ${domainName}`}>
                     <DatePicker onChange={setDomainDate} defaultValue={domainDate} />
@@ -624,6 +625,11 @@ function renderDomainHeader(
             <Descriptions.Item label={`${domainName} Landing Time`}>
                 <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${domainLandingTimeToolTip}`}>
                     {domainLandingTimeText}
+                </Tooltip>
+            </Descriptions.Item>
+            <Descriptions.Item label="Current Time">
+                <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${currentRelativeMomentToolTip}`}>
+                    {currentRelativeMoment}
                 </Tooltip>
             </Descriptions.Item>
         </Descriptions>
@@ -878,34 +884,32 @@ export const DomainTimelinessTab = () => {
         setSearchParam('domainDate', newDomainDate.format(DATE_SEARCH_PARAM_FORMAT));
     };
 
+    const currentMoment = moment.utc();
+
     const maxEntityCount = 50;
     const maxRunCount = 31;
     const { loading: isLoadingDomain, data: domainQueryResponse } = useGetDomainTimelinessQuery({
         variables: { urn, entityStart: 0, entityCount: maxEntityCount, runStart: 0, runCount: maxRunCount },
     });
     if (isLoadingDomain) return loadingPage;
-    console.log('domainQueryResponse', domainQueryResponse);
 
     const domainName = domainQueryResponse?.domain?.properties?.name;
-    console.log(domainName);
 
     const dataJobEntities = domainQueryResponse?.domain?.entities?.searchResults
         ?.filter((e) => {
             return e.entity.type === 'DATA_JOB';
         })
         .map((e) => e.entity) as DataJobEntity[];
-    console.log('dataJobEntities', dataJobEntities);
 
     const formattedDataJobs: FormattedDataJob[] = dataJobEntities.map((j) => {
         return formatDataJob(domainDate, j, domainName);
     });
-    console.log('formattedDataJobs', formattedDataJobs);
 
-    const dataJobsWithTimeliness = formattedDataJobs.map(getDataJobWithTimeliness);
-    console.log('dataJobsWithTimeliness', dataJobsWithTimeliness);
+    const dataJobsWithTimeliness = formattedDataJobs.map(function (j) {
+        return getDataJobWithTimeliness(j, currentMoment);
+    });
 
     const formattedSegments = formatSegments(dataJobsWithTimeliness);
-    console.log('formattedSegments', formattedSegments);
 
     analytics.event({
         type: EventType.DomainTimelinessViewEvent,
@@ -915,7 +919,9 @@ export const DomainTimelinessTab = () => {
     return (
         <>
             <Layout>
-                <Header>{renderDomainHeader(domainDate, setDomainDate, formattedSegments, domainName)}</Header>
+                <Header>
+                    {renderDomainHeader(domainDate, setDomainDate, formattedSegments, domainName, currentMoment)}
+                </Header>
                 <Layout>
                     <Sider
                         width={260}
