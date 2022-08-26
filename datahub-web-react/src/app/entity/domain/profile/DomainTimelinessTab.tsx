@@ -158,6 +158,7 @@ enum RunState {
     RUNNING = 'running',
     SUCCESS = 'success',
     FAILED = 'failed',
+    SKIPPED = 'skipped',
 }
 
 enum SegmentTimelinessState {
@@ -169,6 +170,7 @@ enum SegmentTimelinessState {
 enum SegmentRunState {
     RUNNING = 'in progress',
     COMPLETED = 'completed',
+    FAILED = 'failed',
     NOT_STARTED = 'not started',
 }
 
@@ -470,7 +472,9 @@ function formatSegments(dataJobs: DataJobWithTimeliness[]): FormattedSegment[] {
 
     function getSegmentRunState(jobs: DataJobWithTimeliness[]) {
         const currentRunStates = jobs.map((j) => j.currentRunState);
-        if (currentRunStates.every((s) => s === RunState.SUCCESS)) return SegmentRunState.COMPLETED;
+        if (currentRunStates.some((s) => s === RunState.FAILED)) return SegmentRunState.FAILED;
+        if (currentRunStates.every((s) => s === RunState.SUCCESS || s === RunState.SKIPPED))
+            return SegmentRunState.COMPLETED;
         if (currentRunStates.every((s) => s === RunState.NOT_STARTED)) return SegmentRunState.NOT_STARTED;
         return SegmentRunState.RUNNING;
     }
@@ -582,7 +586,8 @@ function renderDomainHeader(
         lastSegment.segmentTimelinessState === SegmentTimelinessState.AT_RISK ||
         segmentTimelinessStates.some(
             (s) => s === SegmentTimelinessState.DELAYED || s === SegmentTimelinessState.AT_RISK,
-        )
+        ) ||
+        segmentRunStates.some((s) => s === SegmentRunState.FAILED)
     ) {
         domainOverallStatusTag = <Tag color="yellow">{SegmentTimelinessState.AT_RISK}</Tag>;
     } else {
@@ -647,7 +652,8 @@ function renderSegmentTimeline(
         function getSegmentStepStatus(): 'error' | 'process' | 'finish' | 'wait' {
             if (
                 segment.segmentTimelinessState === SegmentTimelinessState.DELAYED ||
-                segment.segmentTimelinessState === SegmentTimelinessState.AT_RISK
+                segment.segmentTimelinessState === SegmentTimelinessState.AT_RISK ||
+                segment.segmentRunState === SegmentRunState.FAILED
             )
                 return 'error';
             if (segment.segmentRunState === SegmentRunState.COMPLETED) {
