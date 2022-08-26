@@ -752,7 +752,11 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
         {
             title: 'Current Run Landing Time',
             render: (segmentTask) => {
-                if (segmentTask.currentRun !== null && segmentTask.currentRun.endDate !== null) {
+                if (
+                    segmentTask.currentRun !== null &&
+                    segmentTask.currentRun.endDate !== null &&
+                    segmentTask.currentRun.endDate !== 'None'
+                ) {
                     const utcExecutionDate = moment.utc(segmentTask.currentRun.endDate);
                     let toolTipText = `UTC: ${utcExecutionDate.format(DATE_DISPLAY_FORMAT)}\n`;
                     toolTipText += `Local: ${moment.tz(utcExecutionDate, CLIENT_TZ).format(DATE_DISPLAY_FORMAT)}`;
