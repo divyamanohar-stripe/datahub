@@ -39,6 +39,7 @@ public class DataJobRunsResolver implements DataFetcher<CompletableFuture<DataPr
 
   private static final String PARENT_TEMPLATE_URN_SEARCH_INDEX_FIELD_NAME = "parentTemplate";
   private static final String CREATED_TIME_SEARCH_INDEX_FIELD_NAME = "created";
+  private static final String LOGICAL_DATE_SEARCH_INDEX_FIELD_NAME = "logicalDate";
 
   private final EntityClient _entityClient;
 
@@ -55,11 +56,12 @@ public class DataJobRunsResolver implements DataFetcher<CompletableFuture<DataPr
       final String entityUrn = ((Entity) environment.getSource()).getUrn();
       final Integer start = environment.getArgumentOrDefault("start", 0);
       final Integer count = environment.getArgumentOrDefault("count", 20);
+      final Long before = environment.getArgumentOrDefault("before", null);
 
       try {
         // Step 1: Fetch set of task runs associated with the target entity from the Search Index!
         // We use the search index so that we can easily sort by the last updated time.
-        final Filter filter = buildTaskRunsEntityFilter(entityUrn);
+        final Filter filter = buildTaskRunsEntityFilter(entityUrn, before);
         final SortCriterion sortCriterion = buildTaskRunsSortCriterion();
         final SearchResult gmsResult = _entityClient.filter(
             Constants.DATA_PROCESS_INSTANCE_ENTITY_NAME,
@@ -103,14 +105,21 @@ public class DataJobRunsResolver implements DataFetcher<CompletableFuture<DataPr
     });
   }
 
-  private Filter buildTaskRunsEntityFilter(final String entityUrn) {
-    CriterionArray array = new CriterionArray(
-        ImmutableList.of(
-            new Criterion()
-                .setField(PARENT_TEMPLATE_URN_SEARCH_INDEX_FIELD_NAME)
-                .setCondition(Condition.EQUAL)
-                .setValue(entityUrn)
-        ));
+  private Filter buildTaskRunsEntityFilter(final String entityUrn, final Long before) {
+    ImmutableList.Builder<Criterion> criterionBuilder = ImmutableList.builder();
+    Criterion belongsToParent = new Criterion()
+        .setField(PARENT_TEMPLATE_URN_SEARCH_INDEX_FIELD_NAME)
+        .setCondition(Condition.EQUAL)
+        .setValue(entityUrn);
+    criterionBuilder.add(belongsToParent);
+    if (before != null) {
+      Criterion logicalDateBefore = new Criterion()
+          .setField(LOGICAL_DATE_SEARCH_INDEX_FIELD_NAME)
+          .setCondition(Condition.LESS_THAN_OR_EQUAL_TO)
+          .setValue(before.toString());
+        criterionBuilder.add(logicalDateBefore);
+    }
+    CriterionArray array = new CriterionArray(criterionBuilder.build());
     final Filter filter = new Filter();
     filter.setOr(new ConjunctiveCriterionArray(ImmutableList.of(
         new ConjunctiveCriterion()

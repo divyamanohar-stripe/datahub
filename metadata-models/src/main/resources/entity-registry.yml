@@ -44,6 +44,7 @@ entities:
     doc: DataProcessInstance represents an instance of a datajob/jobflow run
     keyAspect: dataProcessInstanceKey
     aspects:
+      - dataProcessInstanceExecution
       - dataProcessInstanceInput
       - dataProcessInstanceOutput
       - dataProcessInstanceProperties

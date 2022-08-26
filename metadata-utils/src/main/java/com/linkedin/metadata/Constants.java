@@ -198,6 +198,7 @@ public class Constants {
    * Task Runs
    */
   public static final String DATA_PROCESS_INSTANCE_ENTITY_NAME = "dataProcessInstance";
+  public static final String DATA_PROCESS_INSTANCE_EXECUTION_ASPECT_NAME = "dataProcessInstanceExecution";
   public static final String DATA_PROCESS_INSTANCE_PROPERTIES_ASPECT_NAME = "dataProcessInstanceProperties";
   public static final String DATA_PROCESS_INSTANCE_RUN_EVENT_ASPECT_NAME = "dataProcessInstanceRunEvent";
 
