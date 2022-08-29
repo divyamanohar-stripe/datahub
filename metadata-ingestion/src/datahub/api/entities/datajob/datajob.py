@@ -99,14 +99,20 @@ class DataJob:
         )
         return [ownership]
 
+    # NOTE: [FORK_CHANGE]
+    # We override the generate_tags_aspect from OSS DataHub in order to avoid DataJob tags
+    # being overwritten on subsequent task runs if they are added manually on the task in the UI.
     def generate_tags_aspect(self) -> Iterable[GlobalTagsClass]:
-        tags = GlobalTagsClass(
-            tags=[
-                TagAssociationClass(tag=builder.make_tag_urn(tag))
-                for tag in (self.tags or [])
-            ]
-        )
-        return [tags]
+        if self.tags:
+            tags = GlobalTagsClass(
+                tags=[
+                    TagAssociationClass(tag=builder.make_tag_urn(tag))
+                    for tag in self.tags
+                ]
+            )
+            return [tags]
+        else:
+            return []
 
     def generate_mce(self) -> MetadataChangeEventClass:
         job_mce = MetadataChangeEventClass(
