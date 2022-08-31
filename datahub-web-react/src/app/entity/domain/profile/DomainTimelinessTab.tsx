@@ -359,9 +359,10 @@ function formatDataJob(
 
     function getPreviousRuns(runs: FormattedRun[], numRuns = 7) {
         const isPreviousRun = (run) => moment.utc(run.executionDate) < domainDate;
-        const start = runs.findIndex(isPreviousRun);
+        const orderedRuns = orderBy(runs, 'executionDate', 'desc');
+        const start = orderedRuns.findIndex(isPreviousRun);
         if (start === -1) return [];
-        return orderBy(runs.splice(start, numRuns + start), 'executionDate', 'desc');
+        return orderedRuns.slice(start, numRuns + start);
     }
 
     function getDataJobSLAMoment(
@@ -827,6 +828,8 @@ function renderSegmentTasks(
     ];
 
     const similarTasksRender = (record) => {
+        const { jobId, finishedBySla, previousSameWeekdayRun, previousEOMRun, previousRuns } = record;
+
         function getStateColor(state: string): string {
             if (state in STATE_COLOR) {
                 return STATE_COLOR[state];
@@ -834,14 +837,12 @@ function renderSegmentTasks(
             return 'default';
         }
 
-        function getSLAMissInfo(currentRun, finishedBySla) {
-            if (finishedBySla === undefined || finishedBySla === null || currentRun === null) {
+        function getSLAMissInfo(currentRun, currSla) {
+            if (currSla === undefined || currSla === null || currentRun === null) {
                 return <Tag color="yellow">N/A</Tag>;
             }
             function missedSla() {
-                const dataJobSLAMoment = moment
-                    .utc(currentRun.executionDate)
-                    .add(moment.duration(finishedBySla, 'seconds'));
+                const dataJobSLAMoment = moment.utc(currentRun.executionDate).add(moment.duration(currSla, 'seconds'));
                 if (currentRun.state === RunState.NOT_STARTED || currentRun.state === null)
                     return currentMoment > dataJobSLAMoment;
 
@@ -851,7 +852,22 @@ function renderSegmentTasks(
             if (missedSla()) return <Tag color="red">Yes</Tag>;
             return <Tag color="blue">No</Tag>;
         }
-        const { finishedBySla, previousSameWeekdayRun, previousEOMRun, previousRuns } = record;
+
+        function getAirflowLinkFromRun(currentRun) {
+            if (currentRun !== null && currentRun.externalUrl !== null) {
+                return (
+                    <ExternalUrlLink href={currentRun.externalUrl} target="_blank">
+                        <DeliveredProcedureOutlined />
+                    </ExternalUrlLink>
+                );
+            }
+            return (
+                <ExternalUrlLink href={`https://airflow.corp.stripe.com/admin/tasks/${jobId}`} target="_blank">
+                    <DeliveredProcedureOutlined />
+                </ExternalUrlLink>
+            );
+        }
+
         let similarTasksTableData = previousRuns.map(function (currentRun) {
             return {
                 similarRunName: <Tag color={getStateColor(currentRun.state)}>{currentRun.state}</Tag>,
@@ -865,6 +881,7 @@ function renderSegmentTasks(
                     currentRun.duration !== undefined && currentRun.landingTime !== null
                         ? `T+${convertSecsToHumanReadable(currentRun.duration)}`
                         : '-',
+                airflowLink: getAirflowLinkFromRun(currentRun),
             };
         });
 
@@ -875,6 +892,7 @@ function renderSegmentTasks(
                 executionDate: 'Execution Date',
                 landingTime: 'Landing Time',
                 duration: 'Duration',
+                airflowLink: 'Airflow Link',
             },
             {
                 similarRunName:
@@ -893,6 +911,7 @@ function renderSegmentTasks(
                     previousSameWeekdayRun !== null && previousSameWeekdayRun.duration !== null
                         ? convertSecsToHumanReadable(previousSameWeekdayRun.duration)
                         : '-',
+                airflowLink: getAirflowLinkFromRun(previousSameWeekdayRun),
             },
         ];
         const previousEOMRunRowData = [
@@ -902,6 +921,7 @@ function renderSegmentTasks(
                 executionDate: 'Execution Date',
                 landingTime: 'Landing Time',
                 duration: 'Duration',
+                airflowLink: 'Airflow Link',
             },
             {
                 similarRunName:
@@ -920,6 +940,7 @@ function renderSegmentTasks(
                     previousEOMRun !== null && previousEOMRun.duration !== null
                         ? convertSecsToHumanReadable(previousEOMRun.duration)
                         : '-',
+                airflowLink: getAirflowLinkFromRun(previousEOMRun),
             },
         ];
 
@@ -988,6 +1009,20 @@ function renderSegmentTasks(
                         props: {
                             style: {
                                 background: typeof text === 'string' && text === 'Duration' ? ANTD_GRAY[2] : null,
+                            },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
+            },
+            {
+                title: 'Airflow Link',
+                dataIndex: 'airflowLink',
+                render(text) {
+                    return {
+                        props: {
+                            style: {
+                                background: typeof text === 'string' ? ANTD_GRAY[2] : null,
                             },
                         },
                         children: <div>{text}</div>,
