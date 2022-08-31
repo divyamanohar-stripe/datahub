@@ -10,6 +10,7 @@ import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-co
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { useEntityData } from '../../shared/EntityContext';
 import analytics, { EventType } from '../../../analytics';
+import { ANTD_GRAY } from '../../shared/constants';
 
 const { Header, Sider, Content } = Layout;
 const { Step } = Steps;
@@ -129,9 +130,9 @@ type FormattedDataJob = FormattedDataJobCustomProperties & {
     averageDuration: number | null;
     currentRun: FormattedRun | null;
     currentRunState: string;
-    previousSuccessRun: FormattedRun | null;
     previousSameWeekdayRun: FormattedRun | null;
     previousEOMRun: FormattedRun | null;
+    previousRuns: FormattedRun[] | null;
     dataJobSLAMoment: moment.Moment | null;
     dataJobEntity: DataJobEntity;
 };
@@ -178,8 +179,13 @@ enum UnitOfTime {
     SECONDS = 'seconds',
 }
 
+const STATE_COLOR = {
+    success: 'blue',
+    failed: 'red',
+    running: 'yellow',
+};
 const CLIENT_TZ = moment.tz.guess();
-const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD';
+const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD HH:mm';
 const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY HH:mm:ss';
 
 // Helper functions
@@ -327,22 +333,13 @@ function formatDataJob(
         return currentRun.state;
     }
 
-    function getPreviousSuccessRun(runs: FormattedRun[], currentDate: moment.Moment) {
-        // NOTE: Assuming runs are sorted already by executionDate (latest -> oldest), otherwise need to traverse the array.
-        const previousSuccessRuns = runs.filter((r) => {
-            return r.state === RunState.SUCCESS && moment.utc(r.executionDate) < currentDate;
-        });
-        if (previousSuccessRuns.length === 0) return null;
-        return previousSuccessRuns[0];
-    }
-
     function getPreviousSameWeekdayRun(runs: FormattedRun[], currentDate: moment.Moment) {
-        const previousSameWeenkday = moment.utc(currentDate).subtract(1, 'week');
-        const previousSameWeenkdayRuns = runs.filter((r) => {
-            return r.state === RunState.SUCCESS && moment.utc(r.executionDate).isSame(previousSameWeenkday);
+        const previousSameWeekday = moment.utc(currentDate).subtract(1, 'week');
+        const previousSameWeekdayRuns = runs.filter((r) => {
+            return moment.utc(r.executionDate).isSame(previousSameWeekday);
         });
-        if (previousSameWeenkdayRuns.length === 0) return null;
-        return previousSameWeenkdayRuns[0];
+        if (previousSameWeekdayRuns.length === 0) return null;
+        return previousSameWeekdayRuns[0];
     }
 
     function getPreviousEOMRun(runs: FormattedRun[], currentDate: moment.Moment) {
@@ -354,10 +351,17 @@ function formatDataJob(
             previousEOM = moment.utc(currentDate).startOf('month');
         }
         const previousEOMRuns = runs.filter((r) => {
-            return r.state === RunState.SUCCESS && moment.utc(r.executionDate).isSame(previousEOM);
+            return moment.utc(r.executionDate).isSame(previousEOM);
         });
         if (previousEOMRuns.length === 0) return null;
         return previousEOMRuns[0];
+    }
+
+    function getPreviousRuns(runs: FormattedRun[], numRuns = 7) {
+        const isPreviousRun = (run) => moment.utc(run.executionDate) < domainDate;
+        const start = runs.findIndex(isPreviousRun);
+        if (start === -1) return [];
+        return orderBy(runs.splice(start, numRuns + start), 'executionDate', 'desc');
     }
 
     function getDataJobSLAMoment(
@@ -377,9 +381,9 @@ function formatDataJob(
     const averageDuration = getRunsAverageDuration(formattedRuns);
     const currentRun = getCurrentRun(formattedRuns, domainDate);
     const currentRunState = getCurrentRunState(currentRun);
-    const previousSuccessRun = getPreviousSuccessRun(formattedRuns, domainDate);
     const previousSameWeekdayRun = getPreviousSameWeekdayRun(formattedRuns, domainDate);
     const previousEOMRun = getPreviousEOMRun(formattedRuns, domainDate);
+    const previousRuns = getPreviousRuns(formattedRuns);
     const formattedDataJobCustomProperties = dataJob.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
@@ -396,9 +400,9 @@ function formatDataJob(
         averageDuration,
         currentRun,
         currentRunState,
-        previousSuccessRun,
         previousSameWeekdayRun,
         previousEOMRun,
+        previousRuns,
         ...formattedDataJobCustomProperties,
         dataJobSLAMoment,
         dataJobEntity,
@@ -417,6 +421,7 @@ function getDataJobWithTimeliness(dataJob: FormattedDataJob, currentMoment: mome
     }
 
     function checkWillMissSLA(j: FormattedDataJob): boolean | null {
+        if (checkMissedSLA(j) === true || checkMissedSLA(j) === false) return checkMissedSLA(j);
         const { dataJobSLAMoment, currentRun, currentRunState, averageDuration } = j;
         if (dataJobSLAMoment === null) return null;
 
@@ -623,7 +628,14 @@ function renderDomainHeader(
         <Descriptions title="" bordered size="small" column={{ md: 4 }}>
             <Descriptions.Item label={`${domainName} Execution Date`}>
                 <Tooltip title={`UTC scheduled run of tasks in ${domainName}`}>
-                    <DatePicker onChange={setDomainDate} defaultValue={domainDate} />
+                    <DatePicker
+                        format="YYYY-MM-DD HH:mm"
+                        showTime={{
+                            format: 'HH:mm',
+                        }}
+                        onChange={setDomainDate}
+                        defaultValue={domainDate}
+                    />
                 </Tooltip>
             </Descriptions.Item>
             <Descriptions.Item label={`${domainName} Status`}>{domainOverallStatusTag}</Descriptions.Item>
@@ -703,7 +715,12 @@ function renderSegmentTimeline(
     );
 }
 
-function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segments: FormattedSegment[]) {
+function renderSegmentTasks(
+    domainDate: moment.Moment,
+    segmentId: number,
+    segments: FormattedSegment[],
+    currentMoment: moment.Moment,
+) {
     const timelinessColumns = [
         {
             title: 'Task',
@@ -810,54 +827,172 @@ function renderSegmentTasks(domainDate: moment.Moment, segmentId: number, segmen
     ];
 
     const similarTasksRender = (record) => {
-        const { previousSuccessRun, previousSameWeekdayRun, previousEOMRun } = record;
-        const previousSuccessRunRowData = {
-            similarRunName: 'Previous success run',
-            executionDate: previousSuccessRun !== null ? previousSuccessRun.executionDate : 'No data',
-            landingTime:
-                previousSuccessRun !== null
-                    ? `T+${convertSecsToHumanReadable(previousSuccessRun.landingTime)}`
-                    : 'No data',
-            duration: previousSuccessRun !== null ? convertSecsToHumanReadable(previousSuccessRun.duration) : 'No data',
-        };
-        const previousSameWeekdayRunRowData = {
-            similarRunName: 'Previous same weekday run',
-            executionDate: previousSameWeekdayRun !== null ? previousSameWeekdayRun.executionDate : 'No data',
-            landingTime:
-                previousSameWeekdayRun !== null
-                    ? `T+${convertSecsToHumanReadable(previousSameWeekdayRun.landingTime)}`
-                    : 'No data',
-            duration:
-                previousSameWeekdayRun !== null
-                    ? convertSecsToHumanReadable(previousSameWeekdayRun.duration)
-                    : 'No data',
-        };
-        const previousEOMRunRowData = {
-            similarRunName: 'Previous EOM run',
-            executionDate: previousEOMRun !== null ? previousEOMRun.executionDate : 'No data',
-            landingTime:
-                previousEOMRun !== null ? `T+${convertSecsToHumanReadable(previousEOMRun.landingTime)}` : 'No data',
-            duration: previousEOMRun !== null ? convertSecsToHumanReadable(previousEOMRun.duration) : 'No data',
-        };
+        function getStateColor(state: string): string {
+            if (state in STATE_COLOR) {
+                return STATE_COLOR[state];
+            }
+            return 'default';
+        }
 
-        const similarTasksTableData = [previousSuccessRunRowData, previousSameWeekdayRunRowData, previousEOMRunRowData];
+        function getSLAMissInfo(currentRun, finishedBySla) {
+            if (finishedBySla === undefined || finishedBySla === null || currentRun === null) {
+                return <Tag color="yellow">N/A</Tag>;
+            }
+            function missedSla() {
+                const dataJobSLAMoment = moment
+                    .utc(currentRun.executionDate)
+                    .add(moment.duration(finishedBySla, 'seconds'));
+                if (currentRun.state === RunState.NOT_STARTED || currentRun.state === null)
+                    return currentMoment > dataJobSLAMoment;
+
+                if (currentRun.endDate === 'None') return currentMoment > dataJobSLAMoment;
+                return moment.utc(currentRun.endDate) > dataJobSLAMoment;
+            }
+            if (missedSla()) return <Tag color="red">Yes</Tag>;
+            return <Tag color="blue">No</Tag>;
+        }
+        const { finishedBySla, previousSameWeekdayRun, previousEOMRun, previousRuns } = record;
+        let similarTasksTableData = previousRuns.map(function (currentRun) {
+            return {
+                similarRunName: <Tag color={getStateColor(currentRun.state)}>{currentRun.state}</Tag>,
+                missedSLA: getSLAMissInfo(currentRun, finishedBySla),
+                executionDate: currentRun.executionDate,
+                landingTime:
+                    currentRun.landingTime !== undefined && currentRun.landingTime !== null
+                        ? `T+${convertSecsToHumanReadable(currentRun.landingTime)}`
+                        : '-',
+                duration:
+                    currentRun.duration !== undefined && currentRun.landingTime !== null
+                        ? `T+${convertSecsToHumanReadable(currentRun.duration)}`
+                        : '-',
+            };
+        });
+
+        const previousSameWeekdayRunRowData = [
+            {
+                similarRunName: `Previous ${domainDate.format('dddd')} Run`,
+                missedSLA: 'Missed SLA',
+                executionDate: 'Execution Date',
+                landingTime: 'Landing Time',
+                duration: 'Duration',
+            },
+            {
+                similarRunName:
+                    previousSameWeekdayRun !== null ? (
+                        <Tag color={getStateColor(previousSameWeekdayRun.state)}>{previousSameWeekdayRun.state}</Tag>
+                    ) : (
+                        '-'
+                    ),
+                missedSLA: getSLAMissInfo(previousSameWeekdayRun, finishedBySla),
+                executionDate: previousSameWeekdayRun !== null ? previousSameWeekdayRun.executionDate : '-',
+                landingTime:
+                    previousSameWeekdayRun !== null && previousSameWeekdayRun.landingTime !== null
+                        ? `T+${convertSecsToHumanReadable(previousSameWeekdayRun.landingTime)}`
+                        : '-',
+                duration:
+                    previousSameWeekdayRun !== null && previousSameWeekdayRun.duration !== null
+                        ? convertSecsToHumanReadable(previousSameWeekdayRun.duration)
+                        : '-',
+            },
+        ];
+        const previousEOMRunRowData = [
+            {
+                similarRunName: `Previous EOM Run`,
+                missedSLA: 'Missed SLA',
+                executionDate: 'Execution Date',
+                landingTime: 'Landing Time',
+                duration: 'Duration',
+            },
+            {
+                similarRunName:
+                    previousEOMRun !== null ? (
+                        <Tag color={getStateColor(previousEOMRun.state)}>{previousEOMRun.state}</Tag>
+                    ) : (
+                        '-'
+                    ),
+                missedSLA: getSLAMissInfo(previousEOMRun, finishedBySla),
+                executionDate: previousEOMRun !== null ? previousEOMRun.executionDate : '-',
+                landingTime:
+                    previousEOMRun !== null && previousEOMRun.landingTime !== null
+                        ? `T+${convertSecsToHumanReadable(previousEOMRun.landingTime)}`
+                        : '-',
+                duration:
+                    previousEOMRun !== null && previousEOMRun.duration !== null
+                        ? convertSecsToHumanReadable(previousEOMRun.duration)
+                        : '-',
+            },
+        ];
+
+        if (previousSameWeekdayRun !== null)
+            similarTasksTableData = similarTasksTableData.concat(previousSameWeekdayRunRowData);
+        if (previousEOMRun !== null) similarTasksTableData = similarTasksTableData.concat(previousEOMRunRowData);
 
         const columns = [
             {
-                title: 'Similar run',
+                title: 'Latest Runs',
                 dataIndex: 'similarRunName',
+                render(text) {
+                    return {
+                        props: {
+                            style: { background: typeof text === 'string' ? ANTD_GRAY[2] : null },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
             },
             {
-                title: 'Execution date',
+                title: 'Missed SLA',
+                dataIndex: 'missedSLA',
+                render(text) {
+                    return {
+                        props: {
+                            style: { background: typeof text === 'string' ? ANTD_GRAY[2] : null },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
+            },
+            {
+                title: 'Execution Date',
                 dataIndex: 'executionDate',
+                render(text) {
+                    return {
+                        props: {
+                            style: {
+                                background: typeof text === 'string' && text === 'Execution Date' ? ANTD_GRAY[2] : null,
+                            },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
             },
             {
-                title: 'Landing time',
+                title: 'Landing Time',
                 dataIndex: 'landingTime',
+                render(text) {
+                    return {
+                        props: {
+                            style: {
+                                background: typeof text === 'string' && text === 'Landing Time' ? ANTD_GRAY[2] : null,
+                            },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
             },
             {
                 title: 'Duration',
                 dataIndex: 'duration',
+                render(text) {
+                    return {
+                        props: {
+                            style: {
+                                background: typeof text === 'string' && text === 'Duration' ? ANTD_GRAY[2] : null,
+                            },
+                        },
+                        children: <div>{text}</div>,
+                    };
+                },
             },
         ];
 
@@ -957,7 +1092,7 @@ export const DomainTimelinessTab = () => {
                             marginRight: 20,
                         }}
                     >
-                        <Content>{renderSegmentTasks(domainDate, segmentId, formattedSegments)}</Content>
+                        <Content>{renderSegmentTasks(domainDate, segmentId, formattedSegments, currentMoment)}</Content>
                     </Layout>
                 </Layout>
             </Layout>
