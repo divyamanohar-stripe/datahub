@@ -878,8 +878,8 @@ function renderSegmentTasks(
                         ? `T+${convertSecsToHumanReadable(currentRun.landingTime)}`
                         : '-',
                 duration:
-                    currentRun.duration !== undefined && currentRun.landingTime !== null
-                        ? `T+${convertSecsToHumanReadable(currentRun.duration)}`
+                    currentRun.duration !== undefined && currentRun.duration !== null
+                        ? convertSecsToHumanReadable(currentRun.duration)
                         : '-',
                 airflowLink: getAirflowLinkFromRun(currentRun),
             };
