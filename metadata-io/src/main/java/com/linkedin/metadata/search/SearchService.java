@@ -92,7 +92,7 @@ public class SearchService {
   public SearchResult searchAcrossEntities(@Nonnull List<String> entities, @Nonnull String input,
       @Nullable Filter postFilters, @Nullable SortCriterion sortCriterion, int from, int size,
       @Nullable SearchFlags searchFlags) {
-    log.debug(String.format(
+    log.info(String.format(
         "Searching Search documents entities: %s, input: %s, postFilters: %s, sortCriterion: %s, from: %s, size: %s",
         entities, input, postFilters, sortCriterion, from, size));
     return _allEntitiesSearchAggregatorCache.getSearcher(entities, input, postFilters, sortCriterion, searchFlags)

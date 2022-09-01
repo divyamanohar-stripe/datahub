@@ -1,5 +1,6 @@
 package com.linkedin.metadata.search;
 
+import com.codahale.metrics.Timer;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.linkedin.common.urn.Urn;
@@ -16,6 +17,7 @@ import com.linkedin.metadata.query.filter.SortCriterion;
 import com.linkedin.metadata.search.utils.FilterUtils;
 import com.linkedin.metadata.search.utils.QueryUtils;
 import com.linkedin.metadata.search.utils.SearchUtils;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
 import io.opentelemetry.extension.annotations.WithSpan;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,11 +32,13 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.cache.Cache;
 
 
+@Slf4j
 @RequiredArgsConstructor
 public class LineageSearchService {
   private final SearchService _searchService;
@@ -70,17 +74,29 @@ public class LineageSearchService {
       @Nonnull List<String> entities, @Nullable String input, @Nullable Filter inputFilters,
       @Nullable SortCriterion sortCriterion, int from, int size) {
     // Cache multihop result for faster performance
+    log.info("Kicking off searchAcrossLineage for urn: {}", sourceUrn);
     EntityLineageResult lineageResult = cache.get(Pair.of(sourceUrn, direction), EntityLineageResult.class);
     if (lineageResult == null) {
+      Timer.Context getLineageTimer = MetricUtils.timer(this.getClass(), "getLineage").time();
       lineageResult = _graphService.getLineage(sourceUrn, direction, 0, MAX_RELATIONSHIPS, 1000);
+      getLineageTimer.stop();
+      log.info("Retrieved lineage info from graph store for urn: {}", sourceUrn);
     }
 
     // Filter hopped result based on the set of entities to return and inputFilters before sending to search
+    Timer.Context filterRelationshipsTimer = MetricUtils.timer(this.getClass(), "filterRelationships").time();
     List<LineageRelationship> lineageRelationships =
         filterRelationships(lineageResult, new HashSet<>(entities), inputFilters);
+    filterRelationshipsTimer.stop();
+    log.info("Filtered lineage graph based on query filters for urn: {}", sourceUrn);
 
-    return getSearchResultInBatches(lineageRelationships, input != null ? input : "*", inputFilters, sortCriterion,
-        from, size);
+    Timer.Context batchedSearchTimer = MetricUtils.timer(this.getClass(), "getSearchResultBatches").time();
+    LineageSearchResult searchResult = getSearchResultInBatches(lineageRelationships, input != null ? input : "*", inputFilters, sortCriterion,
+            from, size);
+    batchedSearchTimer.stop();
+    log.info("Retrieved batched search results for lineage graph for urn: {}", sourceUrn);
+
+    return searchResult;
   }
 
   // Search service can only take up to 50K term filter, so query search service in batches
