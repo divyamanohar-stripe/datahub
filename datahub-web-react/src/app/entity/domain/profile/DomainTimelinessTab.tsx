@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { DeliveredProcedureOutlined } from '@ant-design/icons';
+import { DeliveredProcedureOutlined, InfoCircleTwoTone } from '@ant-design/icons';
 import { DatePicker, Descriptions, Layout, Steps, Table, Tag, Tooltip } from 'antd';
 import { groupBy, orderBy } from 'lodash';
 import moment from 'moment-timezone';
@@ -187,6 +187,7 @@ const STATE_COLOR = {
 const CLIENT_TZ = moment.tz.guess();
 const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD HH:mm';
 const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY HH:mm:ss';
+const WIP_TEXT = `Predictions are still a WIP.\n Improvements are coming soon!`;
 
 // Helper functions
 function convertSecsToHumanReadable(seconds: number) {
@@ -358,7 +359,7 @@ function formatDataJob(
     }
 
     function getPreviousRuns(runs: FormattedRun[], numRuns = 7) {
-        const isPreviousRun = (run) => moment.utc(run.executionDate) < domainDate;
+        const isPreviousRun = (run) => moment.utc(run.executionDate) <= domainDate;
         const orderedRuns = orderBy(runs, 'executionDate', 'desc');
         const start = orderedRuns.findIndex(isPreviousRun);
         if (start === -1) return [];
@@ -625,6 +626,18 @@ function renderDomainHeader(
     let currentRelativeMomentToolTip = `UTC: ${currentMoment.format(DATE_DISPLAY_FORMAT)}\n`;
     currentRelativeMomentToolTip += `Local: ${moment.tz(currentMoment, CLIENT_TZ).format(DATE_DISPLAY_FORMAT)}`;
 
+    function getLandingTimeDescription(wip: boolean) {
+        if (wip) {
+            return [
+                `${domainName} Landing Time `,
+                <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={WIP_TEXT}>
+                    <InfoCircleTwoTone />
+                </Tooltip>,
+            ];
+        }
+        return `${domainName} Landing Time`;
+    }
+
     return (
         <Descriptions title="" bordered size="small" column={{ md: 4 }}>
             <Descriptions.Item label={`${domainName} Execution Date`}>
@@ -640,7 +653,7 @@ function renderDomainHeader(
                 </Tooltip>
             </Descriptions.Item>
             <Descriptions.Item label={`${domainName} Status`}>{domainOverallStatusTag}</Descriptions.Item>
-            <Descriptions.Item label={`${domainName} Landing Time`}>
+            <Descriptions.Item label={getLandingTimeDescription(domainLandingTimeText.includes('ETA'))}>
                 <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${domainLandingTimeToolTip}`}>
                     {domainLandingTimeText}
                 </Tooltip>
@@ -790,14 +803,17 @@ function renderSegmentTasks(
                     toolTipText += `Local: ${moment
                         .tz(segmentTask.estimatedLandingMoment, CLIENT_TZ)
                         .format(DATE_DISPLAY_FORMAT)}`;
-                    return (
+                    return [
                         <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${toolTipText}`}>
                             ETA: T+
                             {convertSecsToHumanReadable(
                                 segmentTask.estimatedLandingMoment.diff(domainDate, UnitOfTime.SECONDS),
                             )}
-                        </Tooltip>
-                    );
+                        </Tooltip>,
+                        <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={WIP_TEXT}>
+                            <InfoCircleTwoTone />
+                        </Tooltip>,
+                    ];
                 }
                 return <>N/A</>;
             },
