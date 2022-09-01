@@ -4,7 +4,12 @@ import { DataJob, EntityType, OwnershipType, PlatformType, SearchResult } from '
 import { Preview } from './preview/Preview';
 import { Entity, IconStyleType, PreviewType } from '../Entity';
 import { EntityProfile } from '../shared/containers/profile/EntityProfile';
-import { GetDataJobQuery, useGetDataJobQuery, useUpdateDataJobMutation } from '../../../graphql/dataJob.generated';
+import {
+    GetDataJobQuery,
+    GetDataJobRunsQuery,
+    useGetDataJobQuery,
+    useUpdateDataJobMutation,
+} from '../../../graphql/dataJob.generated';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
 import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
 import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
@@ -17,6 +22,7 @@ import { getDataForEntityType } from '../shared/containers/profile/utils';
 import { capitalizeFirstLetter } from '../../shared/textUtil';
 import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
 import { RunsTab } from './tabs/RunsTab';
+import { TimelinessTab } from './tabs/TimelinessTab';
 
 /**
  * Definition of the DataHub DataJob entity.
@@ -93,6 +99,16 @@ export class DataJobEntity implements Entity<DataJob> {
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataJob: GetDataJobQuery) => (dataJob?.dataJob?.runs?.total || 0) !== 0,
+                    },
+                },
+                {
+                    name: 'Timeliness',
+                    component: TimelinessTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataJobRun: GetDataJobRunsQuery) => {
+                            return (dataJobRun?.dataJob?.runs?.total || 0) > 0;
+                        },
                     },
                 },
             ]}

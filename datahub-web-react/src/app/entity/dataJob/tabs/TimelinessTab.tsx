@@ -3,12 +3,11 @@ import { Descriptions, InputNumber, Steps, Tag } from 'antd';
 import moment from 'moment-timezone';
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { useGetDatasetQuery, useGetDatasetRunsQuery } from '../../../../graphql/dataset.generated';
+import { useGetDataJobQuery, useGetDataJobRunsQuery } from '../../../../graphql/dataJob.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
-import { RelationshipDirection } from '../../../../types.generated';
 import { useEntityData } from '../../shared/EntityContext';
 
-type DatasetCustomPropertiesWithSla = {
+type DataJobCustomPropertiesWithSla = {
     finishedBySla: string;
     startedBySla: string;
     warnFinishedBySla: string;
@@ -686,26 +685,26 @@ export const TimelinessTab = () => {
     const nRunRef: React.MutableRefObject<HTMLInputElement | null> = useRef(null);
 
     const { urn } = useEntityData();
-    const { loading: isLoadingDataset, data: datasetQueryResponse } = useGetDatasetQuery({
+    const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobQuery({
         variables: { urn },
     });
-    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDatasetRunsQuery({
-        variables: { urn, start: 0, count: runCount, direction: RelationshipDirection.Outgoing },
+    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsQuery({
+        variables: { urn, start: 0, count: runCount },
     });
 
-    if (isLoadingDataset || isLoadingRuns) return loadingPage;
+    if (isLoadingDataJob || isLoadingRuns) return loadingPage;
 
-    const datasetCustomPropertiesWithSla = datasetQueryResponse?.dataset?.properties?.customProperties?.reduce(
+    const dataJobCustomPropertiesWithSla = dataJobQueryResponse?.dataJob?.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
-    ) as DatasetCustomPropertiesWithSla;
-    const errorSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.finishedBySla, 'seconds');
-    const errorStartSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.startedBySla, 'seconds');
+    ) as DataJobCustomPropertiesWithSla;
+    const errorSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.finishedBySla, 'seconds');
+    const errorStartSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.startedBySla, 'seconds');
 
-    const warnSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.warnFinishedBySla, 'seconds');
-    const warnStartSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.warnStartedBySla, 'seconds');
+    const warnSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.warnFinishedBySla, 'seconds');
+    const warnStartSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.warnStartedBySla, 'seconds');
     const now = moment.utc();
-    const runs = runsQueryResponse?.dataset?.runs?.runs
+    const runs = runsQueryResponse?.dataJob?.runs?.runs
         ?.map(
             (run) =>
                 ({
