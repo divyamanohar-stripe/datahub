@@ -1,13 +1,25 @@
 import { Column } from '@ant-design/plots';
 import { Descriptions, InputNumber, Steps, Tag } from 'antd';
 import moment from 'moment-timezone';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, FC } from 'react';
 import styled from 'styled-components';
-import { useGetDataJobQuery, useGetDataJobRunsQuery } from '../../../../graphql/dataJob.generated';
-import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
-import { useEntityData } from '../../shared/EntityContext';
+import {
+    GetDatasetQuery,
+    GetDatasetRunsQuery,
+    useGetDatasetQuery,
+    useGetDatasetRunsQuery,
+} from '../../../../../graphql/dataset.generated';
+import { ReactComponent as LoadingSvg } from '../../../../../images/datahub-logo-color-loading_pendulum.svg';
+import { RelationshipDirection } from '../../../../../types.generated';
+import { useEntityData } from '../../EntityContext';
+import {
+    GetDataJobQuery,
+    GetDataJobRunsQuery,
+    useGetDataJobQuery,
+    useGetDataJobRunsQuery,
+} from '../../../../../graphql/dataJob.generated';
 
-type DataJobCustomPropertiesWithSla = {
+type DatasetCustomPropertiesWithSla = {
     finishedBySla: string;
     startedBySla: string;
     warnFinishedBySla: string;
@@ -679,32 +691,40 @@ const loadingPage = (
     </LoadingContainer>
 );
 
-export const TimelinessTab = () => {
+interface TimelinessTabProps {
+    runCount: number;
+    setRunCount: React.Dispatch<React.SetStateAction<number>>;
+    isLoadingData: boolean;
+    isLoadingRuns: boolean;
+    dataQueryResponseData: GetDataJobQuery['dataJob'] | GetDatasetQuery['dataset'] | undefined;
+    runsQueryResponseData: GetDataJobRunsQuery['dataJob'] | GetDatasetRunsQuery['dataset'] | undefined;
+}
+
+export const TimelinessTab: FC<TimelinessTabProps> = ({
+    runCount,
+    setRunCount,
+    isLoadingData,
+    isLoadingRuns,
+    dataQueryResponseData,
+    runsQueryResponseData,
+}) => {
     // @mutable
-    const [runCount, setRunCount] = useState(20);
+
     const nRunRef: React.MutableRefObject<HTMLInputElement | null> = useRef(null);
 
-    const { urn } = useEntityData();
-    const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobQuery({
-        variables: { urn },
-    });
-    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsQuery({
-        variables: { urn, start: 0, count: runCount },
-    });
+    if (isLoadingData || isLoadingRuns) return loadingPage;
 
-    if (isLoadingDataJob || isLoadingRuns) return loadingPage;
-
-    const dataJobCustomPropertiesWithSla = dataJobQueryResponse?.dataJob?.properties?.customProperties?.reduce(
+    const datasetCustomPropertiesWithSla = dataQueryResponseData?.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
-    ) as DataJobCustomPropertiesWithSla;
-    const errorSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.finishedBySla, 'seconds');
-    const errorStartSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.startedBySla, 'seconds');
+    ) as DatasetCustomPropertiesWithSla;
+    const errorSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.finishedBySla, 'seconds');
+    const errorStartSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.startedBySla, 'seconds');
 
-    const warnSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.warnFinishedBySla, 'seconds');
-    const warnStartSlaDuration = moment.duration(dataJobCustomPropertiesWithSla?.warnStartedBySla, 'seconds');
+    const warnSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.warnFinishedBySla, 'seconds');
+    const warnStartSlaDuration = moment.duration(datasetCustomPropertiesWithSla?.warnStartedBySla, 'seconds');
     const now = moment.utc();
-    const runs = runsQueryResponse?.dataJob?.runs?.runs
+    const runs = runsQueryResponseData?.runs?.runs
         ?.map(
             (run) =>
                 ({
@@ -763,5 +783,53 @@ export const TimelinessTab = () => {
                 warnStartSlaDuration,
             )}
         </>
+    );
+};
+
+export const DatasetTimelinessTab = () => {
+    const [runCount, setRunCount] = useState(20);
+
+    const { urn } = useEntityData();
+
+    const { loading: isLoadingDataset, data: datasetQueryResponse } = useGetDatasetQuery({
+        variables: { urn },
+    });
+    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDatasetRunsQuery({
+        variables: { urn, start: 0, count: runCount, direction: RelationshipDirection.Outgoing },
+    });
+
+    return (
+        <TimelinessTab
+            runCount={runCount}
+            setRunCount={setRunCount}
+            isLoadingData={isLoadingDataset}
+            isLoadingRuns={isLoadingRuns}
+            dataQueryResponseData={datasetQueryResponse?.dataset}
+            runsQueryResponseData={runsQueryResponse?.dataset}
+        />
+    );
+};
+
+export const DataJobTimelinessTab = () => {
+    const [runCount, setRunCount] = useState(20);
+
+    const { urn } = useEntityData();
+
+    const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobQuery({
+        variables: { urn },
+    });
+    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsQuery({
+        variables: { urn, start: 0, count: runCount },
+    });
+
+    return (
+        <TimelinessTab
+            runCount={runCount}
+            setRunCount={setRunCount}
+            isLoadingData={isLoadingDataJob}
+            isLoadingRuns={isLoadingRuns}
+            dataQueryResponseData={dataJobQueryResponse?.dataJob}
+            runsQueryResponseData={runsQueryResponse?.dataJob}
+        />
     );
 };

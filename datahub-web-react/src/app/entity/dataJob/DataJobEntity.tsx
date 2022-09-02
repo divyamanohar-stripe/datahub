@@ -22,7 +22,7 @@ import { getDataForEntityType } from '../shared/containers/profile/utils';
 import { capitalizeFirstLetter } from '../../shared/textUtil';
 import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
 import { RunsTab } from './tabs/RunsTab';
-import { TimelinessTab } from './tabs/TimelinessTab';
+import { DataJobTimelinessTab } from '../shared/tabs/Entity/TimelinessTab';
 
 /**
  * Definition of the DataHub DataJob entity.
@@ -103,7 +103,7 @@ export class DataJobEntity implements Entity<DataJob> {
                 },
                 {
                     name: 'Timeliness',
-                    component: TimelinessTab,
+                    component: DataJobTimelinessTab,
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataJobRun: GetDataJobRunsQuery) => {
