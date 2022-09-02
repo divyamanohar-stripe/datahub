@@ -556,8 +556,9 @@ function renderTimelinessPlot(
     const minVal = Math.floor(Math.min(...getYs(0)));
     const maxVal = Math.floor(Math.max(...getYs(1)));
     const diff = Math.ceil(maxVal * 0.01);
-    const minY = Math.floor(minVal - diff > 0 ? minVal - diff : 0);
-    const maxY = Math.ceil(maxVal + diff);
+    // round up/down to the nearest multiple of 60 to have yAxis start/end at whole hour intervals
+    const minY = 60.0 * Math.floor((minVal - diff > 0 ? minVal - diff : 0) / 60.0);
+    const maxY = 60.0 * Math.ceil((maxVal + diff) / 60.0);
 
     const config = {
         data: runsPlotData,
@@ -572,8 +573,9 @@ function renderTimelinessPlot(
         },
         yAxis: {
             title: {
-                text: 'Time Spent in Minutes',
+                text: 'Starting and Landing Time',
             },
+            label: { formatter: (val) => `T+${convertSecsToHumanReadable(val * 60)}` },
             minLimit: minY,
             maxLimit: maxY,
         },
