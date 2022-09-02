@@ -87,6 +87,62 @@ export class DatasetEntity implements Entity<Dataset> {
             getOverrideProperties={this.getOverridePropertiesFromEntity}
             tabs={[
                 {
+                    name: 'Lineage',
+                    component: LineageTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataset: GetDatasetQuery) => {
+                            return (
+                                (dataset?.dataset?.upstream?.total || 0) > 0 ||
+                                (dataset?.dataset?.downstream?.total || 0) > 0
+                            );
+                        },
+                    },
+                },
+                {
+                    name: 'Timeliness',
+                    component: DatasetTimelinessTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataset: GetDatasetQuery) => {
+                            return (dataset?.dataset?.writeRuns?.total || 0) > 0;
+                        },
+                    },
+                },
+                {
+                    name: 'Operations',
+                    component: OperationsTab,
+                    display: {
+                        visible: (_, dataset: GetDatasetQuery) => {
+                            return (
+                                (dataset?.dataset?.readRuns?.total || 0) + (dataset?.dataset?.writeRuns?.total || 0) > 0
+                            );
+                        },
+                        enabled: (_, dataset: GetDatasetQuery) => {
+                            return (
+                                (dataset?.dataset?.readRuns?.total || 0) + (dataset?.dataset?.writeRuns?.total || 0) > 0
+                            );
+                        },
+                    },
+                },
+                {
+                    name: 'Properties',
+                    component: PropertiesTab,
+                },
+                {
+                    name: 'Insights',
+                    component: InsightsTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, _dataset: GetDatasetQuery) => true,
+                    },
+                },
+
+                {
+                    name: 'Documentation',
+                    component: DocumentationTab,
+                },
+                {
                     name: 'Schema',
                     component: SchemaTab,
                 },
@@ -100,27 +156,7 @@ export class DatasetEntity implements Entity<Dataset> {
                             (dataset?.dataset?.viewProperties?.logic && true) || false,
                     },
                 },
-                {
-                    name: 'Documentation',
-                    component: DocumentationTab,
-                },
-                {
-                    name: 'Properties',
-                    component: PropertiesTab,
-                },
-                {
-                    name: 'Lineage',
-                    component: LineageTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, dataset: GetDatasetQuery) => {
-                            return (
-                                (dataset?.dataset?.upstream?.total || 0) > 0 ||
-                                (dataset?.dataset?.downstream?.total || 0) > 0
-                            );
-                        },
-                    },
-                },
+
                 {
                     name: 'Queries',
                     component: QueriesTab,
@@ -148,40 +184,6 @@ export class DatasetEntity implements Entity<Dataset> {
                         visible: (_, _1) => true,
                         enabled: (_, dataset: GetDatasetQuery) => {
                             return (dataset?.dataset?.assertions?.total || 0) > 0;
-                        },
-                    },
-                },
-                {
-                    name: 'Timeliness',
-                    component: DatasetTimelinessTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, dataset: GetDatasetQuery) => {
-                            return (dataset?.dataset?.writeRuns?.total || 0) > 0;
-                        },
-                    },
-                },
-                {
-                    name: 'Insights',
-                    component: InsightsTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, _dataset: GetDatasetQuery) => true,
-                    },
-                },
-                {
-                    name: 'Operations',
-                    component: OperationsTab,
-                    display: {
-                        visible: (_, dataset: GetDatasetQuery) => {
-                            return (
-                                (dataset?.dataset?.readRuns?.total || 0) + (dataset?.dataset?.writeRuns?.total || 0) > 0
-                            );
-                        },
-                        enabled: (_, dataset: GetDatasetQuery) => {
-                            return (
-                                (dataset?.dataset?.readRuns?.total || 0) + (dataset?.dataset?.writeRuns?.total || 0) > 0
-                            );
                         },
                     },
                 },

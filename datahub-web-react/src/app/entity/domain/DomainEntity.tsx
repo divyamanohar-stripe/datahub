@@ -66,16 +66,16 @@ export class DomainEntity implements Entity<Domain> {
             getOverrideProperties={this.getOverridePropertiesFromEntity}
             tabs={[
                 {
+                    name: 'Domain Timeliness',
+                    component: DomainTimelinessTab,
+                },
+                {
                     name: 'Entities',
                     component: DomainEntitiesTab,
                 },
                 {
                     name: 'Documentation',
                     component: DocumentationTab,
-                },
-                {
-                    name: 'Domain Timeliness',
-                    component: DomainTimelinessTab,
                 },
             ]}
             sidebarSections={[

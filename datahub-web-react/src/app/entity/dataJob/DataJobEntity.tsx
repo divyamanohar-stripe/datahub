@@ -72,18 +72,6 @@ export class DataJobEntity implements Entity<DataJob> {
             getOverrideProperties={this.getOverridePropertiesFromEntity}
             tabs={[
                 {
-                    name: 'Documentation',
-                    component: DocumentationTab,
-                },
-                {
-                    name: 'Properties',
-                    component: PropertiesTab,
-                },
-                {
-                    name: 'Pipeline',
-                    component: DataJobFlowTab,
-                },
-                {
                     name: 'Lineage',
                     component: LineageTab,
                     display: {
@@ -91,14 +79,6 @@ export class DataJobEntity implements Entity<DataJob> {
                         enabled: (_, dataJob: GetDataJobQuery) =>
                             (dataJob?.dataJob?.incoming?.count || 0) !== 0 ||
                             (dataJob?.dataJob?.outgoing?.count || 0) !== 0,
-                    },
-                },
-                {
-                    name: 'Runs',
-                    component: RunsTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, dataJob: GetDataJobQuery) => (dataJob?.dataJob?.runs?.total || 0) !== 0,
                     },
                 },
                 {
@@ -110,6 +90,27 @@ export class DataJobEntity implements Entity<DataJob> {
                             return (dataJobRun?.dataJob?.runs?.total || 0) > 0;
                         },
                     },
+                },
+                {
+                    name: 'Runs',
+                    component: RunsTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataJob: GetDataJobQuery) => (dataJob?.dataJob?.runs?.total || 0) !== 0,
+                    },
+                },
+                {
+                    name: 'Pipeline',
+                    component: DataJobFlowTab,
+                },
+                {
+                    name: 'Properties',
+                    component: PropertiesTab,
+                },
+
+                {
+                    name: 'Documentation',
+                    component: DocumentationTab,
                 },
             ]}
             sidebarSections={[
