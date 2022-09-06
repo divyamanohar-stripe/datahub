@@ -66,7 +66,7 @@ function errorWarnText(errorSla: number, warnSla: number) {
     if (warnSla > 0) {
         return ' WARN ';
     }
-    return '';
+    return ' ';
 }
 
 function slash(errorSla: number, warnSla: number) {

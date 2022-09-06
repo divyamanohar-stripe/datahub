@@ -640,7 +640,7 @@ function renderDomainHeader(
 
     return (
         <Descriptions title="" bordered size="small" column={{ md: 4 }}>
-            <Descriptions.Item label={`${domainName} Execution Date`}>
+            <Descriptions.Item style={{ fontWeight: 'bold' }} label={`${domainName} Execution Date`}>
                 <Tooltip title={`UTC scheduled run of tasks in ${domainName}`}>
                     <DatePicker
                         format="YYYY-MM-DD HH:mm"
@@ -652,13 +652,18 @@ function renderDomainHeader(
                     />
                 </Tooltip>
             </Descriptions.Item>
-            <Descriptions.Item label={`${domainName} Status`}>{domainOverallStatusTag}</Descriptions.Item>
-            <Descriptions.Item label={getLandingTimeDescription(domainLandingTimeText.includes('ETA'))}>
+            <Descriptions.Item style={{ fontWeight: 'bold' }} label={`${domainName} Status`}>
+                {domainOverallStatusTag}
+            </Descriptions.Item>
+            <Descriptions.Item
+                style={{ fontWeight: 'bold' }}
+                label={getLandingTimeDescription(domainLandingTimeText.includes('ETA'))}
+            >
                 <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${domainLandingTimeToolTip}`}>
                     {domainLandingTimeText}
                 </Tooltip>
             </Descriptions.Item>
-            <Descriptions.Item label="Current Time">
+            <Descriptions.Item style={{ fontWeight: 'bold' }} label="Current Time">
                 <Tooltip overlayStyle={{ whiteSpace: 'pre-line' }} title={`${currentRelativeMomentToolTip}`}>
                     {currentRelativeMoment}
                 </Tooltip>
