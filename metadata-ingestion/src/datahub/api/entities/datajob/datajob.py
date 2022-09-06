@@ -65,7 +65,7 @@ class DataJob:
     properties: Dict[str, str] = field(default_factory=dict)
     url: Optional[str] = None
     tags: Set[str] = field(default_factory=set)
-    owners: Set[Tuple(str, str)] = field(default_factory=set)
+    owners: Set[Tuple[str, str]] = field(default_factory=set)
     inlets: List[DatasetUrn] = field(default_factory=list)
     outlets: List[DatasetUrn] = field(default_factory=list)
     upstream_urns: List[DataJobUrn] = field(default_factory=list)
