@@ -78,12 +78,9 @@ public class AuthenticationController extends Controller {
         final Optional<String> maybeRedirectPath = Optional.ofNullable(ctx().request().getQueryString(AUTH_REDIRECT_URI_PARAM));
         final String redirectPath = maybeRedirectPath.orElse("/");
 
-        // [stripe] Temporarily disable this check to allow us to sidestep existing cookies
-        // with the DataHub user actor (expiry is 30d). We can yank this out after we give users
-        // a week or so to switch to the updated stripe username cookie
-        //if (AuthUtils.hasValidSessionCookie(ctx())) {
-        //    return redirect(redirectPath);
-        //}
+        if (AuthUtils.hasValidSessionCookie(ctx())) {
+            return redirect(redirectPath);
+        }
 
         // 1. If SSO is enabled, redirect to IdP if not authenticated.
         if (_ssoManager.isSsoEnabled()) {
