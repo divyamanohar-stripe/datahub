@@ -749,3 +749,24 @@ fragment entityDomain on Domain {
         name
     }
 }
+
+fragment dataJobFieldsHistoricalSLATracking on DataJob {
+    urn
+    type
+    jobId
+    ownership {
+        ...ownershipFields
+    }
+    domain {
+        ...entityDomain
+    }
+    properties {
+        name
+        description
+        externalUrl
+        customProperties {
+            key
+            value
+        }
+    }
+}

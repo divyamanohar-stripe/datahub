@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import moment from 'moment-timezone';
 import { Column } from '@ant-design/plots';
 import { Descriptions, Layout, Tag } from 'antd';
-import { useGetDataJobQuery, useGetDataJobRunsQuery } from '../../../../graphql/dataJob.generated';
+import { useGetDataJobHistoricalSlaTrackingQuery } from '../../../../graphql/dataJob.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 
 const { Header, Content, Sider } = Layout;
@@ -34,6 +34,7 @@ type DataJobProperties = {
     taskId: string;
     finishedBySla: string;
     project: string;
+    domainName: string;
     [key: string]: string;
 };
 
@@ -238,17 +239,18 @@ function renderTimelinessPlot(runs: Run[], domainName) {
     );
 }
 
-function formatDataAndRenderPlots(dataJob, dataJobRuns, domainName) {
+function formatDataAndRenderPlots(dataJob) {
     const now = moment.utc();
     const dataJobProperties = dataJob?.dataJob?.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
     ) as DataJobProperties;
     dataJobProperties.taskId = dataJob?.dataJob?.properties?.name;
+    dataJobProperties.domainName = dataJob?.dataJob?.domain?.properties?.name;
 
     const errorSlaDuration = moment.duration(dataJobProperties?.finishedBySla, 'seconds');
 
-    const runs = dataJobRuns?.dataJob?.runs?.runs
+    const runs = dataJob?.dataJob?.runs?.runs
         ?.map(
             (run) =>
                 ({
@@ -281,16 +283,13 @@ function formatDataAndRenderPlots(dataJob, dataJobRuns, domainName) {
     // sort by execution date
     latestRuns.sort((a, b) => (new Date(a.executionDate).getTime() > new Date(b.executionDate).getTime() ? 1 : -1));
 
-    // TODO: get domain urn from query
-    // const domainUrn = 'urn:li:domain:uar';
-
     return (
         <>
             <Layout>
                 <Header>{renderPlotHeader(dataJobProperties.taskId, dataJobProperties.finishedBySla)}</Header>
                 <Layout>
                     <Sider>{renderSlaMissSummary(latestRuns, dataJobProperties.project)}</Sider>
-                    <Content>{renderTimelinessPlot(latestRuns, domainName)}</Content>
+                    <Content>{renderTimelinessPlot(latestRuns, dataJobProperties.domainName)}</Content>
                 </Layout>
             </Layout>
         </>
@@ -298,7 +297,6 @@ function formatDataAndRenderPlots(dataJob, dataJobRuns, domainName) {
 }
 
 export const HistoricalSLATracking = () => {
-    const runsCount = 30;
     /** critical tasks
      *  icplus.DailyIcPlusFees
      *  cost_platform.ledger.network_cost_actual_alltime_bookkeep
@@ -315,50 +313,43 @@ export const HistoricalSLATracking = () => {
     ];
 
     const loading: boolean[] = [];
-    const { loading: loadingJobUAR, data: dataJobUAR } = useGetDataJobQuery({ variables: { urn: urn[0] } });
-    const { loading: loadingRunsUAR, data: dataJobRunsUAR } = useGetDataJobRunsQuery({
-        variables: { urn: urn[0], start: 0, count: runsCount },
+    const { loading: loadingJobUAR, data: dataJobUAR } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[0] },
     });
-    loading.push(loadingJobUAR, loadingRunsUAR);
 
-    const { loading: loadingJobRecon, data: dataJobRecon } = useGetDataJobQuery({ variables: { urn: urn[1] } });
-    const { loading: loadingRunsRecon, data: dataJobRunsRecon } = useGetDataJobRunsQuery({
-        variables: { urn: urn[1], start: 0, count: runsCount },
-    });
-    loading.push(loadingJobRecon, loadingRunsRecon);
+    loading.push(loadingJobUAR);
 
-    const { loading: loadingJobGTM, data: dataJobGTM } = useGetDataJobQuery({ variables: { urn: urn[2] } });
-    const { loading: loadingRunsGTM, data: dataJobRunsGTM } = useGetDataJobRunsQuery({
-        variables: { urn: urn[2], start: 0, count: runsCount },
+    const { loading: loadingJobRecon, data: dataJobRecon } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[1] },
     });
-    loading.push(loadingJobGTM, loadingRunsGTM);
+    loading.push(loadingJobRecon);
 
-    const { loading: loadingJobBook, data: dataJobBook } = useGetDataJobQuery({ variables: { urn: urn[3] } });
-    const { loading: loadingRunsBook, data: dataJobRunsBook } = useGetDataJobRunsQuery({
-        variables: { urn: urn[3], start: 0, count: runsCount },
+    const { loading: loadingJobGTM, data: dataJobGTM } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[2] },
     });
-    loading.push(loadingJobBook, loadingRunsBook);
+    loading.push(loadingJobGTM);
 
-    const { loading: loadingJob1Cost, data: dataJobCost } = useGetDataJobQuery({ variables: { urn: urn[4] } });
-    const { loading: loadingRunsCost, data: dataJobRunsCost } = useGetDataJobRunsQuery({
-        variables: { urn: urn[4], start: 0, count: runsCount },
+    const { loading: loadingJobBook, data: dataJobBook } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[3] },
     });
-    loading.push(loadingJob1Cost, loadingRunsCost);
+    loading.push(loadingJobBook);
+
+    const { loading: loadingJob1Cost, data: dataJobCost } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[4] },
+    });
+    loading.push(loadingJob1Cost);
 
     if (loading.some((b) => b)) {
         return loadingPage;
     }
 
-    const uarDomain = 'UAR';
-    const otherDomain = null;
-
     return (
         <>
-            {formatDataAndRenderPlots(dataJobUAR, dataJobRunsUAR, uarDomain)}
-            {formatDataAndRenderPlots(dataJobRecon, dataJobRunsRecon, uarDomain)}
-            {formatDataAndRenderPlots(dataJobCost, dataJobRunsCost, uarDomain)}
-            {formatDataAndRenderPlots(dataJobBook, dataJobRunsBook, otherDomain)}
-            {formatDataAndRenderPlots(dataJobGTM, dataJobRunsGTM, otherDomain)}
+            {formatDataAndRenderPlots(dataJobUAR)}
+            {formatDataAndRenderPlots(dataJobRecon)}
+            {formatDataAndRenderPlots(dataJobCost)}
+            {formatDataAndRenderPlots(dataJobBook)}
+            {formatDataAndRenderPlots(dataJobGTM)}
         </>
     );
 };

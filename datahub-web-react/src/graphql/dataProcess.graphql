@@ -37,3 +37,21 @@ fragment runResults on DataProcessInstanceResult {
         externalUrl
     }
 }
+
+fragment runResultsHistoricalSLATracking on DataProcessInstanceResult {
+    count
+    start
+    total
+    runs {
+        urn
+        type
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        name
+        externalUrl
+    }
+}

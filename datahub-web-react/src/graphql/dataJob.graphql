@@ -52,3 +52,12 @@ query getDataJobRuns($urn: String!, $start: Int!, $count: Int!) {
         }
     }
 }
+
+query getDataJobHistoricalSLATracking($urn: String!) {
+    dataJob(urn: $urn) {
+        ...dataJobFieldsHistoricalSLATracking
+        runs(start: 0, count: 31) {
+            ...runResultsHistoricalSLATracking
+        }
+    }
+}
