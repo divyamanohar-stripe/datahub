@@ -8,9 +8,10 @@ import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab'
 import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
 import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Ownership/SidebarOwnerSection';
 import { getDataForEntityType } from '../shared/containers/profile/utils';
-import { useGetDomainQuery } from '../../../graphql/domain.generated';
+import { GetDomainQuery, useGetDomainQuery } from '../../../graphql/domain.generated';
 import { DomainEntitiesTab } from './DomainEntitiesTab';
 import { DomainTimelinessTab } from './profile/DomainTimelinessTab';
+import { HistoricalSLATracking } from './profile/HistoricalSLATracking';
 
 /**
  * Definition of the DataHub Domain entity.
@@ -68,6 +69,16 @@ export class DomainEntity implements Entity<Domain> {
                 {
                     name: 'Domain Timeliness',
                     component: DomainTimelinessTab,
+                },
+                {
+                    name: 'Historical SLA Tracking',
+                    component: HistoricalSLATracking,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, domains: GetDomainQuery) => {
+                            return domains?.domain?.properties?.name === 'UAR';
+                        },
+                    },
                 },
                 {
                     name: 'Entities',
