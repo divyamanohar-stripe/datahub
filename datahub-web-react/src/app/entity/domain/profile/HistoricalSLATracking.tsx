@@ -260,10 +260,10 @@ function renderTimelinessPlot(runs: Run[], domainName, allExecDates: string[]) {
         },
         onEvent: (chart, event) => {
             if (event.type === 'plot:click') {
-                if (domainName === 'UAR') {
+                const currExecDate = event.data?.data?.executionDate;
+                if (domainName === 'UAR' && currExecDate !== undefined) {
                     // link to domain timeliness page based on domain name and execution date
                     const anchor = document.createElement('a');
-                    const currExecDate = event.data?.data?.executionDate;
                     const currMoment = moment.utc(currExecDate).format(DATE_SEARCH_PARAM_FORMAT);
                     anchor.href = `Domain Timeliness?is_lineage_mode=false&domainDate=${currMoment}`;
                     anchor.target = '_blank';
@@ -397,6 +397,7 @@ export const HistoricalSLATracking = () => {
         'urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),communia_sales.AggSalesFysOnr)',
         'urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),cost_platform.ledger.network_cost_actual_alltime_bookkeep)',
         'urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),icplus.DailyIcPlusFees)',
+        'urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),ops_reporting.OtlDailyWithTransfers)',
     ];
 
     const loading: boolean[] = [];
@@ -421,16 +422,28 @@ export const HistoricalSLATracking = () => {
     });
     loading.push(loadingJobBook);
 
-    const { loading: loadingJob1Cost, data: dataJobCost } = useGetDataJobHistoricalSlaTrackingQuery({
+    const { loading: loadingJobCost, data: dataJobCost } = useGetDataJobHistoricalSlaTrackingQuery({
         variables: { urn: urn[4] },
     });
-    loading.push(loadingJob1Cost);
+    loading.push(loadingJobCost);
+
+    const { loading: loadingJobRRE, data: dataJobRRE } = useGetDataJobHistoricalSlaTrackingQuery({
+        variables: { urn: urn[5] },
+    });
+    loading.push(loadingJobRRE);
 
     if (loading.some((b) => b)) {
         return loadingPage;
     }
 
-    const uniqueExecDates = getAllExecDates([dataJobUAR, dataJobRecon, dataJobCost, dataJobBook, dataJobGTM]);
+    const uniqueExecDates = getAllExecDates([
+        dataJobUAR,
+        dataJobRecon,
+        dataJobCost,
+        dataJobBook,
+        dataJobGTM,
+        dataJobRRE,
+    ]);
 
     return (
         <>
@@ -439,6 +452,7 @@ export const HistoricalSLATracking = () => {
             {formatDataAndRenderPlots(dataJobCost, uniqueExecDates)}
             {formatDataAndRenderPlots(dataJobBook, uniqueExecDates)}
             {formatDataAndRenderPlots(dataJobGTM, uniqueExecDates)}
+            {formatDataAndRenderPlots(dataJobRRE, uniqueExecDates)}
         </>
     );
 };
