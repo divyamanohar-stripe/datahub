@@ -166,6 +166,11 @@ export default function GroupInfoSidebar({ sideBarData, refetch }: Props) {
                             onSeeMore={() => history.push(`${url}/members`)}
                         />
                     </GroupsSection>
+                    {/* NOTE: [FORK_CHANGE] add some Stripe specific help info to the group page */}
+                    <Typography.Paragraph type="secondary">
+                        Group and ownership info is automatically ingested. To learn how to fix any owernship info that
+                        is wrong see go/data-catalog-docs
+                    </Typography.Paragraph>
                 </SideBarSubSection>
                 {canEditGroup && (
                     <EditButton>
