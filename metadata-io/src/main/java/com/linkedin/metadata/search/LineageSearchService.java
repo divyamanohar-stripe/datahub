@@ -80,6 +80,7 @@ public class LineageSearchService {
       Timer.Context getLineageTimer = MetricUtils.timer(this.getClass(), "getLineage").time();
       lineageResult = _graphService.getLineage(sourceUrn, direction, 0, MAX_RELATIONSHIPS, 1000);
       getLineageTimer.stop();
+      cache.put(Pair.of(sourceUrn, direction), lineageResult);
       log.info("Retrieved lineage info from graph store for urn: {}", sourceUrn);
     }
 
