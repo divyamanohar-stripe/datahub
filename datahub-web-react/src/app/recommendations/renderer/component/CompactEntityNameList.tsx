@@ -13,6 +13,8 @@ export const CompactEntityNameList = ({ entities, onClick }: Props) => {
     return (
         <>
             {entities.map((entity, index) => {
+                if (!entity) return <></>;
+
                 const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
                 const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
                 const displayName = entityRegistry.getDisplayName(entity.type, entity);
