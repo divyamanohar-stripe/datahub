@@ -8,14 +8,15 @@ import { ENTITY_FILTER_NAME } from '../../../../search/utils/constants';
 import useFilters from '../../../../search/utils/useFilters';
 import { SearchCfg } from '../../../../../conf';
 import analytics, { EventType } from '../../../../analytics';
-import { EmbeddedListSearch } from '../../components/styled/search/EmbeddedListSearch';
+import { EmbeddedListSearchSection } from '../../components/styled/search/EmbeddedListSearchSection';
 import generateUseSearchResultsViaRelationshipHook from './generateUseSearchResultsViaRelationshipHook';
 
 type Props = {
     urn: string;
+    direction: LineageDirection;
 };
 
-export const ImpactAnalysis = ({ urn }: Props) => {
+export const ImpactAnalysis = ({ urn, direction }: Props) => {
     const location = useLocation();
 
     const params = QueryString.parse(location.search, { arrayFormat: 'comma' });
@@ -33,7 +34,7 @@ export const ImpactAnalysis = ({ urn }: Props) => {
         variables: {
             input: {
                 urn,
-                direction: LineageDirection.Downstream,
+                direction,
                 types: entityFilters,
                 query,
                 start: (page - 1) * SearchCfg.RESULTS_PER_PAGE,
@@ -55,11 +56,13 @@ export const ImpactAnalysis = ({ urn }: Props) => {
 
     return (
         <div>
-            <EmbeddedListSearch
+            <EmbeddedListSearchSection
                 useGetSearchResults={generateUseSearchResultsViaRelationshipHook({
                     urn,
-                    direction: LineageDirection.Downstream,
+                    direction,
                 })}
+                defaultShowFilters
+                defaultFilters={[{ field: 'degree', value: '1' }]}
             />
         </div>
     );

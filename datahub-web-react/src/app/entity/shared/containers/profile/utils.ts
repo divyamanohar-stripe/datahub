@@ -5,6 +5,7 @@ import useIsLineageMode from '../../../../lineage/utils/useIsLineageMode';
 import { useEntityRegistry } from '../../../../useEntityRegistry';
 import EntityRegistry from '../../../EntityRegistry';
 import { EntityTab, GenericEntityProperties } from '../../types';
+import { useIsSeparateSiblingsMode, SEPARATE_SIBLINGS_URL_PARAM } from '../../siblingUtils';
 
 export function getDataForEntityType<T>({
     data: entityData,
@@ -76,4 +77,14 @@ export function useRoutedTab(tabs: EntityTab[]): EntityTab | undefined {
 export function formatDateString(time: number) {
     const date = new Date(time);
     return date.toLocaleDateString('en-US');
+}
+
+export function useEntityQueryParams() {
+    const isHideSiblingMode = useIsSeparateSiblingsMode();
+    const response = {};
+    if (isHideSiblingMode) {
+        response[SEPARATE_SIBLINGS_URL_PARAM] = true;
+    }
+
+    return response;
 }

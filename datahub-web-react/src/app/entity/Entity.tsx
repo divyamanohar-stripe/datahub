@@ -41,6 +41,40 @@ export enum IconStyleType {
 }
 
 /**
+ * A standard set of Entity Capabilities that span across entity types.
+ */
+export enum EntityCapabilityType {
+    /**
+     * Ownership of an entity
+     */
+    OWNERS,
+    /**
+     * Adding a glossary term to the entity
+     */
+    GLOSSARY_TERMS,
+    /**
+     * Adding a tag to an entity
+     */
+    TAGS,
+    /**
+     * Assigning the entity to a domain
+     */
+    DOMAINS,
+    /**
+     * Deprecating an entity
+     */
+    DEPRECATION,
+    /**
+     * Soft deleting an entity
+     */
+    SOFT_DELETE,
+    /**
+     * Assigning a role to an entity. Currently only supported for users.
+     */
+    ROLES,
+}
+
+/**
  * Base interface used for authoring DataHub Entities on the client side.
  *
  * <T> the generated GraphQL data type associated with the entity.

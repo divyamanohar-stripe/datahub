@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Button } from 'antd';
 import { useHistory } from 'react-router';
-import { BarsOutlined, PartitionOutlined } from '@ant-design/icons';
-import { VscGraphLeft } from 'react-icons/vsc';
+import { ArrowDownOutlined, ArrowUpOutlined, PartitionOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 
 import { useEntityData, useLineageData } from '../../EntityContext';
@@ -11,20 +10,34 @@ import { getEntityPath } from '../../containers/profile/utils';
 import { useEntityRegistry } from '../../../../useEntityRegistry';
 import { LineageTable } from './LineageTable';
 import { ImpactAnalysis } from './ImpactAnalysis';
-import { useAppConfig } from '../../../../useAppConfig';
+import { LineageDirection } from '../../../../../types.generated';
 
-const ImpactAnalysisIcon = styled(VscGraphLeft)`
-    transform: scaleX(-1);
-    font-size: 18px;
+const StyledTabToolbar = styled(TabToolbar)`
+    justify-content: space-between;
 `;
 
-export const LineageTab = () => {
+const StyledButton = styled(Button)<{ isSelected: boolean }>`
+    ${(props) =>
+        props.isSelected &&
+        `
+        color: #1890ff;
+        &:focus {
+            color: #1890ff;
+        }
+    `}
+`;
+
+export const LineageTab = ({
+    properties = { defaultDirection: LineageDirection.Downstream },
+}: {
+    properties?: { defaultDirection: LineageDirection };
+}) => {
     const { urn, entityType } = useEntityData();
     const history = useHistory();
     const entityRegistry = useEntityRegistry();
+    const [lineageDirection, setLineageDirection] = useState<string>(properties.defaultDirection);
+
     const lineage = useLineageData();
-    const [showImpactAnalysis, setShowImpactAnalysis] = useState(false);
-    const appConfig = useAppConfig();
 
     const routeToLineage = useCallback(() => {
         history.push(getEntityPath(entityType, urn, entityRegistry, true));
@@ -34,38 +47,33 @@ export const LineageTab = () => {
     const downstreamEntities = lineage?.downstreamChildren?.map((result) => result.entity);
     return (
         <>
-            <TabToolbar>
+            <StyledTabToolbar>
                 <div>
-                    <Button type="text" onClick={routeToLineage}>
-                        <PartitionOutlined />
-                        Visualize Lineage
-                    </Button>
-                    {appConfig.config.lineageConfig.supportsImpactAnalysis &&
-                        (showImpactAnalysis ? (
-                            <Button type="text" onClick={() => setShowImpactAnalysis(false)}>
-                                <span className="anticon">
-                                    <BarsOutlined />
-                                </span>
-                                Direct Dependencies
-                            </Button>
-                        ) : (
-                            <Button type="text" onClick={() => setShowImpactAnalysis(true)}>
-                                <span className="anticon">
-                                    <ImpactAnalysisIcon />
-                                </span>
-                                Impact Analysis
-                            </Button>
-                        ))}
+                    <StyledButton
+                        type="text"
+                        isSelected={lineageDirection === LineageDirection.Downstream}
+                        onClick={() => setLineageDirection(LineageDirection.Downstream)}
+                    >
+                        <ArrowDownOutlined /> Downstream
+                    </StyledButton>
+                    <StyledButton
+                        type="text"
+                        isSelected={lineageDirection === LineageDirection.Upstream}
+                        onClick={() => setLineageDirection(LineageDirection.Upstream)}
+                    >
+                        <ArrowUpOutlined /> Upstream
+                    </StyledButton>
                 </div>
-            </TabToolbar>
-            {showImpactAnalysis ? (
-                <ImpactAnalysis urn={urn} />
-            ) : (
-                <>
-                    <LineageTable data={upstreamEntities} title={`${upstreamEntities?.length || 0} Upstream`} />
-                    <LineageTable data={downstreamEntities} title={`${downstreamEntities?.length || 0} Downstream`} />
-                </>
-            )}
+                <Button type="text" onClick={routeToLineage}>
+                    <PartitionOutlined />
+                    Visualize Lineage
+                </Button>
+            </StyledTabToolbar>
+            <ImpactAnalysis urn={urn} direction={lineageDirection as LineageDirection} />
+            <>
+                <LineageTable data={upstreamEntities} title={`${upstreamEntities?.length || 0} Upstream`} />
+                <LineageTable data={downstreamEntities} title={`${downstreamEntities?.length || 0} Downstream`} />
+            </>
         </>
     );
 };
