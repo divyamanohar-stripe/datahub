@@ -76,6 +76,14 @@ A200_HOST_SETS = struct(
                 }),
         hostset("capital",
                 suffix="low-cpu",
+                prod={
+                    "northwest":    cluster(consume_replicas=4,
+                                            fanout_replicas=2),
+                },
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 default=            cluster(mb_per_worker=2500),
                 ),
         hostset("cards-authz",
@@ -92,10 +100,10 @@ A200_HOST_SETS = struct(
                     "cmh":          cluster(consume_replicas=6,
                                             fanout_replicas=3,
                                             mb_per_worker=3200),
-                    "northwest":    cluster(consume_replicas=63,
-                                            fanout_replicas=6,
-                                            mb_per_worker=4800),
-                    "bom":          cluster(consume_replicas=18),
+                    "northwest":    cluster(consume_replicas=42,
+                                            fanout_replicas=4,
+                                            mb_per_worker=3200),
+                    "bom":          cluster(consume_replicas=12),
                 }),
         hostset("connect",
                 suffix="low-cpu",
@@ -123,6 +131,10 @@ A200_HOST_SETS = struct(
         hostset("frontline_experience",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2500),
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(consume_replicas=3),
                 }),
@@ -148,7 +160,7 @@ A200_HOST_SETS = struct(
                 default=            cluster(mb_per_worker=2400),
                 qa=                 cluster(mb_per_worker=2800),
                 prod={
-                    "northwest":    cluster(consume_replicas=40,
+                    "northwest":    cluster(consume_replicas=26,
                                             fanout_replicas=7),
                     "bom":          cluster(consume_replicas=11),
                 }),
@@ -216,6 +228,19 @@ A200_HOST_SETS = struct(
                     "bom":          cluster(mb_per_worker=3000,
                                             consume_replicas=20),
                 }),
+        hostset("search-desc-connect",
+                suffix="low-cpu",
+                prod={
+                    "northwest":    cluster(mb_per_worker=3600,
+                                            consume_replicas=12,
+                                            fanout_replicas=3),
+                    "bom":          cluster(mb_per_worker=3600,
+                                            consume_replicas=2),
+                },
+                qa={
+                    "northwest":    cluster(mb_per_worker=3600),
+                    "bom":          cluster(mb_per_worker=3600),
+                }),
         hostset("usersec",
                 suffix="low-cpu",
                 qa=all_regions_empty_worker_cluster(),
@@ -225,6 +250,10 @@ A200_HOST_SETS = struct(
                 default=            cluster(mb_per_worker=2800),
                 qa={
                     "northwest":    cluster(consume_replicas=6),
+                },
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
                 },
                 prod={
                     "northwest":    cluster(consume_replicas=9,
@@ -264,15 +293,9 @@ A400_HOST_SETS = struct(
                     "northwest":    cluster(consume_replicas=10,
                                             fanout_replicas=5),
                 },
-                preprod={
-                    "northwest":    empty_worker_cluster(),
-                    "bom":          empty_worker_cluster(),
-                    "cmh":          cluster(consume_replicas=4,
-                                            instance_type=r5_8xlarge),
-                },
                 prod={
                     "cmh":          empty_worker_cluster(),
-                    "northwest":    cluster(consume_replicas=150,
+                    "northwest":    cluster(consume_replicas=170,
                                             fanout_replicas=0,
                                             instance_type=m5_16xlarge),
                     "bom":          empty_worker_cluster(),
@@ -281,11 +304,17 @@ A400_HOST_SETS = struct(
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=4000),
                 qa=all_regions_empty_worker_cluster(),
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                    "cmh":          cluster(instance_type=r5_8xlarge),
+                },
                 prod={
                     # we use larger instances (256GB mem) in BOM and northwest, but 32GB in CMH
                     # we share about 4GB memory via memory sharing and it is less effective on smaller instances
                     "cmh":          cluster(mb_per_worker=6000,
-                                            consume_replicas=21),
+                                            consume_replicas=21,
+                                            fanout_replicas=12),
                     "bom":          cluster(consume_replicas=8,
                                             instance_type=r5_8xlarge),
                     # general workers need a little bit more cpu, so we're increasing the

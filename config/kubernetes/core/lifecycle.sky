@@ -5,7 +5,7 @@ Plugins for controlling the lifecycle of pods.
 load("config/kubernetes/core/volume.sky", "volume_mount_all_containers", "volume_mount", "mount_host_volume")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin", "all_container_plugin")
-load("config/kubernetes/helpers/constants.sky", "CONFIG_SRV_SIDECAR_NAME", "CONSUL_SIDECAR_CONTAINER_NAME", "ENVOY_SIDECAR_NAME", "ENVOY_CONFIG_SRV_SIDECAR_NAME", "ENVOY_MONITOR_SIDECAR_NAME", "ENVOY_RATELIMIT_SRV_SIDECAR_NAME", "METRICS_SIDECAR_CONTAINER_NAME", "NSQD_SIDECAR_CONTAINER_NAME")
+load("config/kubernetes/helpers/constants.sky", "CONFIG_SRV_SIDECAR_NAME", "CONSUL_SIDECAR_CONTAINER_NAME", "ENVOY_SIDECAR_NAME", "ENVOY_CONFIG_SRV_SIDECAR_NAME", "ENVOY_RATELIMIT_SRV_SIDECAR_NAME", "METRICS_SIDECAR_CONTAINER_NAME", "NSQD_SIDECAR_CONTAINER_NAME")
 
 _core = proto.package("k8s.io.api.core.v1")
 
@@ -107,7 +107,6 @@ BLESSED_INFRA_SIDECAR_COMMANDS = [
     '/bin/envoy-sidecar',
     '/bin/envoy-stripe.stripped',
     '/bin/envoy-config-srv',
-    '/bin/envoy-monitor',
     '/bin/envoy-ratelimit-srv',
     '/nsqd',
     '/pay/deploy/gocode/current/config-srv-sidecar/config-srv-sidecar',
@@ -119,7 +118,6 @@ BLESSED_INFRA_SIDECAR_CONTAINER_NAMES = [
     ENVOY_SIDECAR_NAME,
     # envoy-config-srv sets its own prestop up
     # ENVOY_CONFIG_SRV_SIDECAR_NAME,
-    ENVOY_MONITOR_SIDECAR_NAME,
     ENVOY_RATELIMIT_SRV_SIDECAR_NAME,
     METRICS_SIDECAR_CONTAINER_NAME,
     NSQD_SIDECAR_CONTAINER_NAME,

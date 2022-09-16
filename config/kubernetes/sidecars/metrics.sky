@@ -108,9 +108,10 @@ _SENTRY_DSNS = {
 }
 
 PROBER_WORKSPACE_URL = {
-    "prod": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-69168fe9-225c-4564-8662-c9ed56fe0b78",
+    "prod": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-06e39406-d45f-4873-a9aa-8ec36fe81faf",
+    # TODO: use PINA workspace ID when preprod-pina exists:
     "preprod": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-69168fe9-225c-4564-8662-c9ed56fe0b78",
-    "qa": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-7ae97410-e2dd-445f-9d7a-9eaad94bf1bf",
+    "qa": "http://prom-proxy-srv.northwest.service.envoy:10080/workspaces/ws-1ea490cb-1574-420c-bd87-8c6a516e8778",
 }
 
 def metrics(

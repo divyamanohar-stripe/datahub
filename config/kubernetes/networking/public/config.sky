@@ -11,6 +11,7 @@ for the `networking` plugin.
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "deployment_plugin", "statefulset_plugin")
 load("config/kubernetes/networking/internal/config/envoy-config-srv-config.sky", "local_rate_limit")
+load("config/kubernetes/networking/internal/config/envoy-config-srv-config.sky", "mproxy_local_rate_limit")
 load(
     "config/kubernetes/networking/internal/config/override.sky",
     "NOT_PROVIDED",
@@ -120,6 +121,7 @@ def networking_config(
         enable_inbound_websockets = NOT_PROVIDED,
         enable_global_ratelimit = NOT_PROVIDED,
         inbound_ratelimit = NOT_PROVIDED,
+        outbound_mproxy_ratelimit = NOT_PROVIDED,
         enable_grpc_web = NOT_PROVIDED,
         envoy_concurrency = NOT_PROVIDED,
         envoy_scrape_histogram_metrics = NOT_PROVIDED,
@@ -148,6 +150,9 @@ def networking_config(
         inbound_ratelimit: Configuration struct controlling the inbound (local)
             rate limiter for requests to your service. Disabled by default; see `inbound_ratelimit`
             for all default values.
+        outbound_mproxy_ratelimit: Configuration struct controlling the rate limiter for requests that
+            go through the mproxy listener. Disabled by default. See the `outbound_mproxy_ratelimit`
+            function below for all default values.
         enable_grpc_web: Configure whether or not to inject the gRPC-web filter into the
             inbound filter chain.
         envoy_concurrency: Integer; sets the concurrency (number of workers) of the envoy sidecar container.
@@ -174,6 +179,7 @@ def networking_config(
             enable = enable_global_ratelimit,
         ),
         inbound_ratelimit = inbound_ratelimit,
+        outbound_mproxy_ratelimit = outbound_mproxy_ratelimit,
         # TODO(xyu): do for envoy bootstrap config
         # enable_tracing = network_config_updater(
         #     enable = enable_tracing,
@@ -296,6 +302,42 @@ def _set_local_ratelimit(args):
                 tokens_per_interval = args.tokens_per_interval,
                 fill_interval_duration = args.fill_interval_duration,
                 unavailable_status_code = args.unavailable_status_code
+            )
+        ),
+    }
+
+def outbound_mproxy_ratelimit(
+        *,
+        enable = False,
+        max_capacity = 50,
+        fill_interval_duration = "100ms",
+        tokens_per_interval = 100):
+    """
+    Construct mproxy listener local rate limiter configuration.
+
+    By default, this rate limiter is disabled.
+    See envoy docs: https://www.envoyproxy.io/docs/envoy/v1.20.7/configuration/listeners/network_filters/local_rate_limit_filter
+    Args:
+        enable: Should the inbound rate-limit be turned on (default: False).
+        max_capacity: Token bucket max capacity (default: 1000).
+        fill_interval_duration: What is the unit of time by which we add tokens to bucket (default = 100ms).
+        tokens_per_interval: How many tokens are added for each fill_interval_duration (default = 100).
+    """
+    return network_config_updater(
+        _update_envoy_config_srv_config = _set_outbound_mproxy_ratelimit,
+        enable = enable,
+        max_capacity = max_capacity,
+        fill_interval_duration = fill_interval_duration,
+        tokens_per_interval = tokens_per_interval,
+    )
+
+def _set_outbound_mproxy_ratelimit(args):
+    return {
+        "mproxy_local_rate_limit": (
+            None if args.enable == False else mproxy_local_rate_limit(
+                max_capacity = args.max_capacity,
+                tokens_per_interval = args.tokens_per_interval,
+                fill_interval_duration = args.fill_interval_duration
             )
         ),
     }

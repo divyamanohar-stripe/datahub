@@ -25,7 +25,7 @@ ROLLING_UPDATE_STRATEGIES = {
     "worker_config_high_replica": {"max_unavailable_percent": 25, "max_surge_percent": 50},
     "qa": {"max_unavailable_percent": 75, "max_surge_percent": 0},
     "default_low_replica": {"max_unavailable_percent": 50, "max_surge_percent": 25},
-    "default_high_replica": {"max_unavailable_percent": 25, "max_surge_percent": 25},
+    "default_high_replica": {"max_unavailable_percent": 10, "max_surge_percent": 50},
     # For services that need higher availability
     "ha_low_replica": {"max_unavailable_percent": 0, "max_surge_percent": 100},
     "ha_high_replica": {"max_unavailable_percent": 13, "max_surge_percent": 25}

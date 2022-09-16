@@ -15,7 +15,7 @@ SIDECAR_NAME = "go-profiler-sidecar"
 _core = proto.package("k8s.io.api.core.v1")
 
 
-def go_profiler_sidecar(srv_addr = "127.0.0.1", http_port = "7778", prof_duration = 30, prof_interval = 600):
+def go_profiler_sidecar(srv_addr = "127.0.0.1", http_port = "6060", prof_duration = 30, prof_interval = 600):
     """
     Sidecar process to merge and offload Go profile dumps from disk to S3.
 
@@ -50,6 +50,7 @@ def go_profiler_sidecar(srv_addr = "127.0.0.1", http_port = "7778", prof_duratio
 
     standard_plugins = compose_plugins(
         use_credentials_proxy(),
+        mount_host_volume(path = "/pay/cache", container_name = SIDECAR_NAME, volume_args = {"type": "Directory"}),
     )
 
     return compose_plugins(
@@ -88,10 +89,12 @@ def _go_profiler_sidecar_container(ctx, container_def, pod):
             render_volume_mount(ctx, volume_mount("/usr/stripe/bin/kube-iam-credentials", read_only = True)),
             render_volume_mount(ctx, volume_mount("/pay/aws-config/kube_iam_aws_credentials.ini", read_only = True)),
             render_volume_mount(ctx, volume_mount("/etc/ssl/certs/stripe-cas", read_only = True)),
+            render_volume_mount(ctx, volume_mount("/pay/cache")),
         ]
     else:
         volume_mounts = [
             render_volume_mount(ctx, mount_credentials_proxy()),
+            render_volume_mount(ctx, volume_mount("/pay/cache")),
         ]
         # TODO: AWS credentials config for dedicated MSP
 

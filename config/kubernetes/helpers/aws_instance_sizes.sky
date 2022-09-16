@@ -61,6 +61,7 @@ def aws_instance_size(instance_type):
     base_instance_family_memory_reduction_basis_points = {
         "c5": 750,
         "c6i": 750, # Assuming same values as c5
+        "c6a": 750, # Assuming same values as c5
         "m5": 700,
         "m6i": 700, # Assuming same values as m5
         "r5": 525,
@@ -2014,6 +2015,16 @@ m6i_12xlarge = struct(
     slack_cpu_millicores=1000,
 )
 
+c6a_12xlarge = struct(
+    name="c6a.12xlarge",
+    slack_cpu_millicores=1000,
+)
+
+m6a_12xlarge = struct(
+    name="m6a.12xlarge",
+    slack_cpu_millicores=1000,
+)
+
 _INSTANCE_TYPES_BY_NAME = {
     c5_xlarge.name: c5_xlarge,
     c5_2xlarge.name: c5_2xlarge,
@@ -2066,6 +2077,8 @@ _INSTANCE_TYPES_BY_NAME = {
     i3_2xlarge.name: i3_2xlarge,
     c6i_12xlarge.name: c6i_12xlarge,
     m6i_12xlarge.name: m6i_12xlarge,
+    c6a_12xlarge.name: c6a_12xlarge,
+    m6a_12xlarge.name: m6a_12xlarge,
 }
 
 def get_instance_type_by_name(name):

@@ -1,7 +1,8 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/core/container.sky", "container")
+load("config/kubernetes/core/container.sky", "container", "container_port")
 load("config/kubernetes/core/probe.sky", "http_probe", "probes")
 load("config/kubernetes/core/volume.sky", "mount_host_volume")
+load("config/kubernetes/core/pod.sky", "pod_share_pid_namespace")
 load(
     "config/kubernetes/helpers/context.sky",
     "get_env",
@@ -10,10 +11,11 @@ load(
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load(
     "config/kubernetes/networking/internal/helpers.sky",
+    "mount_splunk_forwarded_basedir",
     "host_mount_stripe_cas",
     "pod_mount",
 )
-load("config/kubernetes/networking/internal/envoy-monitor.sky", "ENVOY_MONITOR_PORT")
+load("config/kubernetes/networking/internal/common.sky", "POD_NETWORKING_BASEDIR")
 load(
     "config/kubernetes/networking/internal/config/envoy-config-srv-config.sky",
     "CDS_PORT",
@@ -30,15 +32,22 @@ load(
     "generate_sidecar_config",
 )
 load(
+    "config/kubernetes/networking/internal/config/envoy-monitor-config.sky",
+    "generate_monitor_cli_args",
+)
+load(
     "config/kubernetes/helpers/security.sky",
     "mount_credentials_proxy",
     "use_credentials_proxy",
 )
+ENVOY_MONITOR_PORT = 18300
+_veneur_sock_dir = "/veneur-sockets"
 
-def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_target, user_overrides):
+def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_target, user_overrides, should_use_combined_container):
     apply_user_config_ratchets(config_target, user_overrides)
     name = "envoy-config-srv"
     return compose_plugins(
+        pod_share_pid_namespace(True),
         envoy_config_srv_container(
             ctx,
             name,
@@ -46,6 +55,7 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
             local_consul_services,
             config_target,
             user_overrides,
+            should_use_combined_container,
         ),
         host_mount_stripe_cas(name),
         # Need this for:
@@ -70,12 +80,23 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
                 "reason": "envoy-config-srv sidecar must persist debug info",
             },
         ),
+        mount_host_volume(
+            "/etc/serviceregistry/services",
+            container_name = name,
+            mount_args = {"read_only": True},
+            volume_args = {
+                "type": "DirectoryOrCreate",
+                "reason": "envoy-config-srv sidecar needs access to this directory to register dynamic services with discovery v2",
+            },
+        ),
+        mount_splunk_forwarded_basedir(container_name = name),
         # When `use_envoy_admin_healthcheck: true`, envoy-config-srv writes the
         # system flags here, to be consumed exactly-once by the next boot of envoy
         pod_mount(name, ENVOY_RUNTIME_DIR),
         # envoy-config-srv writes a drain file here when it is signalled to be drained
         # in order to preserve the drain signal across restarts
         pod_mount(name, ENVOY_CONFIG_SRV_RUNTIME_DIR),
+        pod_mount(name, _veneur_sock_dir),
         # envoy-config-srv obtains service credentials from creds-proxy in order
         # to mTLS connect to envoy-control-srv
         use_credentials_proxy(),
@@ -85,11 +106,13 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
         # - consul-proxy
     )
 
-def envoy_config_srv_container(ctx, self, namespace, local_consul_services, config_target, user_overrides):
+def envoy_config_srv_container(ctx, self, namespace, local_consul_services, config_target, user_overrides, should_use_combined_container):
     args = generate_sidecar_cli_args(config_target, user_overrides)
+    monitor_args = generate_monitor_cli_args(user_overrides)
     egress_tier = args["egress_proxy_tier"]
     if egress_tier != "" and egress_tier != "p0":
         fail("Unrecognized egress proxy tier: %s" % egress_tier)
+    upstream_stats_sock = "%s/statsd.sock" % _veneur_sock_dir
 
     command = [
         "/bin/envoy-config-srv",
@@ -153,6 +176,18 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         "--remove-query-params-from-access-logs",
     ]
 
+    if should_use_combined_container:
+        command.append("--envoy-monitor-use-raw-config-json=" + json.marshal(envoy_monitor_config()))
+        command.append("--envoy-monitor-proxy-upstream-addr=unixgram://%s" % upstream_stats_sock)
+        command.append("--envoy-monitor-proxy-listen-addr=udp://localhost:%s" % ENVOY_MONITOR_PORT)
+        command.append("--envoy-monitor-log-gauge")
+        command.append("--envoy-monitor-gauge-log-destination=%s/envoy-config-srv/envoy-gauge-metrics.log" % POD_NETWORKING_BASEDIR)
+        command.append("--envoy-monitor-process-names=envoy-stripe.stripped")
+        command.append("--envoy-monitor-process-names=envoy-config-srv")
+        command.append("--envoy-monitor-process-names=envoy-monitor")
+        if monitor_args["envoy_scrape_histogram_metrics"]:
+            command.append("--envoy-monitor-scrape-histogram-metrics")
+
     if args["enable_inbound_websockets"]:
         command.append("--enable-websockets")
 
@@ -164,19 +199,28 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         allowed_machine_orgs.append("--allowed-machine-orgs=%s" % allowed_machine_org)
     command.extend(allowed_machine_orgs)
 
+    plugins = [
+        probes(
+            readiness = http_probe(
+                port = DEBUG_PORT,
+                path = "/msp-infra-ready",
+            ),
+        ),
+    ]
+
+    if should_use_combined_container:
+        plugins.append(container_port(
+            ENVOY_MONITOR_PORT,
+            container_name = self,
+            port_name = "envoy-monitor",
+        ))
+
     return container(
         name = self,
         image = _envoy_config_srv_image(ctx, config_target, user_overrides),
         command = command,
         sidecar_service = self,
-        plugins = [
-            probes(
-                readiness = http_probe(
-                    port = DEBUG_PORT,
-                    path = "/msp-infra-ready",
-                ),
-            ),
-        ],
+        plugins = plugins
     )
 
 def _envoy_config_srv_image(ctx, config_target, user_overrides):
@@ -256,3 +300,92 @@ def _envoy_config_srv_config(ctx, local_consul_services, config_target, user_ove
     })
 
     return {"sidecar": cfg}
+
+def _envoy_monitor_sustained_metrics(fmt, source_metrics):
+    return [fmt % (metric, metric) for metric in source_metrics]
+
+def _envoy_monitor_globalized_metrics(source_metrics):
+    return {prefix: "global" for prefix in source_metrics}
+
+def envoy_monitor_config():
+    return {
+        # NB(xyu): daemontools.service.starts sustained metrics are no longer a
+        # thing in MSP
+        "sustained_metrics": _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:10m|inc:%s.10x1m",
+            [
+                "envoy.http.rds.update_rejected",
+                "envoy.http.rds.update_failure",
+                "envoy.listener_manager.lds.update_failure",
+                "envoy.listener_manager.lds.update_rejected",
+                "envoy.cluster_manager.cds.update_rejected",
+                "envoy.cluster_manager.cds.update_failure",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.5x1m",
+            [
+                "envoy.http.rds.update_rejected",
+                "envoy.listener_manager.lds.update_rejected",
+                "envoy.cluster_manager.cds.update_rejected",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.over10gb.5x1m|>=10000000000",
+            [
+                "envoy.server.memory_heap_size",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:5m|inc:%s.over5gb.5x1m|>=5000000000",
+            [
+                "envoy.server.memory_heap_size",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:15s,over:1m|inc:%s.4x15s|!=0",
+            [
+                # Convert healthy/unhealthy gauges into steady-state counters
+                # metrics are emitted on a 10s interval
+                "envoy_config_srv.envoy.state.healthy",
+                "envoy_config_srv.envoy.state.unhealthy",
+                "envoy_config_srv.envoy.state.magic_healthcheck.healthy",
+                "envoy_config_srv.envoy.state.magic_healthcheck.unhealthy",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge25.15x1m|>=25",
+            [
+                "envoy_config_srv.snapshot_update.local.last_oldest.max",
+                "envoy_config_srv.snapshot_update.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge60.15x1m|>=60",
+            [
+                "envoy_config_srv.snapshot_update.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:1m,over:15m|inc:%s.ge120.15x1m|>=120",
+            [
+                "envoy_config_srv.snapshot_update.last_oldest.max",
+            ],
+        ) + _envoy_monitor_sustained_metrics(
+            "%s=each:15s,over:1m|inc:%s.ge75.4x15s|>=75",
+            [
+                "envoy_monitor.process.fd_usage",
+            ],
+        ),
+
+        # NB(xyu): globalizing metrics in the MSP pod context is a NOP.
+        # We will only globalize *gauge metrics* since we forward those
+        # to splunk.
+        # - pod veneur attaches [namespace, service-name] to metrics it receives
+        # - pod veneur does not attach the _host_ tag
+        # - pod veneur metrics are not tagged with host_type or host_set
+        "globalized_metrics": _envoy_monitor_globalized_metrics(
+            [
+                # -- globalized gauge metrics --
+                "envoy.cluster.health_check.degraded",
+                "envoy.cluster.lb_subsets_active",
+                "envoy.cluster.membership_degraded",
+                "envoy.cluster.membership_excluded",
+                "envoy.cluster.membership_healthy",
+                "envoy.cluster.membership_total",
+            ],
+        ),
+    }

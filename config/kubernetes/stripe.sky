@@ -13,6 +13,7 @@ load("config/kubernetes/core/volume.sky", "mount_host_volume", "mount_pod_volume
 load("config/kubernetes/helpers/availability_tiers.sky", "A400")
 load("config/kubernetes/core/lifecycle.sky", "prestop_all_containers", "exec_action")
 load("config/kubernetes/helpers/aws_instance_sizes.sky", "aws_instance_size")
+load("config/kubernetes/helpers/context.sky", "get_env")
 load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 load("config/kubernetes/helpers/msp_shard.sky", "autoset_shard_shared_msp")
 load("config/kubernetes/helpers/node_selectors.sky", "node_selectors", host_type_plugin="host_type", "SHARED_MSP_HOST_TYPE")
@@ -23,6 +24,7 @@ load("config/kubernetes/meta/metadata.sky", "annotations", "labels", "metadata")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/confidant.sky", "secret_options")
 load("config/kubernetes/sidecars/feature_flags.sky", "use_feature_flags")
+load("config/kubernetes/sidecars/sansshell.sky", "sansshell_sidecar")
 
 def stripe_pod(
         name,
@@ -141,6 +143,10 @@ def stripe_pod(
                 node_selectors(dedicated_msp_atier)
             ),
         ),
+        # go/sod:sansshell; only limited to QA for now
+        conditional_plugin(
+            condition=lambda ctx, _: get_env(ctx) == "qa",
+            plugin=sansshell_sidecar()),
     ]
     if use_shared_msp_service_account:
         plugins.append(shared_msp_service_account_plugin())

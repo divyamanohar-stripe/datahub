@@ -45,17 +45,17 @@ def _default_sidecar_version(target):
     """
     # Prod sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MD39NkrvMahLyP
-    # Git Commit: 3b70375e40528029e7ae04cea26e2c35aaab28cb
-    # Summary   : 08/08/2022: Remove unused zookeeper listeners (queuekeeper & menagerie) (#2947)
-    prod_digest   = "37f79ed4fa9e3caac5d79d971d6e88becc034f1482bd11ddcae5ce012473c485"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MJMnQLGz30uqg9
+    # Git Commit: 9b32ec67d08b6bccc24fac2e21ad74150595d04c
+    # Summary   : 08/25/2022: envoy-config-srv: enable streamed initial snapshot in prod (#3049)
+    prod_digest   = "a07e596d46a132413eefdca6e645edf2e04cc0c6aa940220688e3933401647ca"
 
     # QA sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MD39NkrvMahLyP
-    # Git Commit: 3b70375e40528029e7ae04cea26e2c35aaab28cb
-    # Summary   : 08/08/2022: Remove unused zookeeper listeners (queuekeeper & menagerie) (#2947)
-    qa_digest   = "37f79ed4fa9e3caac5d79d971d6e88becc034f1482bd11ddcae5ce012473c485"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MJMnQLGz30uqg9
+    # Git Commit: 9b32ec67d08b6bccc24fac2e21ad74150595d04c
+    # Summary   : 08/25/2022: envoy-config-srv: enable streamed initial snapshot in prod (#3049)
+    qa_digest   = "a07e596d46a132413eefdca6e645edf2e04cc0c6aa940220688e3933401647ca"
 
     return {
         "version": match(
@@ -115,11 +115,6 @@ def _default_sidecar_config(target):
             ),
             "cluster_healthcheck_opts": cluster_healthcheck_opts(initial_jitter = "3s", interval_jitter = "0.5s", enable_server_side_hc = True, use_sn_internal_hc = True, enable_http2_hc = False),
             "uds_rds_service_allowlist": ["*"],
-            "eds_listener_address": match(
-                target,
-                "",
-                when(role = "envoycontrol", env = "qa", value = "0.0.0.0:8086"),
-            ),
             # TODO(xyu): This should be set by the user in `networking_config`
             # TODO(xyu): Enabling tracing touches both envoy-config-srv and the
             # envoy bootstrap config. Implement this when we modify the
@@ -175,14 +170,35 @@ def _default_sidecar_config(target):
             ),
             "remove_consul_health_source": True,
             "enable_tls_v1_3": True,
-            "access_log_filter": access_log_filter(
-                enabled = True,
-                success_sample_percent = 10,
-                error_sample_percent = 100,
-            ),
+            "access_log_filter": access_log_sampling_native_filter(True),
             "enable_grpc_stats": True,
+            "mproxy_local_rate_limit": None,
+            "control_locality_aware_routing": control_locality_aware_routing(False, True),
+            "enable_streamed_initial_snapshot": True,
         },
+        # Use the match block below to conditionally set configuration options in QA/Prod:
+        match(
+            target,
+            {},
+            when(env = "qa", value = {
+                # Config parameters that must only be set in QA:
+            })
+        ),
     )
+
+def access_log_sampling_native_filter(use_native):
+    return {
+        "enabled": True,
+        "success_sample_percent": 10,
+        "error_sample_percent": 100,
+        "use_native": use_native,
+    }
+
+def control_locality_aware_routing(disable_locality, enable_capacity):
+    return {
+        "disable_locality_aware_routing": disable_locality,
+        "enable_capacity_aware_routing": enable_capacity,
+    }
 
 def http2_options(
         max_concurrent_streams,
@@ -227,6 +243,24 @@ def local_rate_limit(
     }
     if unavailable_status_code:
         conf.update({"status_unavailable": True})
+
+    return conf
+
+# Used by config/kubernetes/networking/public/config.sky
+def mproxy_local_rate_limit(
+        max_capacity,
+        tokens_per_interval,
+        fill_interval_duration):
+    if (type(max_capacity) != "int" or
+        type(tokens_per_interval) != "int" or
+        type(fill_interval_duration) != "string"):
+        fail("Unexpected argument type. See definition in https://git.corp.stripe.com/stripe-internal/kube-tools/blob/master/envoy-config-srv/proto/config/config.proto")
+
+    conf = {
+        "max_capacity": max_capacity,
+        "tokens_per_interval": tokens_per_interval,
+        "fill_interval_duration": fill_interval_duration,
+    }
 
     return conf
 

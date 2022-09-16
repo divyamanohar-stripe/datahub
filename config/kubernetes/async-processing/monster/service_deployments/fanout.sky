@@ -9,11 +9,11 @@ load("config/kubernetes/helpers/context.sky", "get_cluster")
 load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/helpers/security.sky", "add_security_groups")
+load("config/kubernetes/networking/public/config.sky", "networking_config")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
 load("config/kubernetes/sidecars/config_srv.sky", "config_srv_sidecar")
 load("config/kubernetes/sidecars/consul.sky", "consul_service")
 load("config/kubernetes/stripe.sky", "stripe_pod")
-load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 
 def is_fanout_retry(config):
     return config.monster_service == "fanout-retry"
@@ -102,10 +102,7 @@ def generate_total_timeout(config):
     # The only reason to keep this timeout finite is as a hedge against hanging
     # indefinitely in some unexpected pathological scenario; we know we'll at least
     # see crashes in logs.
-    if is_fanout_retry(config):
-        return ["--total-timeout", str(120)] # in seconds
-    else:
-        return ["--total-timeout", str(600)] # in seconds
+    return ["--total-timeout", str(600)] # in seconds
 
 
 def generate_batch(config):
@@ -303,9 +300,9 @@ def monster_fanout_deployment(ctx, config):
             "kafkahttpconsumer",
             "monsterfanout",
         ),
-        prefer_msp_shard("kubeapibb"),
         auto_secrets(),
         config_srv_sidecar(),
+        networking_config(mproxy_tier = "monster"),
         # We limit how many previous revisions of ReplicaSet's we keep around to limit
         # the amount of metadata the k8s control plane has to serve up for Monster
         # See: https://jira.corp.stripe.com/browse/RUN_ORCH-11446, http://go/ir/gray-fuse, http://go/ir/whim-tangent

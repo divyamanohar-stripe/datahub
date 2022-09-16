@@ -29,7 +29,6 @@ def sansshell_sidecar():
         "hostport": ":{}".format(port),
         "credential-source": "service-credentials"
     }
-    print(flags)
 
     return compose_plugins(
         mount_host_stripe_ca_certs(container_name = SIDECAR_NAME),

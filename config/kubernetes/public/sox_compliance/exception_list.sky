@@ -361,6 +361,10 @@ _CRONS = [
         "namespace": "threatpapermillbox"
     },
     {
+        "name": "thehive-four-dump",
+        "namespace": "threatpapermillbox"
+    },
+    {
         "name": "threat-actor-sync",
         "namespace": "threatpapermillbox"
     },
@@ -396,6 +400,254 @@ _CRONS = [
         "name": "yoyo-offboard-failures",
         "namespace": "threatpapermillbox"
     },
+    # hadoop-*-decom-hosts-fetcher does not interact with any financial data. It only grabs the status of Hadoop datanodes.
+    {
+		"name": "hadoop-apricot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-blueberry-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-concord-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-indigo-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-plum-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-qos-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-sapphire-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-bomsnapshot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-snapshot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-spot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-strawberry-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-test-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-foley-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-currant-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodepri"
+	},
+	{
+		"name": "hadoop-apricot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-blueberry-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-concord-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-indigo-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-plum-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-qos-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-sapphire-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-bomsnapshot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-snapshot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-spot-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-strawberry-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-test-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-foley-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-currant-decom-hosts-fetcher",
+		"namespace": "hadoopnamenodesec"
+	},
+	{
+		"name": "hadoop-apricot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-blueberry-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-concord-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-indigo-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-plum-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-qos-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-sapphire-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-bomsnapshot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-snapshot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-spot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-strawberry-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-test-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-foley-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-currant-decom-hosts-fetcher",
+		"namespace": "hadoopresourcepri"
+	},
+	{
+		"name": "hadoop-apricot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-blueberry-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-concord-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-indigo-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-plum-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-qos-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-sapphire-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-bomsnapshot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-snapshot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-spot-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-strawberry-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-test-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-foley-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+	{
+		"name": "hadoop-currant-decom-hosts-fetcher",
+		"namespace": "hadoopresourcesec"
+	},
+    # The following cronjobs only send emails to remind
+    # users to update their KYC data on their accounts.
+	{
+		"name": "send-email-t42--asyncflow--in-orr--onboarding--opus",
+		"namespace": "kubeacronnoegress"
+	},
+	{
+		"name": "send-email-t35--asyncflow--in-orr--onboarding--opus",
+		"namespace": "kubeacronnoegress"
+	},
+	{
+		"name": "send-email-t21--asyncflow--in-orr--onboarding--opus",
+		"namespace": "kubeacronnoegress"
+	},
+	{
+		"name": "send-email-t14--asyncflow--in-orr--onboarding--opus",
+		"namespace": "kubeacronnoegress"
+	},
+	{
+		"name": "send-email-t7--asyncflow--in-orr--onboarding--opus",
+		"namespace": "kubeacronnoegress"
+	},
+
 ]
 
 def cron_in_exceptions(namespace, name):
