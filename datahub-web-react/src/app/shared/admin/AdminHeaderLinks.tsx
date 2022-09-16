@@ -7,6 +7,7 @@ import {
     SettingOutlined,
     UsergroupAddOutlined,
     FolderOutlined,
+    DashboardOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { Button } from 'antd';
@@ -34,6 +35,7 @@ export function AdminHeaderLinks() {
     const showIngestion =
         isIngestionEnabled && me && me.platformPrivileges.manageIngestion && me.platformPrivileges.manageSecrets;
     const showDomains = me?.platformPrivileges?.manageDomains || false;
+    const showUserDefinedReports = me?.platformPrivileges?.manageUserDefinedReports || false;
 
     return (
         <>
@@ -78,6 +80,15 @@ export function AdminHeaderLinks() {
                     <Link to="/policies">
                         <Button type="text">
                             <BankOutlined /> Policies
+                        </Button>
+                    </Link>
+                </AdminLink>
+            )}
+            {showUserDefinedReports && (
+                <AdminLink>
+                    <Link to="/user-defined-reports">
+                        <Button type="text">
+                            <DashboardOutlined /> User Defined Reports
                         </Button>
                     </Link>
                 </AdminLink>

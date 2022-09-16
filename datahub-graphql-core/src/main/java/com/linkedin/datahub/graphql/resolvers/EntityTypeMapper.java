@@ -31,6 +31,7 @@ public class EntityTypeMapper {
           .put(EntityType.MLPRIMARY_KEY, "mlPrimaryKey")
           .put(EntityType.CONTAINER, "container")
           .put(EntityType.DOMAIN, "domain")
+          .put(EntityType.USER_DEFINED_REPORT, "userDefinedReport")
           .put(EntityType.NOTEBOOK, "notebook")
           .build();
 

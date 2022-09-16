@@ -1,0 +1,14 @@
+namespace com.linkedin.metadata.key
+
+/**
+ * Key for user defined report.
+ */
+@Aspect = {
+  "name": "userDefinedReportKey"
+}
+record UserDefinedReportKey {
+  /**
+  * A unique id for the user defined report. Should be separate from the name used for displaying a Report.
+  */
+  id: string
+}

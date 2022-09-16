@@ -46,4 +46,8 @@ export const EMPTY_MESSAGES = {
         title: 'No domain set',
         description: 'Group related entities based on your organizational structure using by adding them to a Domain.',
     },
+    userDefinedReport: {
+        title: 'No user defined report set',
+        description: 'Provide data observability by adding them to a user defined report.',
+    },
 };

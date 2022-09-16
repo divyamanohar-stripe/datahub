@@ -58,6 +58,7 @@ public class MeResolver implements DataFetcher<CompletableFuture<AuthenticatedUs
         platformPrivileges.setManageIdentities(canManageUsersGroups(context));
         platformPrivileges.setGeneratePersonalAccessTokens(canGeneratePersonalAccessToken(context));
         platformPrivileges.setManageDomains(canManageDomains(context));
+        platformPrivileges.setManageUserDefinedReports(canManageUserDefinedReports(context));
         platformPrivileges.setManageIngestion(canManageIngestion(context));
         platformPrivileges.setManageSecrets(canManageSecrets(context));
 
@@ -106,6 +107,13 @@ public class MeResolver implements DataFetcher<CompletableFuture<AuthenticatedUs
    */
   private boolean canManageDomains(final QueryContext context) {
     return isAuthorized(context.getAuthorizer(), context.getActorUrn(), PoliciesConfig.MANAGE_DOMAINS_PRIVILEGE);
+  }
+
+  /**
+   * Returns true if the authenticated user has privileges to manage user defined reports
+   */
+  private boolean canManageUserDefinedReports(final QueryContext context) {
+    return isAuthorized(context.getAuthorizer(), context.getActorUrn(), PoliciesConfig.MANAGE_USER_DEFINED_REPORTS_PRIVILEGE);
   }
 
   /**

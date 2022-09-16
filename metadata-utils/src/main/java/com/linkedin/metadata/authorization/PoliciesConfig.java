@@ -58,11 +58,17 @@ public class PoliciesConfig {
       "Manage Domains",
       "Create and remove Asset Domains.");
 
+  public static final Privilege MANAGE_USER_DEFINED_REPORTS_PRIVILEGE = Privilege.of(
+      "MANAGE_USER_DEFINED_REPORTS",
+      "Manage user defined reports",
+      "Create update and remove user defined reports.");
+
   public static final List<Privilege> PLATFORM_PRIVILEGES = ImmutableList.of(
       MANAGE_POLICIES_PRIVILEGE,
       MANAGE_USERS_AND_GROUPS_PRIVILEGE,
       VIEW_ANALYTICS_PRIVILEGE,
       MANAGE_DOMAINS_PRIVILEGE,
+      MANAGE_USER_DEFINED_REPORTS_PRIVILEGE,
       MANAGE_INGESTION_PRIVILEGE,
       MANAGE_SECRETS_PRIVILEGE,
       GENERATE_PERSONAL_ACCESS_TOKENS_PRIVILEGE
@@ -110,6 +116,11 @@ public class PoliciesConfig {
       "Edit Domain",
       "The ability to edit the Domain of an entity.");
 
+  public static final Privilege EDIT_ENTITY_USER_DEFINED_REPORTS_PRIVILEGE = Privilege.of(
+      "EDIT_USER_DEFINED_REPORTS_PRIVILEGE",
+      "Edit user defined reports",
+      "The ability to edit the user defined reports of an entity.");
+
   public static final Privilege EDIT_ENTITY_DEPRECATION_PRIVILEGE = Privilege.of(
       "EDIT_DEPRECATION_PRIVILEGE",
       "Edit Deprecation",
@@ -134,6 +145,7 @@ public class PoliciesConfig {
       EDIT_ENTITY_DOC_LINKS_PRIVILEGE,
       EDIT_ENTITY_STATUS_PRIVILEGE,
       EDIT_ENTITY_DOMAINS_PRIVILEGE,
+      EDIT_ENTITY_USER_DEFINED_REPORTS_PRIVILEGE,
       EDIT_ENTITY_DEPRECATION_PRIVILEGE,
       EDIT_ENTITY_PRIVILEGE
   );
@@ -269,6 +281,15 @@ public class PoliciesConfig {
       "domain",
       "Domains",
       "Domains created on DataHub",
+      ImmutableList.of(VIEW_ENTITY_PAGE_PRIVILEGE, EDIT_ENTITY_OWNERS_PRIVILEGE, EDIT_ENTITY_DOCS_PRIVILEGE,
+          EDIT_ENTITY_DOC_LINKS_PRIVILEGE, EDIT_ENTITY_PRIVILEGE)
+  );
+
+  // User Defined Report Privileges
+  public static final ResourcePrivileges USER_DEFINED_REPORT_PRIVILEGES = ResourcePrivileges.of(
+      "userDefinedReport",
+      "User defined reports",
+      "User defined reports created on DataHub",
       ImmutableList.of(VIEW_ENTITY_PAGE_PRIVILEGE, EDIT_ENTITY_OWNERS_PRIVILEGE, EDIT_ENTITY_DOCS_PRIVILEGE,
           EDIT_ENTITY_DOC_LINKS_PRIVILEGE, EDIT_ENTITY_PRIVILEGE)
   );

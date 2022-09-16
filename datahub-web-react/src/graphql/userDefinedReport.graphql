@@ -1,0 +1,130 @@
+query getUserDefinedReport($urn: String!) {
+    userDefinedReport(urn: $urn) {
+        id
+        urn
+        type
+        ownership {
+            owners {
+                owner {
+                    ... on CorpUser {
+                        urn
+                        type
+                        username
+                    }
+                }
+                type
+            }
+        }
+        properties {
+            name
+            type
+            description
+        }
+        entities {
+            searchResults {
+                entity {
+                    urn
+                    type
+                    ... on DataJob {
+                        urn
+                    }
+                }
+            }
+        }
+    }
+}
+
+query listUserDefinedReports($input: ListUserDefinedReportsInput!) {
+    listUserDefinedReports(input: $input) {
+        start
+        count
+        total
+        userDefinedReports {
+            urn
+            id
+            properties {
+                name
+                type
+                description
+            }
+            ownership {
+                ...ownershipFields
+            }
+            entities(input: { start: 0, count: 1 }) {
+                total
+            }
+        }
+    }
+}
+
+query getUserDefinedReportContent($urn: String!, $runStart: Int, $runCount: Int) {
+    userDefinedReport(urn: $urn) {
+        urn
+        id
+        ownership {
+            ...ownershipFields
+        }
+        properties {
+            name
+            type
+            description
+        }
+        entities(input: {}) {
+            start
+            count
+            total
+            searchResults {
+                entity {
+                    urn
+                    type
+                    ... on DataJob {
+                        urn
+                        type
+                        jobId
+                        dataFlow {
+                            platform {
+                                ...platformFields
+                            }
+                        }
+                        ownership {
+                            ...ownershipFields
+                        }
+                        properties {
+                            name
+                            description
+                            externalUrl
+                            customProperties {
+                                key
+                                value
+                            }
+                        }
+                        globalTags {
+                            ...globalTagsFields
+                        }
+                        runs(start: $runStart, count: $runCount) {
+                            count
+                            start
+                            total
+                            runs {
+                                urn
+                                type
+                                properties {
+                                    customProperties {
+                                        key
+                                        value
+                                    }
+                                }
+                                name
+                                externalUrl
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+mutation createUserDefinedReport($input: CreateUserDefinedReportInput!) {
+    createUserDefinedReport(input: $input)
+}

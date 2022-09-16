@@ -1,0 +1,39 @@
+namespace com.linkedin.userdefinedreport
+
+/**
+ * Properties of a user defined report
+ */
+@Aspect = {
+  "name": "userDefinedReportProperties"
+}
+record UserDefinedReportProperties {
+
+  /**
+   * Display name of the user defined report.
+   */
+  @Searchable = {
+    "fieldType": "TEXT_PARTIAL",
+    "enableAutocomplete": true,
+    "boostScore": 10.0
+  }
+  name: string
+
+  /**
+   * Type of the user defined report.
+   */
+  type: enum UserDefinedReportType {
+    /**
+     * User defined report type for observability on timeliness of a particular logical date.
+     */
+    PIPELINE_TIMELINESS,
+    /**
+     * User defined report type for observability on timeliness of historic pipeline runs.
+     */
+    HISTORICAL_TIMELINESS,
+  }
+
+  /**
+   * Description of the user defined report.
+   */
+  description: optional string
+}

@@ -58,6 +58,11 @@ type PlatformPrivileges {
   manageDomains: Boolean!
 
   """
+  Whether the user should be able to manage user defined reports
+  """
+  manageUserDefinedReports: Boolean!
+
+  """
   Whether the user is able to manage UI-based ingestion
   """
   manageIngestion: Boolean!

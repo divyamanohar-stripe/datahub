@@ -21,6 +21,7 @@ import { DataJobFlowTab } from '../shared/tabs/Entity/DataJobFlowTab';
 import { getDataForEntityType } from '../shared/containers/profile/utils';
 import { capitalizeFirstLetter } from '../../shared/textUtil';
 import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
+import { SidebarUserDefinedReportSection } from '../shared/containers/profile/sidebar/UserDefinedReport/SidebarUserDefinedReportSection';
 import { RunsTab } from './tabs/RunsTab';
 import { DataJobTimelinessTab } from '../shared/tabs/Entity/TimelinessTab';
 
@@ -129,6 +130,9 @@ export class DataJobEntity implements Entity<DataJob> {
                     properties: {
                         defaultOwnerType: OwnershipType.TechnicalOwner,
                     },
+                },
+                {
+                    component: SidebarUserDefinedReportSection,
                 },
                 {
                     component: SidebarDomainSection,

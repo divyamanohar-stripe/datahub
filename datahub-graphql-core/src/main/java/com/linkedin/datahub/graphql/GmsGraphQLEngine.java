@@ -36,6 +36,7 @@ import com.linkedin.datahub.graphql.generated.ForeignKeyConstraint;
 import com.linkedin.datahub.graphql.generated.InstitutionalMemoryMetadata;
 import com.linkedin.datahub.graphql.generated.LineageRelationship;
 import com.linkedin.datahub.graphql.generated.ListDomainsResult;
+import com.linkedin.datahub.graphql.generated.ListUserDefinedReportsResult;
 import com.linkedin.datahub.graphql.generated.MLFeature;
 import com.linkedin.datahub.graphql.generated.MLFeatureProperties;
 import com.linkedin.datahub.graphql.generated.MLFeatureTable;
@@ -49,6 +50,7 @@ import com.linkedin.datahub.graphql.generated.Notebook;
 import com.linkedin.datahub.graphql.generated.Owner;
 import com.linkedin.datahub.graphql.generated.PolicyMatchCriterionValue;
 import com.linkedin.datahub.graphql.generated.RecommendationContent;
+import com.linkedin.datahub.graphql.generated.UserDefinedReport;
 import com.linkedin.datahub.graphql.generated.SearchAcrossLineageResult;
 import com.linkedin.datahub.graphql.generated.SearchResult;
 import com.linkedin.datahub.graphql.generated.UsageQueryResult;
@@ -117,6 +119,11 @@ import com.linkedin.datahub.graphql.resolvers.policy.DeletePolicyResolver;
 import com.linkedin.datahub.graphql.resolvers.policy.ListPoliciesResolver;
 import com.linkedin.datahub.graphql.resolvers.policy.UpsertPolicyResolver;
 import com.linkedin.datahub.graphql.resolvers.recommendation.ListRecommendationsResolver;
+import com.linkedin.datahub.graphql.resolvers.userdefinedreport.CreateUserDefinedReportResolver;
+import com.linkedin.datahub.graphql.resolvers.userdefinedreport.ListUserDefinedReportsResolver;
+import com.linkedin.datahub.graphql.resolvers.userdefinedreport.UserDefinedReportEntitiesResolver;
+import com.linkedin.datahub.graphql.resolvers.userdefinedreport.AddUserDefinedReportResolver;
+import com.linkedin.datahub.graphql.resolvers.userdefinedreport.RemoveUserDefinedReportResolver;
 import com.linkedin.datahub.graphql.resolvers.search.AutoCompleteForMultipleResolver;
 import com.linkedin.datahub.graphql.resolvers.search.AutoCompleteResolver;
 import com.linkedin.datahub.graphql.resolvers.search.SearchAcrossEntitiesResolver;
@@ -159,6 +166,7 @@ import com.linkedin.datahub.graphql.types.mlmodel.MLModelType;
 import com.linkedin.datahub.graphql.types.mlmodel.MLPrimaryKeyType;
 import com.linkedin.datahub.graphql.types.tag.TagType;
 import com.linkedin.datahub.graphql.types.usage.UsageType;
+import com.linkedin.datahub.graphql.types.userdefinedreport.UserDefinedReportType;
 import com.linkedin.entity.client.EntityClient;
 import com.linkedin.metadata.config.IngestionConfiguration;
 import com.linkedin.metadata.entity.EntityService;
@@ -244,6 +252,7 @@ public class GmsGraphQLEngine {
     private final UsageType usageType;
     private final ContainerType containerType;
     private final DomainType domainType;
+    private final UserDefinedReportType userDefinedReportType;
     private final NotebookType notebookType;
     private final AssertionType assertionType;
 
@@ -348,6 +357,7 @@ public class GmsGraphQLEngine {
         this.usageType = new UsageType(this.usageClient);
         this.containerType = new ContainerType(entityClient);
         this.domainType = new DomainType(entityClient);
+        this.userDefinedReportType = new UserDefinedReportType(entityClient);
         this.notebookType = new NotebookType(entityClient);
         this.assertionType = new AssertionType(entityClient);
 
@@ -371,6 +381,7 @@ public class GmsGraphQLEngine {
             containerType,
             notebookType,
             domainType,
+            userDefinedReportType,
             assertionType
         );
         this.loadableTypes = new ArrayList<>(entityTypes);
@@ -504,6 +515,7 @@ public class GmsGraphQLEngine {
         configureContainerResolvers(builder);
         configureGlossaryTermResolvers(builder);
         configureDomainResolvers(builder);
+        configureUserDefinedReportResolvers(builder);
         configureAssertionResolvers(builder);
         configurePolicyResolvers(builder);
         configureDataProcessInstanceResolvers(builder);
@@ -615,6 +627,9 @@ public class GmsGraphQLEngine {
             .dataFetcher("domain",
                 new LoadableTypeResolver<>(domainType,
                     (env) -> env.getArgument(URN_FIELD_NAME)))
+            .dataFetcher("userDefinedReport",
+                new LoadableTypeResolver<>(userDefinedReportType,
+                    (env) -> env.getArgument(URN_FIELD_NAME)))
             .dataFetcher("dataPlatform",
                 new LoadableTypeResolver<>(dataPlatformType,
                     (env) -> env.getArgument(URN_FIELD_NAME)))
@@ -654,6 +669,8 @@ public class GmsGraphQLEngine {
                     (env) -> env.getArgument(URN_FIELD_NAME))))
             .dataFetcher("listDomains",
                 new ListDomainsResolver(this.entityClient))
+            .dataFetcher("listUserDefinedReports",
+                new ListUserDefinedReportsResolver(this.entityClient))
             .dataFetcher("listSecrets",
                 new ListSecretsResolver(this.entityClient))
             .dataFetcher("getSecretValues",
@@ -701,6 +718,9 @@ public class GmsGraphQLEngine {
             .dataFetcher("setDomain", new SetDomainResolver(this.entityClient, this.entityService))
             .dataFetcher("updateDeprecation", new UpdateDeprecationResolver(this.entityClient, this.entityService))
             .dataFetcher("unsetDomain", new UnsetDomainResolver(this.entityClient, this.entityService))
+            .dataFetcher("createUserDefinedReport", new CreateUserDefinedReportResolver(this.entityClient))
+            .dataFetcher("addUserDefinedReport", new AddUserDefinedReportResolver(this.entityClient, this.entityService))
+            .dataFetcher("removeUserDefinedReport", new RemoveUserDefinedReportResolver(this.entityClient, this.entityService))
             .dataFetcher("createSecret", new CreateSecretResolver(this.entityClient, this.secretService))
             .dataFetcher("deleteSecret", new DeleteSecretResolver(this.entityClient))
             .dataFetcher("createIngestionSource", new UpsertIngestionSourceResolver(this.entityClient))
@@ -771,6 +791,13 @@ public class GmsGraphQLEngine {
                     new LoadableTypeBatchResolver<>(domainType,
                         (env) -> ((ListDomainsResult) env.getSource()).getDomains().stream()
                             .map(Domain::getUrn)
+                            .collect(Collectors.toList())))
+            )
+            .type("ListUserDefinedReportsResult", typeWiring -> typeWiring
+                .dataFetcher("userDefinedReports",
+                    new LoadableTypeBatchResolver<>(userDefinedReportType,
+                        (env) -> ((ListUserDefinedReportsResult) env.getSource()).getUserDefinedReports().stream()
+                            .map(UserDefinedReport::getUrn)
                             .collect(Collectors.toList())))
             )
             .type("AutoCompleteResults", typeWiring -> typeWiring
@@ -1115,6 +1142,19 @@ public class GmsGraphQLEngine {
                             return dataJob.getDomain() != null ? dataJob.getDomain().getUrn() : null;
                         })
                 )
+                .dataFetcher("userDefinedReports",
+                    new LoadableTypeBatchResolver<>(
+                        userDefinedReportType,
+                        (env) -> {
+                            final DataJob dataJob = env.getSource();
+                            if (dataJob.getUserDefinedReports() != null) {
+                                return dataJob.getUserDefinedReports().stream().map(UserDefinedReport::getUrn).collect(Collectors.toList());
+                            } else {
+                                return null;
+                            }
+                        }
+                    )
+                )
                 .dataFetcher("runs", new DataJobRunsResolver(entityClient))
             )
             .type("DataJobInputOutput", typeWiring -> typeWiring
@@ -1316,6 +1356,15 @@ public class GmsGraphQLEngine {
     private void configureDomainResolvers(final RuntimeWiring.Builder builder) {
         builder.type("Domain", typeWiring -> typeWiring
             .dataFetcher("entities", new DomainEntitiesResolver(this.entityClient))
+            .dataFetcher("relationships", new AuthenticatedResolver<>(
+                new EntityRelationshipsResultResolver(graphClient)
+            ))
+        );
+    }
+
+    private void configureUserDefinedReportResolvers(final RuntimeWiring.Builder builder) {
+        builder.type("UserDefinedReport", typeWiring -> typeWiring
+            .dataFetcher("entities", new UserDefinedReportEntitiesResolver(this.entityClient))
             .dataFetcher("relationships", new AuthenticatedResolver<>(
                 new EntityRelationshipsResultResolver(graphClient)
             ))

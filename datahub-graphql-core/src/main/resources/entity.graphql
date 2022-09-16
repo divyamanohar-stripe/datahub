@@ -80,6 +80,11 @@ type Query {
     domain(urn: String!): Domain
 
     """
+    Fetch a user defined report by primary key (urn)
+    """
+    userDefinedReport(urn: String!): UserDefinedReport
+
+    """
     Fetch an Assertion by primary key (urn)
     """
     assertion(urn: String!): Assertion
@@ -138,6 +143,11 @@ type Query {
     List all DataHub Domains
     """
     listDomains(input: ListDomainsInput!): ListDomainsResult
+
+    """
+    List all DataHub user defined reports
+    """
+    listUserDefinedReports(input: ListUserDefinedReportsInput!): ListUserDefinedReportsResult
 }
 
 """
@@ -292,6 +302,22 @@ type Mutation {
     unsetDomain(entityUrn: String!): Boolean
 
     """
+    Create a new user defined report. Returns the urn of the newly created user defined report.
+    If a report with the provided ID already exists, it will be overwritten.
+    """
+    createUserDefinedReport(input: CreateUserDefinedReportInput!): String
+
+    """
+    Add a user defined report to an entity. Returns true if the Report was successfully added.
+    """
+    addUserDefinedReport(entityUrn: String!, userDefinedReportUrn: String!): Boolean
+
+    """
+    Remove a user defined report from an entity. Returns true if the Report was successfully removed, or was already removed.
+    """
+    removeUserDefinedReport(entityUrn: String!, userDefinedReportUrn: String!): Boolean
+
+    """
     Sets the Deprecation status for a Metadata Entity. Requires the Edit Deprecation status privilege for an entity.
     """
     updateDeprecation(
@@ -346,6 +372,11 @@ enum EntityType {
     A Domain containing Metadata Entities
     """
     DOMAIN
+
+    """
+    The User Defined Report Entity
+    """
+    USER_DEFINED_REPORT
 
     """
     The Dataset Entity
@@ -4369,6 +4400,11 @@ type DataJob implements EntityWithRelationships & Entity {
     domain: Domain
 
     """
+    The User Defined Report entities associated with the Data Job
+    """
+    userDefinedReports: [UserDefinedReport]
+
+    """
     Granular API for querying edges extending from this entity
     """
     relationships(input: RelationshipsInput!): EntityRelationshipsResult
@@ -7419,6 +7455,168 @@ type ListDomainsResult {
   The Domains themselves
   """
   domains: [Domain!]!
+}
+
+"""
+A user defined report entity providing data observability
+"""
+type UserDefinedReport implements Entity {
+    """
+    The primary key of the user defined report
+    """
+    urn: String!
+
+    """
+    A standard Entity Type
+    """
+    type: EntityType!
+
+    """
+    Id of the user defined report
+    """
+    id: String!
+
+    """
+    Properties about a user defined report
+    """
+    properties: UserDefinedReportProperties
+
+    """
+    Ownership metadata of the user defined report
+    """
+    ownership: Ownership
+
+    """
+    Children entities inside of the user defined report
+    """
+    entities(input: UserDefinedReportEntitiesInput): SearchResults
+
+    """
+    Edges extending from this entity
+    """
+    relationships(input: RelationshipsInput!): EntityRelationshipsResult
+}
+
+"""
+Properties about a user defined report
+"""
+type UserDefinedReportProperties {
+  """
+  Display name of the user defined report
+  """
+  name: String!
+
+  """
+  Type of the user defined report
+  """
+  type: UserDefinedReportType!
+
+  """
+  Description of the user defined report
+  """
+  description: String
+}
+
+enum UserDefinedReportType {
+  """
+  User defined report type for observability on timeliness of a particular logical date.
+  """
+  PIPELINE_TIMELINESS
+
+  """
+  User defined report type for observability on timeliness of historic pipeline runs.
+  """
+  HISTORICAL_TIMELINESS
+}
+
+"""
+Input required to fetch the entities inside of a user defined report.
+"""
+input UserDefinedReportEntitiesInput {
+  """
+  Optional query filter for particular entities inside the user defined report
+  """
+  query: String
+
+  """
+  The offset of the result set
+  """
+  start: Int
+
+  """
+  The number of entities to include in result set
+  """
+  count: Int
+
+  """
+  Optional Facet filters to apply to the result set
+  """
+  filters: [FacetFilterInput!]
+}
+
+"""
+Input required to create a new user defined report.
+"""
+input CreateUserDefinedReportInput {
+  """
+  Optional! A custom id to use as the primary key identifier for the domain. If not provided, a random UUID will be generated as the id.
+  """
+  id: String
+
+  """
+  Display name for the user defined report
+  """
+  name: String!
+
+  """
+  Type of the user defined report
+  """
+  type: UserDefinedReportType!
+
+  """
+  Optional description for the user defined report
+  """
+  description: String
+}
+
+"""
+Input required when listing an entity's user defined reports
+"""
+input ListUserDefinedReportsInput {
+  """
+  The starting offset of the result set returned
+  """
+  start: Int
+
+  """
+  The maximum number of user defined reports to be returned in the result set
+  """
+  count: Int
+}
+
+"""
+The result obtained when listing DataHub user defined reports
+"""
+type ListUserDefinedReportsResult {
+  """
+  The starting offset of the result set returned
+  """
+  start: Int!
+
+  """
+  The number of user defined reports in the returned result set
+  """
+  count: Int!
+
+  """
+  The total number of user defined reports in the result set
+  """
+  total: Int!
+
+  """
+  The user defined reports themselves
+  """
+  userDefinedReports: [UserDefinedReport!]!
 }
 
 enum HealthStatus {

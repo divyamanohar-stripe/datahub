@@ -17,6 +17,7 @@ import com.linkedin.datahub.graphql.generated.DataJobProperties;
 import com.linkedin.datahub.graphql.generated.Dataset;
 import com.linkedin.datahub.graphql.generated.Domain;
 import com.linkedin.datahub.graphql.generated.EntityType;
+import com.linkedin.datahub.graphql.generated.UserDefinedReport;
 import com.linkedin.datahub.graphql.types.common.mappers.DeprecationMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.InstitutionalMemoryMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.OwnershipMapper;
@@ -29,6 +30,8 @@ import com.linkedin.datajob.EditableDataJobProperties;
 import com.linkedin.domain.Domains;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.metadata.key.DataJobKey;
+import com.linkedin.userdefinedreport.UserDefinedReports;
+
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -86,6 +89,14 @@ public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
                     result.setDomain(Domain.builder()
                         .setType(EntityType.DOMAIN)
                         .setUrn(domains.getDomains().get(0).toString()).build());
+                }
+            } else if (USER_DEFINED_REPORTS_ASPECT_NAME.equals(name)) {
+                final UserDefinedReports userDefinedReports = new UserDefinedReports(data);
+                if (userDefinedReports.getUserDefinedReports().size() > 0) {
+                    result.setUserDefinedReports(userDefinedReports
+                            .getUserDefinedReports().stream().map((r) -> UserDefinedReport.builder()
+                                    .setType(EntityType.USER_DEFINED_REPORT).setUrn(r.toString()).build())
+                            .collect(Collectors.toList()));
                 }
             } else if (DEPRECATION_ASPECT_NAME.equals(name)) {
                 result.setDeprecation(DeprecationMapper.map(new Deprecation(data)));

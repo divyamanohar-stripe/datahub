@@ -25,6 +25,10 @@ public class AuthorizationUtils {
     return isAuthorized(context, Optional.empty(), PoliciesConfig.MANAGE_DOMAINS_PRIVILEGE);
   }
 
+  public static boolean canManageUserDefinedReports(@Nonnull QueryContext context) {
+    return isAuthorized(context, Optional.empty(), PoliciesConfig.MANAGE_USER_DEFINED_REPORTS_PRIVILEGE);
+  }
+
   public static boolean isAuthorized(
       @Nonnull QueryContext context,
       @Nonnull Optional<ResourceSpec> resourceSpec,

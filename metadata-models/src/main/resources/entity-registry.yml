@@ -33,6 +33,7 @@ entities:
       - domains
       - deprecation
       - versionInfo
+      - userDefinedReports
   - name: dataFlow
     category: core
     keyAspect: dataFlowKey
@@ -210,4 +211,10 @@ entities:
       - glossaryTerms
       - editableMlPrimaryKeyProperties
       - domains
+  - name: userDefinedReport
+    doc: A user defined report for a collection of entities.
+    keyAspect: userDefinedReportKey
+    aspects:
+      - userDefinedReportProperties
+      - ownership
 events:

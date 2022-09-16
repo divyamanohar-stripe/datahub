@@ -1,30 +1,31 @@
-import { MutationFunctionOptions, FetchResult } from '@apollo/client';
+import { FetchResult, MutationFunctionOptions } from '@apollo/client';
 
 import {
+    Container,
     DataPlatform,
     DatasetEditableProperties,
     DatasetEditablePropertiesUpdate,
-    RawAspect,
+    Deprecation,
+    Domain,
     EditableSchemaMetadata,
     EditableSchemaMetadataUpdate,
+    EntityLineageResult,
     EntityType,
     GlobalTags,
     GlobalTagsUpdate,
     GlossaryTerms,
+    Health,
     InstitutionalMemory,
     InstitutionalMemoryUpdate,
     Maybe,
     Ownership,
     OwnershipUpdate,
+    RawAspect,
     SchemaMetadata,
-    StringMapEntry,
-    EntityLineageResult,
-    Domain,
-    SubTypes,
-    Container,
-    Health,
     Status,
-    Deprecation,
+    StringMapEntry,
+    SubTypes,
+    UserDefinedReport,
 } from '../../../types.generated';
 import { FetchedEntity } from '../../lineage/types';
 
@@ -57,6 +58,7 @@ export type GenericEntityProperties = {
     glossaryTerms?: Maybe<GlossaryTerms>;
     ownership?: Maybe<Ownership>;
     domain?: Maybe<Domain>;
+    userDefinedReports?: Maybe<UserDefinedReport[]>;
     platform?: Maybe<DataPlatform>;
     customProperties?: Maybe<StringMapEntry[]>;
     institutionalMemory?: Maybe<InstitutionalMemory>;

@@ -30,6 +30,7 @@ public class SearchUtils {
           EntityType.CORP_GROUP,
           EntityType.CONTAINER,
           EntityType.DOMAIN,
+          EntityType.USER_DEFINED_REPORT,
           EntityType.NOTEBOOK);
 
   /**

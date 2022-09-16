@@ -21,6 +21,7 @@ import com.linkedin.datahub.graphql.generated.MLModel;
 import com.linkedin.datahub.graphql.generated.MLModelGroup;
 import com.linkedin.datahub.graphql.generated.MLPrimaryKey;
 import com.linkedin.datahub.graphql.generated.Notebook;
+import com.linkedin.datahub.graphql.generated.UserDefinedReport;
 import com.linkedin.datahub.graphql.generated.Tag;
 import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 import javax.annotation.Nonnull;
@@ -125,6 +126,11 @@ public class UrnToEntityMapper implements ModelMapper<com.linkedin.common.urn.Ur
       partialEntity = new Domain();
       ((Domain) partialEntity).setUrn(input.toString());
       ((Domain) partialEntity).setType(EntityType.DOMAIN);
+    }
+    if (input.getEntityType().equals("userDefinedReport")) {
+      partialEntity = new UserDefinedReport();
+      ((UserDefinedReport) partialEntity).setUrn(input.toString());
+      ((UserDefinedReport) partialEntity).setType(EntityType.USER_DEFINED_REPORT);
     }
     if (input.getEntityType().equals("assertion")) {
       partialEntity = new Assertion();

@@ -1,0 +1,31 @@
+namespace com.linkedin.userdefinedreport
+
+import com.linkedin.common.Urn
+
+/**
+ * Linkage from an entity to its user defined reports.
+ */
+@Aspect = {
+  "name": "userDefinedReports"
+}
+record UserDefinedReports {
+  /**
+   * The user defined reports attached to an entity
+   */
+  @Relationship = {
+    "/*": {
+      "name": "AssociatedWith",
+      "entityTypes": [ "userDefinedReport" ]
+    }
+  }
+  @Searchable = {
+    "/*": {
+      "fieldName": "userDefinedReports",
+      "fieldType": "URN",
+      "hasValuesFieldName": "hasUserDefinedReport",
+      "addToFilters": true,
+      "filterNameOverride": "UserDefinedReport"
+    }
+  }
+  userDefinedReports: array[Urn]
+}

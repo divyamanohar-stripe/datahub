@@ -273,6 +273,17 @@ fragment searchResultFields on Entity {
             ...ownershipFields
         }
     }
+    ... on UserDefinedReport {
+        urn
+        properties {
+            name
+            userDefinedReportType: type
+            description
+        }
+        ownership {
+            ...ownershipFields
+        }
+    }
     ... on Container {
         urn
         properties {

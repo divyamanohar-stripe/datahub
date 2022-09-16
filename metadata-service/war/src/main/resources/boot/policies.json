@@ -12,10 +12,11 @@
       },
       "privileges":[
         "MANAGE_DOMAINS",
+        "MANAGE_USER_DEFINED_REPORTS",
         "VIEW_ANALYTICS"
       ],
-      "displayName":"Default User - Manage domains and view Analytics",
-      "description":"Grants viewing analytics dashboard and managing domains privileges to default datahub user.",
+      "displayName":"Default User - Manage domains, user defined reports and view Analytics",
+      "description":"Grants viewing analytics dashboard, managing domains and user defined reports privileges to default datahub user.",
       "state":"ACTIVE",
       "type":"PLATFORM",
       "editable":false
@@ -66,7 +67,7 @@
         "allUsers":true,
         "allGroups":false
       },
-      "privileges":["MANAGE_DOMAINS", "VIEW_ANALYTICS"],
+      "privileges":["MANAGE_DOMAINS", "MANAGE_USER_DEFINED_REPORTS", "VIEW_ANALYTICS"],
       "displayName":"All Users - Some Platform Privileges",
       "description":"Grant some platform privleges to datahub users",
       "state":"ACTIVE",
