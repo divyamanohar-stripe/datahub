@@ -67,6 +67,9 @@ cp docker/elasticsearch-setup/create-indices.sh /build/create-indices.sh
 cp metadata-service/restli-servlet-impl/src/main/resources/index/usage-event/policy.json /build/policy.json
 cp metadata-service/restli-servlet-impl/src/main/resources/index/usage-event/index_template.json /build/index_template.json
 
+# Need the open telemetry agent for tracing
+curl https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/1.4.1/opentelemetry-javaagent-1.4.1-all.jar --output /build/opentelemetry-javaagent-all.jar
+
 ./gradlew :metadata-ingestion:codegen
 
 pushd metadata-ingestion

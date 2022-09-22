@@ -43,6 +43,8 @@ COPY jetty-jmx.jar /datahub/datahub-gms/bin/jetty-jmx.jar
 COPY create-indices.sh /datahub/datahub-gms/scripts/create-indices.sh
 COPY policy.json /datahub/datahub-gms/resources/policy.json
 COPY index_template.json /datahub/datahub-gms/resources/index_template.json
+# open telemetry java agent
+COPY opentelemetry-javaagent-all.jar /datahub/datahub-gms/bin/opentelemetry-javaagent-all.jar
 
 COPY entity-registry.yml /datahub/datahub-mxe-consumers/resources/entity-registry.yml
 COPY mce-stripe-jmxfetch.yaml /datahub/datahub-mxe-consumers/resources/mce-stripe-jmxfetch.yaml

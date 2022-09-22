@@ -86,3 +86,6 @@ inbound_config:
     - service_name: sproxy
       mtls_authorities:
         - sproxy
+    - service_name: refinery-grpc
+      mtls_authorities:
+        - refinery
