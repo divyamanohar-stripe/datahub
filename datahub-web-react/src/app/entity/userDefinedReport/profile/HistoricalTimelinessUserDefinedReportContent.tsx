@@ -2,6 +2,7 @@ import React, { ComponentProps } from 'react';
 import moment from 'moment-timezone';
 import { Column } from '@ant-design/plots';
 import { Descriptions, Layout, Tag } from 'antd';
+import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 
 const { Header, Content, Sider } = Layout;
 const DATE_DAILY_DISPLAY_FORMAT = 'YYYY-MM-DD';
@@ -105,12 +106,24 @@ function getAllExecDates(dataJobEntities) {
  * @param taskId taskId of DataJob
  * @param finishedBySla error end SLA
  * @param project team owner of DataJob
+ * @param dataJobEntity data job entity to render
  */
-function renderPlotHeader(taskId: string, finishedBySla: string, project: string) {
-    const finishedBySlaHours = moment.duration(finishedBySla, 'seconds').asHours();
+function renderPlotHeader(taskId: string, finishedBySla: string, project: string, dataJobEntity) {
+    const finishedBySlaHours = moment
+        .duration(finishedBySla, 'seconds')
+        .asHours()
+        .toFixed(2)
+        .replace(/[.,]00$/, ''); // round to 2 decimal places if not whole number
+
     return (
         <Descriptions
-            title={`${project}: Did ${taskId} succeed in ${finishedBySlaHours} hours?`}
+            title={
+                <span>
+                    {`${project}: Did `}
+                    <CompactEntityNameList entities={[dataJobEntity]} />
+                    {` succeed in ${finishedBySlaHours} hours?`}
+                </span>
+            }
             bordered
             style={{ marginTop: '15px' }}
         />
@@ -139,6 +152,7 @@ function renderSlaMissSummary(runs: Run[]) {
 
     const landingTimes = runs.map((r) => r.landingTime);
     const p90Landing = convertSecsToHumanReadable(quantile(landingTimes, 0.9), false);
+    const p80Landing = convertSecsToHumanReadable(quantile(landingTimes, 0.8), false);
     const tagColor = getTagColor(parseInt(metDeadlinePercentage, 10));
 
     return (
@@ -148,6 +162,9 @@ function renderSlaMissSummary(runs: Run[]) {
             </Descriptions.Item>
             <Descriptions.Item style={{ fontWeight: 'bold' }} label="p90 Delivery">
                 {`${p90Landing}`}
+            </Descriptions.Item>
+            <Descriptions.Item style={{ fontWeight: 'bold' }} label="p80 Delivery">
+                {`${p80Landing}`}
             </Descriptions.Item>
         </Descriptions>
     );
@@ -271,7 +288,7 @@ function renderTimelinessPlot(runs: Run[], allExecDates: string[]) {
 
     return (
         <>
-            <Column {...config} style={{ marginLeft: '20px', height: '130px' }} />
+            <Column {...config} style={{ marginLeft: '20px', height: '175px' }} />
         </>
     );
 }
@@ -330,7 +347,14 @@ function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
     return (
         <>
             <Layout>
-                <Header>{renderPlotHeader(taskId, dataJobProperties.finishedBySla, dataJobProperties.project)}</Header>
+                <Header>
+                    {renderPlotHeader(
+                        taskId,
+                        dataJobProperties.finishedBySla,
+                        dataJobProperties.project,
+                        dataJobEntity,
+                    )}
+                </Header>
                 <Layout>
                     <Sider>{renderSlaMissSummary(latestRuns)}</Sider>
                     <Content>{renderTimelinessPlot(latestRuns, allExecDates)}</Content>
