@@ -61,9 +61,10 @@ export const UserDefinedReportContentTab = () => {
     const { getSearchParam, setSearchParam } = useSearchParams();
 
     const maxRunCount = 65;
+    const maxEntityCount = 50;
     const { loading: isLoadingUserDefinedReport, data: userDefinedReportContentQueryResponse } =
         useGetUserDefinedReportContentQuery({
-            variables: { urn, runStart: 0, runCount: maxRunCount },
+            variables: { urn, entityStart: 0, entityCount: maxEntityCount, runStart: 0, runCount: maxRunCount },
         });
 
     if (isLoadingUserDefinedReport) return loadingPage;

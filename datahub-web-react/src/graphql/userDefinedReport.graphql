@@ -57,7 +57,7 @@ query listUserDefinedReports($input: ListUserDefinedReportsInput!) {
     }
 }
 
-query getUserDefinedReportContent($urn: String!, $runStart: Int, $runCount: Int) {
+query getUserDefinedReportContent($urn: String!, $entityStart: Int, $entityCount: Int, $runStart: Int, $runCount: Int) {
     userDefinedReport(urn: $urn) {
         urn
         id
@@ -69,7 +69,7 @@ query getUserDefinedReportContent($urn: String!, $runStart: Int, $runCount: Int)
             type
             description
         }
-        entities(input: {}) {
+        entities(input: {start: $entityStart, count: $entityCount}) {
             start
             count
             total
