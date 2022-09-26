@@ -55,9 +55,23 @@ query getDataJobRuns($urn: String!, $start: Int!, $count: Int!) {
 
 query getDataJobHistoricalSLATracking($urn: String!) {
     dataJob(urn: $urn) {
-        ...dataJobFieldsHistoricalSLATracking
+        ...dataJobFieldsTimeliness
         runs(start: 0, count: 31) {
-            ...runResultsHistoricalSLATracking
+            ...runResultsTimeliness
+        }
+    }
+}
+
+query getDataJobTimeliness($urn: String!) {
+    dataJob(urn: $urn) {
+        ...dataJobFieldsTimeliness
+    }
+}
+
+query getDataJobRunsTimeliness($urn: String!, $start: Int!, $count: Int!) {
+    dataJob(urn: $urn) {
+        runs(start: $start, count: $count) {
+            ...runResultsTimeliness
         }
     }
 }

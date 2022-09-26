@@ -760,7 +760,7 @@ fragment entityUserDefinedReport on UserDefinedReport {
     }
 }
 
-fragment dataJobFieldsHistoricalSLATracking on DataJob {
+fragment dataJobFieldsTimeliness on DataJob {
     urn
     type
     jobId

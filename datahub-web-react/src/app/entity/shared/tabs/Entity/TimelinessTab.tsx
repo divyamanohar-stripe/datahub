@@ -13,10 +13,10 @@ import { ReactComponent as LoadingSvg } from '../../../../../images/datahub-logo
 import { RelationshipDirection } from '../../../../../types.generated';
 import { useEntityData } from '../../EntityContext';
 import {
-    GetDataJobQuery,
-    GetDataJobRunsQuery,
-    useGetDataJobQuery,
-    useGetDataJobRunsQuery,
+    GetDataJobTimelinessQuery,
+    GetDataJobRunsTimelinessQuery,
+    useGetDataJobTimelinessQuery,
+    useGetDataJobRunsTimelinessQuery,
 } from '../../../../../graphql/dataJob.generated';
 
 type DatasetCustomPropertiesWithSla = {
@@ -698,8 +698,8 @@ interface TimelinessTabProps {
     setRunCount: React.Dispatch<React.SetStateAction<number>>;
     isLoadingData: boolean;
     isLoadingRuns: boolean;
-    dataQueryResponseData: GetDataJobQuery['dataJob'] | GetDatasetQuery['dataset'] | undefined;
-    runsQueryResponseData: GetDataJobRunsQuery['dataJob'] | GetDatasetRunsQuery['dataset'] | undefined;
+    dataQueryResponseData: GetDataJobTimelinessQuery['dataJob'] | GetDatasetQuery['dataset'] | undefined;
+    runsQueryResponseData: GetDataJobRunsTimelinessQuery['dataJob'] | GetDatasetRunsQuery['dataset'] | undefined;
 }
 
 export const TimelinessTab: FC<TimelinessTabProps> = ({
@@ -817,10 +817,10 @@ export const DataJobTimelinessTab = () => {
 
     const { urn } = useEntityData();
 
-    const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobQuery({
+    const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobTimelinessQuery({
         variables: { urn },
     });
-    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsQuery({
+    const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsTimelinessQuery({
         variables: { urn, start: 0, count: runCount },
     });
 

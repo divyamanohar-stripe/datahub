@@ -38,7 +38,7 @@ fragment runResults on DataProcessInstanceResult {
     }
 }
 
-fragment runResultsHistoricalSLATracking on DataProcessInstanceResult {
+fragment runResultsTimeliness on DataProcessInstanceResult {
     count
     start
     total
