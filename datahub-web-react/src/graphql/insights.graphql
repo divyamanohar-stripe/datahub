@@ -14,7 +14,7 @@ query getInsights($urn: String!) {
                     }
                 }
                 ... on DataJob {
-                    runs(start: 0, count: 100) {
+                    runs(input: { start: 0, count: 100 }) {
                         runs {
                             urn
                             state {

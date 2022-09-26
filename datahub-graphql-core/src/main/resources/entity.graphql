@@ -4436,7 +4436,33 @@ type DataJob implements EntityWithRelationships & Entity {
     """
     History of runs of this task
     """
-    runs(start: Int, count: Int, before: Long): DataProcessInstanceResult
+    runs(input: DataProcessInstanceInput): DataProcessInstanceResult
+}
+
+"""
+Input prodivded for querying Data Process Instance of an entity
+"""
+input DataProcessInstanceInput {
+    start: Int
+    count: Int
+    filters: [DataProcessInstanceFilterInput!]
+
+}
+
+"""
+Input prodivded for filtering Data Process Instance
+"""
+input DataProcessInstanceFilterInput {
+    type: DataProcessInstanceFilterInputType!
+    value: String!
+}
+
+"""
+Filter types currently supported for Data Process Instance
+"""
+enum DataProcessInstanceFilterInputType {
+    BEFORE_LOGICAL_DATE
+    ON_LOGICAL_DATE
 }
 
 """

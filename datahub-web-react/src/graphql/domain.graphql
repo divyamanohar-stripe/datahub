@@ -30,62 +30,62 @@ query getDomain($urn: String!) {
 }
 
 query getDomainTimeliness($urn: String!, $entityStart: Int, $entityCount: Int, $runStart: Int, $runCount: Int) {
-  domain(urn: $urn) {
-    urn
-    id
-    properties {
-        name
-    }
-    entities(input: {start: $entityStart, count: $entityCount}) {
-      start
-      count
-      total
-      searchResults {
-        entity {
-          urn
-          type
-          ... on DataJob {
-            urn
-            type
-            jobId
-            dataFlow {
-              platform {
-                  ...platformFields
-              }
-            }
-            properties {
-              name
-              description
-              customProperties {
-                key
-                value
-              }
-            }
-            globalTags {
-              ...globalTagsFields
-            }
-            runs(start: $runStart, count: $runCount) {
-              count
-              start
-              total
-              runs {
-                urn
-                type
-                properties {
-                  customProperties {
-                    key
-                    value
-                  }
-                }
-                name
-                externalUrl
-              }
-            }
-          }
+    domain(urn: $urn) {
+        urn
+        id
+        properties {
+            name
         }
-      }
+        entities(input: { start: $entityStart, count: $entityCount }) {
+            start
+            count
+            total
+            searchResults {
+                entity {
+                    urn
+                    type
+                    ... on DataJob {
+                        urn
+                        type
+                        jobId
+                        dataFlow {
+                            platform {
+                                ...platformFields
+                            }
+                        }
+                        properties {
+                            name
+                            description
+                            customProperties {
+                                key
+                                value
+                            }
+                        }
+                        globalTags {
+                            ...globalTagsFields
+                        }
+                        runs(input: { start: $runStart, count: $runCount }) {
+                            count
+                            start
+                            total
+                            runs {
+                                urn
+                                type
+                                properties {
+                                    customProperties {
+                                        key
+                                        value
+                                    }
+                                }
+                                name
+                                externalUrl
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
-  }
 }
 
 query listDomains($input: ListDomainsInput!) {

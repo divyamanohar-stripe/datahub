@@ -101,7 +101,7 @@ query getUserDefinedReportContent($urn: String!, $entityStart: Int, $entityCount
                         globalTags {
                             ...globalTagsFields
                         }
-                        runs(start: $runStart, count: $runCount) {
+                        runs(input: { start: $runStart, count: $runCount }) {
                             count
                             start
                             total

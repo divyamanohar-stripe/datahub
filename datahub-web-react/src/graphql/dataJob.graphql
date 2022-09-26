@@ -28,7 +28,7 @@ query getDataJob($urn: String!) {
         status {
             removed
         }
-        runs(start: 0, count: 20) {
+        runs(input: { start: 0, count: 20 }) {
             count
             start
             total
@@ -47,7 +47,7 @@ mutation updateDataJob($urn: String!, $input: DataJobUpdateInput!) {
 
 query getDataJobRuns($urn: String!, $start: Int!, $count: Int!) {
     dataJob(urn: $urn) {
-        runs(start: $start, count: $count) {
+        runs(input: { start: $start, count: $count }) {
             ...runResults
         }
     }
@@ -56,7 +56,7 @@ query getDataJobRuns($urn: String!, $start: Int!, $count: Int!) {
 query getDataJobHistoricalSLATracking($urn: String!) {
     dataJob(urn: $urn) {
         ...dataJobFieldsTimeliness
-        runs(start: 0, count: 31) {
+        runs(input: { start: 0, count: 31 }) {
             ...runResultsTimeliness
         }
     }
@@ -70,7 +70,7 @@ query getDataJobTimeliness($urn: String!) {
 
 query getDataJobRunsTimeliness($urn: String!, $start: Int!, $count: Int!) {
     dataJob(urn: $urn) {
-        runs(start: $start, count: $count) {
+        runs(input: { start: $start, count: $count }) {
             ...runResultsTimeliness
         }
     }
