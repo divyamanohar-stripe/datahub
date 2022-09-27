@@ -3,6 +3,7 @@ import moment from 'moment-timezone';
 import { Column } from '@ant-design/plots';
 import { Descriptions, Layout, Tag } from 'antd';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
+import { DataJobEntity } from './Types';
 
 const { Header, Content, Sider } = Layout;
 const DATE_DAILY_DISPLAY_FORMAT = 'YYYY-MM-DD';
@@ -11,7 +12,6 @@ const DATE_DISPLAY_TOOLTIP_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 type DataJobProperties = {
     finishedBySla: string;
-    project: string;
     [key: string]: string;
 };
 
@@ -102,13 +102,44 @@ function getAllExecDates(dataJobEntities) {
 }
 
 /**
+ * Get display name of data job owner from ownership entity
+ * @param dataJobEntity DataJob Entity
+ */
+function getDataJobOwner(dataJobEntity) {
+    const { ownership } = dataJobEntity;
+    if (ownership && ownership.owners.length > 0) {
+        return ownership.owners[0].owner.properties.displayName;
+    }
+    return undefined;
+}
+
+/**
+ * Get map of owner to list of datajob entities for grouping jobs by owner in UI
+ * @param dataJobEntities list of DataJob Entities
+ */
+function getDataJobOwnerGroup(dataJobEntities) {
+    const dataJobOwnerMap: { [key: string]: DataJobEntity[] } = {};
+    for (let idx = 0; idx < dataJobEntities.length; idx++) {
+        const currDataJob = dataJobEntities[idx];
+        const currOwner = getDataJobOwner(currDataJob);
+        if (currOwner in dataJobOwnerMap) {
+            const currDataJobs = dataJobOwnerMap[currOwner];
+            currDataJobs.push(currDataJob);
+            dataJobOwnerMap[currOwner] = currDataJobs;
+        } else {
+            dataJobOwnerMap[currOwner] = [currDataJob];
+        }
+    }
+    return dataJobOwnerMap;
+}
+
+/**
  * render header of chart with title: "Team: did task succees in SLA?"
  * @param taskId taskId of DataJob
  * @param finishedBySla error end SLA
- * @param project team owner of DataJob
  * @param dataJobEntity data job entity to render
  */
-function renderPlotHeader(taskId: string, finishedBySla: string, project: string, dataJobEntity) {
+function renderPlotHeader(taskId: string, finishedBySla: string, dataJobEntity) {
     const finishedBySlaHours = moment
         .duration(finishedBySla, 'seconds')
         .asHours()
@@ -119,7 +150,7 @@ function renderPlotHeader(taskId: string, finishedBySla: string, project: string
         <Descriptions
             title={
                 <span>
-                    {`${project}: Did `}
+                    {`Did `}
                     <CompactEntityNameList entities={[dataJobEntity]} />
                     {` succeed in ${finishedBySlaHours} hours?`}
                 </span>
@@ -347,14 +378,7 @@ function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
     return (
         <>
             <Layout>
-                <Header>
-                    {renderPlotHeader(
-                        taskId,
-                        dataJobProperties.finishedBySla,
-                        dataJobProperties.project,
-                        dataJobEntity,
-                    )}
-                </Header>
+                <Header>{renderPlotHeader(taskId, dataJobProperties.finishedBySla, dataJobEntity)}</Header>
                 <Layout>
                     <Sider>{renderSlaMissSummary(latestRuns)}</Sider>
                     <Content>{renderTimelinessPlot(latestRuns, allExecDates)}</Content>
@@ -366,6 +390,20 @@ function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
 
 export const HistoricalTimelinessUserDefinedReportContent = (dataJobEntities) => {
     const uniqueExecDates = getAllExecDates(dataJobEntities);
+    const dataJobOwnerGrouping = getDataJobOwnerGroup(dataJobEntities);
 
-    return <>{dataJobEntities.map((dataJobEntity) => formatDataAndRenderPlots(dataJobEntity, uniqueExecDates))}</>;
+    return (
+        <>
+            {Object.entries(dataJobOwnerGrouping).map(([teamName, dataJobEntitiesList]) => {
+                return (
+                    <>
+                        <Descriptions title={teamName} bordered style={{ marginTop: '15px', marginLeft: '15px' }} />
+                        {dataJobEntitiesList.map((dataJobEntity) =>
+                            formatDataAndRenderPlots(dataJobEntity, uniqueExecDates),
+                        )}
+                    </>
+                );
+            })}
+        </>
+    );
 };
