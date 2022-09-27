@@ -100,6 +100,16 @@ export class DatasetEntity implements Entity<Dataset> {
                     },
                 },
                 {
+                    name: 'Insights',
+                    component: InsightsTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataset: GetDatasetQuery) => {
+                            return (dataset?.dataset?.upstream?.total || 0) > 0;
+                        },
+                    },
+                },
+                {
                     name: 'Timeliness',
                     component: DatasetTimelinessTab,
                     display: {
@@ -129,15 +139,6 @@ export class DatasetEntity implements Entity<Dataset> {
                     name: 'Properties',
                     component: PropertiesTab,
                 },
-                {
-                    name: 'Insights',
-                    component: InsightsTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, _dataset: GetDatasetQuery) => true,
-                    },
-                },
-
                 {
                     name: 'Documentation',
                     component: DocumentationTab,

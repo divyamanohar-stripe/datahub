@@ -1,0 +1,501 @@
+query getDelays($input: SearchAcrossLineageInput!, $exec_date: String!) {
+  searchAcrossLineage(input: $input) {
+    start
+    count
+    total
+    searchResults {
+      entity {
+        urn
+        type
+        ... on DataJob {
+          urn
+          type
+          dataFlow {
+            urn
+            type
+            orchestrator
+            flowId
+            cluster
+            properties {
+              name
+              description
+              project
+              externalUrl
+              customProperties {
+                key
+                value
+                __typename
+              }
+              __typename
+            }
+            editableProperties {
+              description
+              __typename
+            }
+            ownership {
+              owners {
+                owner {
+                  ... on CorpUser {
+                    urn
+                    type
+                    username
+                    info {
+                      active
+                      displayName
+                      title
+                      email
+                      firstName
+                      lastName
+                      fullName
+                      __typename
+                    }
+                    properties {
+                      active
+                      displayName
+                      title
+                      email
+                      firstName
+                      lastName
+                      fullName
+                      __typename
+                    }
+                    editableProperties {
+                      displayName
+                      title
+                      pictureLink
+                      email
+                      __typename
+                    }
+                    __typename
+                  }
+                  ... on CorpGroup {
+                    urn
+                    type
+                    name
+                    properties {
+                      displayName
+                      email
+                      __typename
+                    }
+                    info {
+                      displayName
+                      email
+                      admins {
+                        urn
+                        username
+                        info {
+                          active
+                          displayName
+                          title
+                          email
+                          firstName
+                          lastName
+                          fullName
+                          __typename
+                        }
+                        editableInfo {
+                          pictureLink
+                          teams
+                          skills
+                          __typename
+                        }
+                        __typename
+                      }
+                      members {
+                        urn
+                        username
+                        info {
+                          active
+                          displayName
+                          title
+                          email
+                          firstName
+                          lastName
+                          fullName
+                          __typename
+                        }
+                        editableInfo {
+                          pictureLink
+                          teams
+                          skills
+                          __typename
+                        }
+                        __typename
+                      }
+                      groups
+                      __typename
+                    }
+                    __typename
+                  }
+                  __typename
+                }
+                type
+                __typename
+              }
+              lastModified {
+                time
+                __typename
+              }
+              __typename
+            }
+            platform {
+              urn
+              type
+              name
+              properties {
+                type
+                displayName
+                datasetNameDelimiter
+                logoUrl
+                __typename
+              }
+              displayName
+              info {
+                type
+                displayName
+                datasetNameDelimiter
+                logoUrl
+                __typename
+              }
+              __typename
+            }
+            domain {
+              urn
+              properties {
+                name
+                __typename
+              }
+              __typename
+            }
+            deprecation {
+              actor
+              deprecated
+              note
+              decommissionTime
+              __typename
+            }
+            __typename
+          }
+          jobId
+          ownership {
+            owners {
+              owner {
+                ... on CorpUser {
+                  urn
+                  type
+                  username
+                  info {
+                    active
+                    displayName
+                    title
+                    email
+                    firstName
+                    lastName
+                    fullName
+                    __typename
+                  }
+                  properties {
+                    active
+                    displayName
+                    title
+                    email
+                    firstName
+                    lastName
+                    fullName
+                    __typename
+                  }
+                  editableProperties {
+                    displayName
+                    title
+                    pictureLink
+                    email
+                    __typename
+                  }
+                  __typename
+                }
+                ... on CorpGroup {
+                  urn
+                  type
+                  name
+                  properties {
+                    displayName
+                    email
+                    __typename
+                  }
+                  info {
+                    displayName
+                    email
+                    admins {
+                      urn
+                      username
+                      info {
+                        active
+                        displayName
+                        title
+                        email
+                        firstName
+                        lastName
+                        fullName
+                        __typename
+                      }
+                      editableInfo {
+                        pictureLink
+                        teams
+                        skills
+                        __typename
+                      }
+                      __typename
+                    }
+                    members {
+                      urn
+                      username
+                      info {
+                        active
+                        displayName
+                        title
+                        email
+                        firstName
+                        lastName
+                        fullName
+                        __typename
+                      }
+                      editableInfo {
+                        pictureLink
+                        teams
+                        skills
+                        __typename
+                      }
+                      __typename
+                    }
+                    groups
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+              type
+              __typename
+            }
+            lastModified {
+              time
+              __typename
+            }
+            __typename
+          }
+          properties {
+            name
+            description
+            customProperties {
+              key
+              value
+              __typename
+            }
+            __typename
+          }
+          runs(input: {start: 0, count: 6, filters: {type: ON_LOGICAL_DATE, value: $exec_date}} ) {
+            count
+            runs {
+              urn
+              name
+              properties {
+                customProperties {
+                  key
+                	value
+                	__typename
+                }
+              }
+              state {
+                status
+                attempt
+                result {
+                  resultType
+                  nativeResultType
+                }
+                timestampMillis
+              }
+            }
+            __typename
+          }
+          globalTags {
+            tags {
+              tag {
+                urn
+                name
+                description
+                properties {
+                  colorHex
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+            __typename
+          }
+          glossaryTerms {
+            terms {
+              term {
+                urn
+                name
+                properties {
+                  name
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+            __typename
+          }
+          editableProperties {
+            description
+            __typename
+          }
+          domain {
+            urn
+            properties {
+              name
+              __typename
+            }
+            __typename
+          }
+          deprecation {
+            actor
+            deprecated
+            note
+            decommissionTime
+            __typename
+          }
+          __typename
+        }
+      }
+      matchedFields {
+        name
+        value
+        __typename
+      }
+      insights {
+        text
+        icon
+        __typename
+      }
+      degree
+      __typename
+    }
+    facets {
+      field
+      displayName
+      aggregations {
+        value
+        count
+        entity {
+          urn
+          type
+          ... on Tag {
+            name
+            description
+            properties {
+              colorHex
+              __typename
+            }
+            __typename
+          }
+          ... on GlossaryTerm {
+            properties {
+              name
+              __typename
+            }
+            __typename
+          }
+          ... on DataPlatform {
+            urn
+            type
+            name
+            properties {
+              type
+              displayName
+              datasetNameDelimiter
+              logoUrl
+              __typename
+            }
+            displayName
+            info {
+              type
+              displayName
+              datasetNameDelimiter
+              logoUrl
+              __typename
+            }
+            __typename
+          }
+          ... on Domain {
+            urn
+            properties {
+              name
+              __typename
+            }
+            __typename
+          }
+          ... on Container {
+            urn
+            platform {
+              urn
+              type
+              name
+              properties {
+                type
+                displayName
+                datasetNameDelimiter
+                logoUrl
+                __typename
+              }
+              displayName
+              info {
+                type
+                displayName
+                datasetNameDelimiter
+                logoUrl
+                __typename
+              }
+              __typename
+            }
+            properties {
+              name
+              __typename
+            }
+            __typename
+          }
+          ... on CorpUser {
+            urn
+            username
+            properties {
+              displayName
+              fullName
+              __typename
+            }
+            editableProperties {
+              displayName
+              pictureLink
+              __typename
+            }
+            __typename
+          }
+          ... on CorpGroup {
+            urn
+            name
+            properties {
+              displayName
+              __typename
+            }
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}

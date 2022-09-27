@@ -24,6 +24,7 @@ import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domai
 import { SidebarUserDefinedReportSection } from '../shared/containers/profile/sidebar/UserDefinedReport/SidebarUserDefinedReportSection';
 import { RunsTab } from './tabs/RunsTab';
 import { DataJobTimelinessTab } from '../shared/tabs/Entity/TimelinessTab';
+import { InsightsTab } from '../dataset/profile/InsightsTab';
 
 /**
  * Definition of the DataHub DataJob entity.
@@ -80,6 +81,14 @@ export class DataJobEntity implements Entity<DataJob> {
                         enabled: (_, dataJob: GetDataJobQuery) =>
                             (dataJob?.dataJob?.incoming?.count || 0) !== 0 ||
                             (dataJob?.dataJob?.outgoing?.count || 0) !== 0,
+                    },
+                },
+                {
+                    name: 'Insights',
+                    component: InsightsTab,
+                    display: {
+                        visible: (_, _1) => true,
+                        enabled: (_, dataJob: GetDataJobQuery) => (dataJob?.dataJob?.incoming?.count || 0) !== 0,
                     },
                 },
                 {

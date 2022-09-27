@@ -7,6 +7,7 @@ import styled from 'styled-components';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { ANTD_GRAY } from '../../shared/constants';
 import { DataJobEntity, RunEntity } from './Types';
+import { convertSecsToHumanReadable } from '../../shared/stripe-utils';
 
 const { Header, Sider, Content } = Layout;
 const { Step } = Steps;
@@ -108,39 +109,6 @@ const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY HH:mm:ss';
 const WIP_TEXT = `Predictions are still a WIP.\n Improvements are coming soon!`;
 
 // Helper functions
-function convertSecsToHumanReadable(seconds: number) {
-    const oriSeconds = seconds;
-    const floatingPart = oriSeconds - Math.floor(oriSeconds);
-
-    let secondsFloor = Math.floor(seconds);
-
-    const secondsPerHour = 60 * 60;
-    const secondsPerMinute = 60;
-
-    const hours = Math.floor(secondsFloor / secondsPerHour);
-    secondsFloor -= hours * secondsPerHour;
-
-    const minutes = Math.floor(secondsFloor / secondsPerMinute);
-    secondsFloor -= minutes * secondsPerMinute;
-
-    let readableFormat = '';
-    if (hours > 0) {
-        readableFormat += `${hours}Hours `;
-    }
-    if (minutes > 0) {
-        readableFormat += `${minutes}Min `;
-    }
-    if (secondsFloor + floatingPart > 0) {
-        if (Math.floor(oriSeconds) === oriSeconds) {
-            readableFormat += `${secondsFloor}Sec `;
-        } else {
-            secondsFloor += floatingPart;
-            readableFormat += `${secondsFloor.toFixed(2)}Sec`;
-        }
-    }
-    return readableFormat;
-}
-
 function formatRun(runEntity: RunEntity): FormattedRun {
     function getRunStartTime(p: FormattedRunCustomProperties) {
         const { executionDate, startDate } = p;

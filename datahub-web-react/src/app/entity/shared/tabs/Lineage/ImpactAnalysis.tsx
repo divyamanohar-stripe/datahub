@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import * as QueryString from 'query-string';
 import { useLocation } from 'react-router';
 
-import { useSearchAcrossLineageQuery } from '../../../../../graphql/search.generated';
 import { EntityType, FacetFilterInput, LineageDirection } from '../../../../../types.generated';
 import { ENTITY_FILTER_NAME } from '../../../../search/utils/constants';
 import useFilters from '../../../../search/utils/useFilters';
@@ -10,6 +9,7 @@ import { SearchCfg } from '../../../../../conf';
 import analytics, { EventType } from '../../../../analytics';
 import { EmbeddedListSearchSection } from '../../components/styled/search/EmbeddedListSearchSection';
 import generateUseSearchResultsViaRelationshipHook from './generateUseSearchResultsViaRelationshipHook';
+import { useSearchAcrossLineageQuery } from '../../../../../graphql/search.generated';
 
 type Props = {
     urn: string;
