@@ -34,6 +34,7 @@ entities:
       - deprecation
       - versionInfo
       - userDefinedReports
+      - dataJobRuntimeSLO
   - name: dataFlow
     category: core
     keyAspect: dataFlowKey

@@ -1,0 +1,8 @@
+namespace com.linkedin.datajob
+
+@Aspect = {
+  "name": "dataJobRuntimeSLO"
+}
+record DataJobRuntimeSLO {
+  runtime_slo: optional double
+}
