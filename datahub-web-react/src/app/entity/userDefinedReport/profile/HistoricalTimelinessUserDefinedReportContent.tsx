@@ -107,8 +107,8 @@ function getAllExecDates(dataJobEntities) {
  */
 function getDataJobOwner(dataJobEntity) {
     const { ownership } = dataJobEntity;
-    if (ownership && ownership.owners.length > 0) {
-        return ownership.owners[0].owner.properties.displayName;
+    if (ownership !== undefined && ownership !== null && ownership.owners.length > 0) {
+        return ownership?.owners[0]?.owner?.properties?.displayName;
     }
     return undefined;
 }
