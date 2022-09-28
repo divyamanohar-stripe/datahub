@@ -38,6 +38,11 @@ const LoadingContainer = styled.div`
     text-align: center;
 `;
 
+type RunCustomProperties = {
+    startDate: string;
+    [key: string]: string;
+};
+
 function getStatusForStyling(status: DataProcessRunStatus, resultType: DataProcessInstanceRunResultType) {
     if (status === 'COMPLETE') {
         if (resultType === 'SKIPPED') {
@@ -50,12 +55,14 @@ function getStatusForStyling(status: DataProcessRunStatus, resultType: DataProce
 
 const columns = [
     {
-        title: 'Time',
+        title: 'Start Time',
         dataIndex: 'time',
         key: 'time',
-        render: (value) => (
-            <Tooltip title={new Date(Number(value)).toUTCString()}>{new Date(Number(value)).toLocaleString()}</Tooltip>
-        ),
+        render: (value) => {
+            const runProperties = value?.reduce((acc, e) => ({ ...acc, [e.key]: e.value }), {}) as RunCustomProperties;
+            const { startDate } = runProperties;
+            return <Tooltip title={new Date(startDate).toUTCString()}>{new Date(startDate).toLocaleString()}</Tooltip>;
+        },
     },
     {
         title: 'Run ID',
@@ -124,7 +131,7 @@ export const RunsTab = () => {
     const tableData = runs
         ?.filter((run) => run)
         .map((run) => ({
-            time: run?.created?.time,
+            time: run?.properties?.customProperties,
             name: run?.name,
             status: run?.state?.[0]?.status,
             resultType: run?.state?.[0]?.result?.resultType,
@@ -132,6 +139,18 @@ export const RunsTab = () => {
             outputs: run?.outputs?.relationships.map((relationship) => relationship.entity),
             externalUrl: run?.externalUrl,
         }));
+
+    tableData?.sort(({ time: timeA }, { time: timeB }) => {
+        const getStartTime = (time: Array<{ key: string; value: string }>) => {
+            const startEntry = time.find(({ key }) => key === 'startDate')!;
+            return new Date(startEntry.value).getTime();
+        };
+        const startA = getStartTime(timeA as Array<{ key: string; value: string }>);
+        const startB = getStartTime(timeB as Array<{ key: string; value: string }>);
+
+        return startB - startA;
+    });
+
     if (loading) {
         return (
             <LoadingContainer>
