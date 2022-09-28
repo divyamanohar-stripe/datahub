@@ -206,7 +206,7 @@ function renderSlaMissSummary(runs: Run[]) {
  * @param runs list of DataJob run results
  * @param allExecDates list of unique execution dates to line up x-axis across charts
  */
-function renderTimelinessPlot(runs: Run[], allExecDates: string[]) {
+function renderTimelinessPlot(sla: moment.Duration, runs: Run[], allExecDates: string[]) {
     // create mapping of execution date to color of column based whether missed SLA or not
     const slaMissData = new Map();
     let runsPlotData = runs.map((r) => {
@@ -277,6 +277,12 @@ function renderTimelinessPlot(runs: Run[], allExecDates: string[]) {
                     // display y-axis in decimal hours
                     `${(+val / 3600).toFixed(2)}h`,
             },
+            ...(sla.asHours() > 1
+                ? {
+                      minLimit: -sla.asSeconds() * 1.25,
+                      maxLimit: sla.asSeconds() * 1.25,
+                  }
+                : {}),
         },
         color: (execDate) => {
             return slaMissData.get(execDate.execDate);
@@ -381,7 +387,7 @@ function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
                 <Header>{renderPlotHeader(taskId, dataJobProperties.finishedBySla, dataJobEntity)}</Header>
                 <Layout>
                     <Sider>{renderSlaMissSummary(latestRuns)}</Sider>
-                    <Content>{renderTimelinessPlot(latestRuns, allExecDates)}</Content>
+                    <Content>{renderTimelinessPlot(errorSlaDuration, latestRuns, allExecDates)}</Content>
                 </Layout>
             </Layout>
         </>
