@@ -418,6 +418,7 @@ function renderTimelinessPlot(
                 position: ['max', errorEndSlaInMinutes] as [string, number],
                 content: 'Error End SLA',
                 offsetX: -40,
+                offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
             annotations.push(errorEndLine);
@@ -438,6 +439,7 @@ function renderTimelinessPlot(
                 position: ['max', errorStartSlaInMinutes] as [string, number],
                 content: 'Error Start SLA',
                 offsetX: -44,
+                offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
             annotations.push(errorStartLine);
@@ -458,6 +460,7 @@ function renderTimelinessPlot(
                 position: ['max', warnEndSlaInMinutes] as [string, number],
                 content: 'Warn End SLA',
                 offsetX: -40,
+                offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
             annotations.push(warnEndLine);
@@ -478,6 +481,7 @@ function renderTimelinessPlot(
                 position: ['max', warnStartSlaInMinutes] as [string, number],
                 content: 'Warn Start SLA',
                 offsetX: -44,
+                offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
             annotations.push(warnStartText);
@@ -570,6 +574,16 @@ function renderTimelinessPlot(
             title: {
                 text: 'Execution Date',
             },
+            label: {
+                formatter: (strDate) => {
+                    const date = moment.utc(strDate);
+                    // if UTC midnight run, remove hours/minutes from exec date label
+                    if (date.hour() === 0 && date.minute() === 0) {
+                        return date.format('YYYY-MM-DD');
+                    }
+                    return date.format('YYYY-MM-DD HH:mm');
+                },
+            },
         },
         yAxis: {
             title: {
@@ -581,6 +595,15 @@ function renderTimelinessPlot(
         },
         color: (execDate) => {
             return slaMissData.get(execDate.execDate);
+        },
+        onEvent: (chart, event) => {
+            if (event.type === 'plot:click') {
+                const anchor = document.createElement('a');
+                anchor.href = event.data?.data?.externalUrl;
+                anchor.target = '_blank';
+                anchor.click();
+                anchor.remove();
+            }
         },
         annotations: getSlaAnnotations(
             errorEndSlaInMins,
@@ -662,7 +685,7 @@ function renderTimelinessPlot(
                 if (run !== undefined && run.endDate !== 'None') {
                     finishedAt = `<div>Ended At: ${formatDateString(run.endDate)}</div>`;
                 }
-                return `<div>${dateDom}${startedAt}${finishedAt}${runDuration}${stateDom}${errorTimeLeftDom}${errorStartTimeLeftDom}${warnTimeLeftDom}${warnStartTimeLeftDom}<div>Open in <a href="${run?.externalUrl}">Airflow</a></div></div>`;
+                return `<div>${dateDom}${startedAt}${finishedAt}${runDuration}${stateDom}${errorTimeLeftDom}${errorStartTimeLeftDom}${warnTimeLeftDom}${warnStartTimeLeftDom}<div><a href="${run?.externalUrl}">Click to open in Airflow</a></div></div>`;
             },
         },
     };
