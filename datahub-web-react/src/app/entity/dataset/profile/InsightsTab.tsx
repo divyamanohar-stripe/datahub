@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-nested-ternary */
 import React, { MouseEventHandler, ReactElement, useCallback, useMemo, useRef, useState } from 'react';
-import { Button, Divider, List } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined, PartitionOutlined } from '@ant-design/icons';
+import { Button, DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip } from 'antd';
 import styled from 'styled-components';
 
-import { useHistory } from 'react-router';
+import moment from 'moment';
 import { useEntityData, useLineageData } from '../../shared/EntityContext';
 import TabToolbar from '../../shared/components/styled/TabToolbar';
 import { DataProcessRunEvent, DataProcessRunStatus, EntityType, LineageDirection } from '../../../../types.generated';
@@ -67,6 +66,7 @@ const ThinDivider = styled(Divider)`
 
 // Types
 type RunEntity = {
+    urn: string;
     name: string;
     externalUrl: string;
     properties: {
@@ -107,7 +107,7 @@ function calculateRuntime(dataJob: DataJobEntity) {
         firstRun?.state.filter((s) => {
             return s?.status === DataProcessRunStatus.Started;
         })[0]?.timestampMillis || 10;
-    const finalRun = dataJob.runs?.runs[dataJob.runs?.count - 1];
+    const finalRun = dataJob.runs?.runs[dataJob.runs?.runs?.length - 1];
     const endTimestamp =
         finalRun?.state.filter((s) => {
             return s?.status === DataProcessRunStatus.Complete;
@@ -173,52 +173,76 @@ export const InsightsTab = ({
         })
         .map((e) => e.entity) as DataJobEntity[];
 
+    const currentMoment = moment.utc();
+    const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
+        setExecDate(moment.utc(dateString).valueOf() || currentMoment.valueOf());
+    };
+
     return (
-        <StyledList
-            bordered
-            dataSource={dataJobEntities}
-            renderItem={(entity, index) => {
-                const additionalProperties = additionalPropertiesList?.[index];
-                const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
-                const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
-                const platformName =
-                    genericProps?.platform?.properties?.displayName ||
-                    capitalizeFirstLetter(genericProps?.platform?.name);
-                const entityTypeName = entityRegistry.getEntityName(entity.type);
-                const displayName = entityRegistry.getDisplayName(entity.type, entity);
-                const url = entityRegistry.getEntityUrl(entity.type, entity.urn);
-                const fallbackIcon = entityRegistry.getIcon(entity.type, 18, IconStyleType.ACCENT);
-                const subType = genericProps?.subTypes?.typeNames?.length && genericProps?.subTypes?.typeNames[0];
-                const entityCount = genericProps?.entityCount;
-                const slo =
-                    genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || 'undefined';
-                const runtime = calculateRuntime(entity);
-                const delay = runtime - parseFloat(slo);
-                return (
-                    <>
-                        <ListItem>
-                            <InsightsPreviewCard
-                                name={displayName}
-                                logoUrl={platformLogoUrl || undefined}
-                                logoComponent={fallbackIcon}
-                                url={url}
-                                platform={platformName || undefined}
-                                type={subType || entityTypeName}
-                                titleSizePx={14}
-                                tags={genericProps?.globalTags || undefined}
-                                glossaryTerms={genericProps?.glossaryTerms || undefined}
-                                domain={genericProps?.domain}
-                                entityCount={entityCount}
-                                degree={additionalProperties?.degree}
-                                slo={slo}
-                                runtime={runtime}
-                                delay={delay}
+        <>
+            <div>
+                <Descriptions title="" bordered size="small" column={{ md: 4 }}>
+                    <Descriptions.Item style={{ fontWeight: 'bold' }} label="Execution Date">
+                        <Tooltip title="UTC scheduled run of tasks">
+                            <DatePicker
+                                format="YYYY-MM-DD HH:mm"
+                                showTime={{
+                                    format: 'HH:mm',
+                                }}
+                                onChange={handleDateChange}
+                                defaultValue={currentMoment}
                             />
-                        </ListItem>
-                        <ThinDivider />
-                    </>
-                );
-            }}
-        />
+                        </Tooltip>
+                    </Descriptions.Item>
+                </Descriptions>
+            </div>
+            <StyledList
+                bordered
+                dataSource={dataJobEntities}
+                renderItem={(entity, index) => {
+                    const additionalProperties = additionalPropertiesList?.[index];
+                    const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
+                    const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
+                    const dpiUrn = entity?.runs?.runs[entity.runs?.runs?.length - 1]?.urn || '';
+                    const platformName =
+                        genericProps?.platform?.properties?.displayName ||
+                        capitalizeFirstLetter(genericProps?.platform?.name);
+                    const entityTypeName = entityRegistry.getEntityName(entity.type);
+                    const displayName = entityRegistry.getDisplayName(entity.type, entity);
+                    const url = entityRegistry.getEntityUrl(entity.type, entity.urn);
+                    const fallbackIcon = entityRegistry.getIcon(entity.type, 18, IconStyleType.ACCENT);
+                    const subType = genericProps?.subTypes?.typeNames?.length && genericProps?.subTypes?.typeNames[0];
+                    const entityCount = genericProps?.entityCount;
+                    const slo =
+                        genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || 'undefined';
+                    const runtime = calculateRuntime(entity);
+                    const delay = runtime - parseFloat(slo);
+                    return (
+                        <>
+                            <ListItem>
+                                <InsightsPreviewCard
+                                    name={displayName}
+                                    logoUrl={platformLogoUrl || undefined}
+                                    logoComponent={fallbackIcon}
+                                    url={url}
+                                    platform={platformName + dpiUrn || undefined}
+                                    type={subType || entityTypeName}
+                                    titleSizePx={14}
+                                    tags={genericProps?.globalTags || undefined}
+                                    glossaryTerms={genericProps?.glossaryTerms || undefined}
+                                    domain={genericProps?.domain}
+                                    entityCount={entityCount}
+                                    degree={additionalProperties?.degree}
+                                    slo={slo}
+                                    runtime={runtime}
+                                    delay={delay}
+                                />
+                            </ListItem>
+                            <ThinDivider />
+                        </>
+                    );
+                }}
+            />
+        </>
     );
 };
