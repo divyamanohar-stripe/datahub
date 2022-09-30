@@ -16,8 +16,9 @@ import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
 import { Entity, IconStyleType } from '../../Entity';
 import InsightsPreviewCard from '../../../preview/InsightsPreviewCard';
+import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 
-// copied from lineagetab.tsx
+// Styles
 const StyledTabToolbar = styled(TabToolbar)`
     justify-content: space-between;
 `;
@@ -64,6 +65,31 @@ const ThinDivider = styled(Divider)`
     margin: 0px;
 `;
 
+const LoadingText = styled.div`
+    margin-top: 18px;
+    font-size: 12px;
+`;
+
+const LoadingContainer = styled.div`
+    padding-top: 40px;
+    padding-bottom: 40px;
+    width: 100%;
+    text-align: center;
+`;
+
+const loadingPage = (
+    <LoadingContainer>
+        <LoadingSvg height={80} width={80} />
+        <LoadingText>Fetching data...</LoadingText>
+    </LoadingContainer>
+);
+
+const noDelayedJobsPage = (
+    <LoadingContainer>
+        <LoadingText>No Delayed Jobs to display!</LoadingText>
+    </LoadingContainer>
+);
+
 // Types
 type RunEntity = {
     urn: string;
@@ -102,6 +128,7 @@ type DataJobEntity = {
 };
 
 function calculateRuntime(dataJob: DataJobEntity) {
+    if (dataJob.runs?.runs?.length === 0) return undefined;
     const firstRun = dataJob?.runs?.runs[0];
     const startTimestamp =
         firstRun?.state.filter((s) => {
@@ -116,10 +143,19 @@ function calculateRuntime(dataJob: DataJobEntity) {
     return runtime;
 }
 
-function isEntityDelayed(entity: DataJobEntity) {
+function calculateDelay(runtime?: number, slo?: number) {
+    // eslint-disable-next-line eqeqeq
+    if (runtime == undefined || slo == undefined) return undefined;
+    return runtime - slo;
+}
+
+function isEntityDelayed(entity?: DataJobEntity) {
+    if (entity === undefined || entity === null) return false;
     const slo = entity.properties?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || undefined;
-    if (slo === undefined) return false;
-    return calculateRuntime(entity!) > parseInt(slo, 10);
+    const runtime = calculateRuntime(entity);
+    // eslint-disable-next-line eqeqeq
+    if (slo == undefined || runtime == undefined) return false;
+    return runtime > parseInt(slo, 10);
 }
 
 export const InsightsTab = ({
@@ -145,7 +181,7 @@ export const InsightsTab = ({
     const start = 0;
     const types = [EntityType.DataJob];
     const query = '';
-    const count = 10;
+    const count = 1000;
     const { urn, entityType } = useEntityData();
     const [execDate, setExecDate] = useState<number>(properties.defaultDate);
     const { data, loading, error, refetch } = useGetDelaysQuery({
@@ -164,6 +200,8 @@ export const InsightsTab = ({
     });
 
     const entityRegistry = useEntityRegistry();
+    if (loading) return loadingPage;
+
     const additionalPropertiesList = data?.searchAcrossLineage?.searchResults?.map((searchResult) => ({
         degree: searchResult.degree,
     }));
@@ -172,6 +210,7 @@ export const InsightsTab = ({
             return e.entity.type === EntityType.DataJob;
         })
         .map((e) => e.entity) as DataJobEntity[];
+    const delayedEntities = dataJobEntities.filter(isEntityDelayed);
 
     const currentMoment = moment.utc();
     const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
@@ -196,53 +235,58 @@ export const InsightsTab = ({
                     </Descriptions.Item>
                 </Descriptions>
             </div>
-            <StyledList
-                bordered
-                dataSource={dataJobEntities}
-                renderItem={(entity, index) => {
-                    const additionalProperties = additionalPropertiesList?.[index];
-                    const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
-                    const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
-                    const dpiUrn = entity?.runs?.runs[entity.runs?.runs?.length - 1]?.urn || '';
-                    const platformName =
-                        genericProps?.platform?.properties?.displayName ||
-                        capitalizeFirstLetter(genericProps?.platform?.name);
-                    const entityTypeName = entityRegistry.getEntityName(entity.type);
-                    const displayName = entityRegistry.getDisplayName(entity.type, entity);
-                    const url = entityRegistry.getEntityUrl(entity.type, entity.urn);
-                    const fallbackIcon = entityRegistry.getIcon(entity.type, 18, IconStyleType.ACCENT);
-                    const subType = genericProps?.subTypes?.typeNames?.length && genericProps?.subTypes?.typeNames[0];
-                    const entityCount = genericProps?.entityCount;
-                    const slo =
-                        genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || 'undefined';
-                    const runtime = calculateRuntime(entity);
-                    const delay = runtime - parseFloat(slo);
-                    return (
-                        <>
-                            <ListItem>
-                                <InsightsPreviewCard
-                                    name={displayName}
-                                    logoUrl={platformLogoUrl || undefined}
-                                    logoComponent={fallbackIcon}
-                                    url={url}
-                                    platform={platformName + dpiUrn || undefined}
-                                    type={subType || entityTypeName}
-                                    titleSizePx={14}
-                                    tags={genericProps?.globalTags || undefined}
-                                    glossaryTerms={genericProps?.glossaryTerms || undefined}
-                                    domain={genericProps?.domain}
-                                    entityCount={entityCount}
-                                    degree={additionalProperties?.degree}
-                                    slo={slo}
-                                    runtime={runtime}
-                                    delay={delay}
-                                />
-                            </ListItem>
-                            <ThinDivider />
-                        </>
-                    );
-                }}
-            />
+            {delayedEntities.length === 0 && noDelayedJobsPage}
+            {delayedEntities.length !== 0 && (
+                <StyledList
+                    bordered
+                    dataSource={dataJobEntities}
+                    renderItem={(entity, index) => {
+                        const additionalProperties = additionalPropertiesList?.[index];
+                        const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
+                        const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
+                        const dpiUrn = entity?.runs?.runs[entity.runs?.runs?.length - 1]?.urn || '';
+                        const platformName =
+                            genericProps?.platform?.properties?.displayName ||
+                            capitalizeFirstLetter(genericProps?.platform?.name);
+                        const entityTypeName = entityRegistry.getEntityName(entity.type);
+                        const displayName = entityRegistry.getDisplayName(entity.type, entity);
+                        const url = entityRegistry.getEntityUrl(entity.type, entity.urn);
+                        const fallbackIcon = entityRegistry.getIcon(entity.type, 18, IconStyleType.ACCENT);
+                        const subType =
+                            genericProps?.subTypes?.typeNames?.length && genericProps?.subTypes?.typeNames[0];
+                        const entityCount = genericProps?.entityCount;
+                        const slo =
+                            genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value ||
+                            'undefined';
+                        const runtime = calculateRuntime(entity);
+                        const delay = calculateDelay(runtime, parseInt(slo, 10));
+                        return (
+                            <>
+                                <ListItem>
+                                    <InsightsPreviewCard
+                                        name={displayName}
+                                        logoUrl={platformLogoUrl || undefined}
+                                        logoComponent={fallbackIcon}
+                                        url={url}
+                                        platform={platformName + dpiUrn || undefined}
+                                        type={subType || entityTypeName}
+                                        titleSizePx={14}
+                                        tags={genericProps?.globalTags || undefined}
+                                        glossaryTerms={genericProps?.glossaryTerms || undefined}
+                                        domain={genericProps?.domain}
+                                        entityCount={entityCount}
+                                        degree={additionalProperties?.degree}
+                                        slo={slo}
+                                        runtime={runtime}
+                                        delay={delay}
+                                    />
+                                </ListItem>
+                                <ThinDivider />
+                            </>
+                        );
+                    }}
+                />
+            )}
         </>
     );
 };
