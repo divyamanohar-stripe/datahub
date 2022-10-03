@@ -164,7 +164,7 @@ function formatDataJob(
         return 'Segment undefined';
     }
 
-    function getRunsAverageStartMoment(runs: FormattedRun[], currentDate: moment.Moment) {
+    function getRunsAverageStartMoment(runs: FormattedRun[]) {
         const runCount = runs.length;
         if (runCount === 0) return null;
 
@@ -174,10 +174,10 @@ function formatDataJob(
                 return acc + startTime;
             }, 0) / runCount;
 
-        return moment.utc(currentDate).add(averageStartTime, UnitOfTime.SECONDS);
+        return moment.utc(reportDate).add(averageStartTime, UnitOfTime.SECONDS);
     }
 
-    function getRunsAverageLandingMoment(runs: FormattedRun[], currentDate: moment.Moment) {
+    function getRunsAverageLandingMoment(runs: FormattedRun[]) {
         const successRunCount = runs.filter((r) => {
             return r.state === RunState.SUCCESS;
         }).length;
@@ -190,7 +190,7 @@ function formatDataJob(
                 return acc + landingTime;
             }, 0) / successRunCount;
 
-        return moment.utc(currentDate).add(averageLandingTime, UnitOfTime.SECONDS);
+        return moment.utc(reportDate).add(averageLandingTime, UnitOfTime.SECONDS);
     }
 
     function getRunsAverageDuration(runs: FormattedRun[]) {
@@ -208,9 +208,9 @@ function formatDataJob(
         );
     }
 
-    function getCurrentRun(runs: FormattedRun[], currentDate: moment.Moment) {
+    function getCurrentRun(runs: FormattedRun[]) {
         const currentRuns = runs.filter((r) => {
-            return moment.utc(r.executionDate).isSame(currentDate);
+            return moment.utc(r.executionDate).isSame(reportDate);
         });
         if (currentRuns.length === 0) return null;
         return currentRuns[0];
@@ -221,8 +221,8 @@ function formatDataJob(
         return currentRun.state;
     }
 
-    function getPreviousSameWeekdayRun(runs: FormattedRun[], currentDate: moment.Moment) {
-        const previousSameWeekday = moment.utc(currentDate).subtract(1, 'week');
+    function getPreviousSameWeekdayRun(runs: FormattedRun[]) {
+        const previousSameWeekday = moment.utc(reportDate).subtract(1, 'week');
         const previousSameWeekdayRuns = runs.filter((r) => {
             return moment.utc(r.executionDate).isSame(previousSameWeekday);
         });
@@ -230,19 +230,21 @@ function formatDataJob(
         return previousSameWeekdayRuns[0];
     }
 
-    function getPreviousEOMRun(runs: FormattedRun[], currentDate: moment.Moment) {
-        // NOTE: If currentDate is the first day of month, use last month's first day.
-        let previousEOM: moment.Moment;
-        if (currentDate.isSame(moment.utc().startOf('month'))) {
-            previousEOM = moment.utc(currentDate).subtract(1, 'month');
-        } else {
-            previousEOM = moment.utc(currentDate).startOf('month');
+    function getPreviousEOMRun(runs: FormattedRun[]) {
+        // NOTE: Get EOM runs that are previous to reportDate
+        const previousEOMRuns = orderBy(
+            runs.filter((r) => {
+                return moment.utc(r.executionDate).date() === 1 && reportDate > moment.utc(r.executionDate);
+            }),
+            'executionDate',
+        );
+
+        // return greatest previous EOM run
+        const previousEOMRun = previousEOMRuns.at(-1);
+        if (previousEOMRun === undefined) {
+            return null;
         }
-        const previousEOMRuns = runs.filter((r) => {
-            return moment.utc(r.executionDate).isSame(previousEOM);
-        });
-        if (previousEOMRuns.length === 0) return null;
-        return previousEOMRuns[0];
+        return previousEOMRun;
     }
 
     function getPreviousRuns(runs: FormattedRun[], numRuns = 7) {
@@ -253,32 +255,29 @@ function formatDataJob(
         return orderedRuns.slice(start, numRuns + start);
     }
 
-    function getDataJobSLAMoment(
-        dataJobCustomProperties: FormattedDataJobCustomProperties,
-        currentDate: moment.Moment,
-    ) {
+    function getDataJobSLAMoment(dataJobCustomProperties: FormattedDataJobCustomProperties) {
         if (dataJobCustomProperties === undefined) return null;
         const { finishedBySla } = dataJobCustomProperties;
         if (finishedBySla === undefined) return null;
-        return moment.utc(currentDate).add(moment.duration(finishedBySla, 'seconds'));
+        return moment.utc(reportDate).add(moment.duration(finishedBySla, 'seconds'));
     }
 
     const { jobId } = dataJob;
     const segmentName = getSegmentName(dataJob);
     const formattedRuns = dataJob.runs?.runs?.map(formatRun) as FormattedRun[];
-    const averageStartMoment = getRunsAverageStartMoment(formattedRuns, reportDate);
-    const averageLandingMoment = getRunsAverageLandingMoment(formattedRuns, reportDate);
+    const averageStartMoment = getRunsAverageStartMoment(formattedRuns);
+    const averageLandingMoment = getRunsAverageLandingMoment(formattedRuns);
     const averageDuration = getRunsAverageDuration(formattedRuns);
-    const currentRun = getCurrentRun(formattedRuns, reportDate);
+    const currentRun = getCurrentRun(formattedRuns);
     const currentRunState = getCurrentRunState(currentRun);
-    const previousSameWeekdayRun = getPreviousSameWeekdayRun(formattedRuns, reportDate);
-    const previousEOMRun = getPreviousEOMRun(formattedRuns, reportDate);
+    const previousSameWeekdayRun = getPreviousSameWeekdayRun(formattedRuns);
+    const previousEOMRun = getPreviousEOMRun(formattedRuns);
     const previousRuns = getPreviousRuns(formattedRuns);
     const formattedDataJobCustomProperties = dataJob.properties?.customProperties?.reduce(
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
     ) as FormattedDataJobCustomProperties;
-    const dataJobSLAMoment = getDataJobSLAMoment(formattedDataJobCustomProperties, reportDate);
+    const dataJobSLAMoment = getDataJobSLAMoment(formattedDataJobCustomProperties);
     const dataJobEntity = dataJob;
 
     return {
@@ -944,6 +943,8 @@ function renderSegmentTasks(
 export const PipelineTimelinessUserDefinedReportContent = (
     reportName,
     dataJobEntities,
+    logicalDate,
+    setLogicalDate,
     segmentId,
     setSegmentId,
     getSearchParam,
@@ -954,6 +955,7 @@ export const PipelineTimelinessUserDefinedReportContent = (
         if (reportParam === null || !moment(reportParam, DATE_SEARCH_PARAM_FORMAT, true).isValid()) {
             const newReportParam = moment.utc().startOf('day').format(DATE_SEARCH_PARAM_FORMAT);
             setSearchParam('reportDate', newReportParam);
+            setLogicalDate(moment(newReportParam).toDate().getTime() * 1000);
             return moment(newReportParam);
         }
         return moment.utc(reportParam);
@@ -961,6 +963,7 @@ export const PipelineTimelinessUserDefinedReportContent = (
     const reportDate = getReportDate();
     const setReportDate = (newReportDate: moment.Moment) => {
         setSearchParam('reportDate', newReportDate.format(DATE_SEARCH_PARAM_FORMAT));
+        setLogicalDate(newReportDate.toDate().getTime() * 1000);
     };
 
     const currentMoment = moment.utc();

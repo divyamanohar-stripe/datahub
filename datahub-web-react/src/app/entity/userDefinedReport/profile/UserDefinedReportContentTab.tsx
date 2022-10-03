@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { useHistory } from 'react-router';
 import styled from 'styled-components';
-import { useGetUserDefinedReportContentQuery } from '../../../../graphql/userDefinedReport.generated';
+import moment from 'moment-timezone';
+import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../graphql/userDefinedReport.generated';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { useEntityData } from '../../shared/EntityContext';
 import { HistoricalTimelinessUserDefinedReportContent } from './HistoricalTimelinessUserDefinedReportContent';
 import { PipelineTimelinessUserDefinedReportContent } from './PipelineTimelinessUserDefinedReportContent';
 import { DataJobEntity } from './Types';
+import { DataProcessInstanceFilterInputType } from '../../../../types.generated';
 
 //  Styles
 const LoadingText = styled.div`
@@ -57,14 +59,27 @@ const useSearchParams = () => {
 
 export const UserDefinedReportContentTab = () => {
     const { urn } = useEntityData();
+    const initialDate = moment.utc().startOf('day').toDate().getTime();
     const [segmentId, setSegmentId] = useState(0);
+    const [logicalDate, setLogicalDate] = useState(initialDate);
     const { getSearchParam, setSearchParam } = useSearchParams();
 
     const maxRunCount = 65;
     const maxEntityCount = 50;
     const { loading: isLoadingUserDefinedReport, data: userDefinedReportContentQueryResponse } =
-        useGetUserDefinedReportContentQuery({
-            variables: { urn, entityStart: 0, entityCount: maxEntityCount, runStart: 0, runCount: maxRunCount },
+        useGetUserDefinedReportContentFilterLogicalDateQuery({
+            variables: {
+                urn,
+                entityStart: 0,
+                entityCount: maxEntityCount,
+                input: {
+                    filters: [
+                        { type: DataProcessInstanceFilterInputType.BeforeLogicalDate, value: logicalDate.toString(10) },
+                    ],
+                    start: 0,
+                    count: maxRunCount,
+                },
+            },
         });
 
     if (isLoadingUserDefinedReport) return loadingPage;
@@ -81,6 +96,8 @@ export const UserDefinedReportContentTab = () => {
         return PipelineTimelinessUserDefinedReportContent(
             userDefinedReportName,
             dataJobEntities,
+            logicalDate,
+            setLogicalDate,
             segmentId,
             setSegmentId,
             getSearchParam,

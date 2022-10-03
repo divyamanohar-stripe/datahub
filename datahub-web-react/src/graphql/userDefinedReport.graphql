@@ -128,3 +128,77 @@ query getUserDefinedReportContent($urn: String!, $entityStart: Int, $entityCount
 mutation createUserDefinedReport($input: CreateUserDefinedReportInput!) {
     createUserDefinedReport(input: $input)
 }
+
+
+query getUserDefinedReportContentFilterLogicalDate($urn: String!, $entityStart: Int, $entityCount: Int, $input: DataProcessInstanceInput) {
+    userDefinedReport(urn: $urn) {
+        urn
+        id
+        ownership {
+            ...ownershipFields
+        }
+        properties {
+            name
+            type
+            description
+        }
+        entities(input: {start: $entityStart, count: $entityCount}) {
+            start
+            count
+            total
+            searchResults {
+                entity {
+                    urn
+                    type
+                    ... on DataJob {
+                        urn
+                        type
+                        jobId
+                        dataFlow {
+                            platform {
+                                ...platformFields
+                            }
+                        }
+                        ownership {
+                            ...ownershipFields
+                        }
+                        properties {
+                            name
+                            description
+                            externalUrl
+                            customProperties {
+                                key
+                                value
+                            }
+                        }
+                        globalTags {
+                            ...globalTagsFields
+                        }
+                        runs(input: $input) {
+                            count
+                            start
+                            total
+                            runs {
+                                urn
+                                execution {
+                                    logicalDate
+                                    startDate
+                                    endDate
+                                }
+                                type
+                                properties {
+                                    customProperties {
+                                        key
+                                        value
+                                    }
+                                }
+                                name
+                                externalUrl
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
