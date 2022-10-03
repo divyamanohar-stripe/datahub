@@ -12,6 +12,7 @@ import com.linkedin.datahub.graphql.generated.DataFlow;
 import com.linkedin.datahub.graphql.generated.DataJob;
 import com.linkedin.datahub.graphql.generated.DataJobEditableProperties;
 import com.linkedin.datahub.graphql.generated.DataJobInfo;
+import com.linkedin.datahub.graphql.generated.DataJobRuntimeSLO;
 import com.linkedin.datahub.graphql.generated.DataJobInputOutput;
 import com.linkedin.datahub.graphql.generated.DataJobProperties;
 import com.linkedin.datahub.graphql.generated.Dataset;
@@ -37,7 +38,6 @@ import javax.annotation.Nonnull;
 
 import static com.linkedin.metadata.Constants.*;
 
-
 public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
 
     public static final DataJobMapper INSTANCE = new DataJobMapper();
@@ -58,6 +58,11 @@ public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
                 final DataJobKey gmsKey = new DataJobKey(data);
                 result.setDataFlow(new DataFlow.Builder().setUrn(gmsKey.getFlow().toString()).build());
                 result.setJobId(gmsKey.getJobId());
+            } else if (DATA_JOB_RUNTIME_SLO_ASPECT_NAME.equals(name)) {
+                final com.linkedin.datajob.DataJobRuntimeSLO gmsDataJobRuntimeSLO = new com.linkedin.datajob.DataJobRuntimeSLO(data);
+                final DataJobRuntimeSLO dataJobRuntimeSLO = new DataJobRuntimeSLO();
+                dataJobRuntimeSLO.setRuntimeSLO(gmsDataJobRuntimeSLO.getRuntimeSLO());
+                result.setRuntimeSLO(dataJobRuntimeSLO);
             } else if (DATA_JOB_INFO_ASPECT_NAME.equals(name)) {
                 final com.linkedin.datajob.DataJobInfo gmsDataJobInfo = new com.linkedin.datajob.DataJobInfo(data);
                 result.setInfo(mapDataJobInfo(gmsDataJobInfo));

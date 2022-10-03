@@ -4,5 +4,8 @@ namespace com.linkedin.datajob
   "name": "dataJobRuntimeSLO"
 }
 record DataJobRuntimeSLO {
-  runtime_slo: optional double
+  @Searchable = {
+    "fieldType": "COUNT"
+  }
+  runtimeSLO: optional float
 }

@@ -110,6 +110,7 @@ public class Constants {
   public static final String DATA_JOB_INFO_ASPECT_NAME = "dataJobInfo";
   public static final String DATA_JOB_INPUT_OUTPUT_ASPECT_NAME = "dataJobInputOutput";
   public static final String EDITABLE_DATA_JOB_PROPERTIES_ASPECT_NAME = "editableDataJobProperties";
+  public static final String DATA_JOB_RUNTIME_SLO_ASPECT_NAME = "dataJobRuntimeSLO";
 
   // DataPlatform
   public static final String DATA_PLATFORM_KEY_ASPECT_NAME = "dataPlatformKey";

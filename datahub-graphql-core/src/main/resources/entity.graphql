@@ -4437,6 +4437,18 @@ type DataJob implements EntityWithRelationships & Entity {
     History of runs of this task
     """
     runs(input: DataProcessInstanceInput): DataProcessInstanceResult
+
+    """
+    runtime slo of a data job
+    """
+    runtimeSLO: DataJobRuntimeSLO
+}
+
+type DataJobRuntimeSLO {
+    """
+    Job runtime slo
+    """
+    runtimeSLO: Float
 }
 
 """
