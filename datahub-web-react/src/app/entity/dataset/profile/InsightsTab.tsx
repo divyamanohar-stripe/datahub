@@ -127,7 +127,7 @@ type DataJobEntity = {
     };
 };
 
-function calculateRuntime(dataJob: DataJobEntity) {
+function calculateRuntimeSeconds(dataJob: DataJobEntity) {
     if (dataJob.runs?.runs?.length === 0) return undefined;
     const firstRun = dataJob?.runs?.runs[0];
     const startTimestamp =
@@ -140,7 +140,7 @@ function calculateRuntime(dataJob: DataJobEntity) {
             return s?.status === DataProcessRunStatus.Complete;
         })[0]?.timestampMillis || 0;
     const runtime = endTimestamp - startTimestamp;
-    return runtime;
+    return runtime / 1000;
 }
 
 function calculateDelay(runtime?: number, slo?: number) {
@@ -152,7 +152,7 @@ function calculateDelay(runtime?: number, slo?: number) {
 function isEntityDelayed(entity?: DataJobEntity) {
     if (entity === undefined || entity === null) return false;
     const slo = entity.properties?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || undefined;
-    const runtime = calculateRuntime(entity);
+    const runtime = calculateRuntimeSeconds(entity);
     // eslint-disable-next-line eqeqeq
     if (slo == undefined || runtime == undefined) return false;
     return runtime > parseInt(slo, 10);
@@ -258,7 +258,7 @@ export const InsightsTab = ({
                         const slo =
                             genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value ||
                             'undefined';
-                        const runtime = calculateRuntime(entity);
+                        const runtime = calculateRuntimeSeconds(entity);
                         const delay = calculateDelay(runtime, parseInt(slo, 10));
                         return (
                             <>
