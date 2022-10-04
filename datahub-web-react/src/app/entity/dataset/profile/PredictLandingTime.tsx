@@ -43,6 +43,7 @@ type TreeDataInfo = {
     upstreams: TreeDataInfo[];
     runtimeSLO: number;
     startDate?: moment.Moment;
+    endDate?: moment.Moment;
     degree: number;
     discovered: boolean;
     landingTime?: moment.Moment;
@@ -143,9 +144,11 @@ function buildLineage(
                     (acc, e) => ({ ...acc, [e.key]: e.value }),
                     {},
                 ) as FormattedRunCustomProperties;
-                if (moment.utc(formattedProps.executionDate) === executionDate) {
+                if (moment.utc(formattedProps.executionDate).isSame(executionDate)) {
                     startDate = moment.utc(formattedProps.startDate);
-                    endDate = moment.utc(formattedProps?.endDate);
+                    if (formattedProps.endDate !== 'None') {
+                        endDate = moment.utc(formattedProps?.endDate);
+                    }
                 }
             }
 
@@ -155,6 +158,7 @@ function buildLineage(
                 upstreams: [],
                 runtimeSLO: nodeMap[currNodeUrn]?.entity?.runtimeSLO?.runtimeSLO ?? 0,
                 startDate,
+                endDate,
                 degree: nodeMap[currNodeUrn]?.degree,
                 discovered: false,
                 landingTime: undefined,
@@ -238,25 +242,46 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
     }
     let predictedLandingTime;
     try {
-        const rootRunInfo = dataJobPredictions?.dataJob?.runs?.runs ?? { runs: [] };
+        const rootRunInfo = dataJobPredictions?.dataJob?.runs ?? { runs: [] };
         const rootRuntimeSLO = dataJobPredictions?.dataJob?.runtimeSLO?.runtimeSLO ?? 0;
         const rootType = dataJobPredictions?.dataJob?.type ?? 'DATA_JOB';
-
-        const lineageData = buildLineage(
-            urn,
-            lineageQueryData,
-            rootRunInfo,
-            rootRuntimeSLO,
-            rootType,
-            moment.utc(executionDate),
-        );
-        console.log('lineage tree data', lineageData);
-        predictedLandingTime = getPredictedLandingTime(lineageData, moment.utc(executionDate));
-        console.log('predicted landing time: ', predictedLandingTime);
+        let foundLanding = false;
+        if (rootRunInfo.runs!.length > 0) {
+            const formattedProps = rootRunInfo!.runs![0]!.properties!.customProperties!.reduce(
+                (acc, e) => ({ ...acc, [e.key]: e.value }),
+                {},
+            ) as FormattedRunCustomProperties;
+            if (
+                formattedProps?.endDate !== undefined &&
+                formattedProps?.endDate !== null &&
+                formattedProps?.endDate !== 'None'
+            ) {
+                predictedLandingTime = moment.utc(formattedProps.endDate).format('MM/DD/YYYY HH:mm:ss');
+                foundLanding = true;
+            } else {
+                predictedLandingTime = moment
+                    .utc(formattedProps.startDate)
+                    .add(rootRuntimeSLO, 's')
+                    .format('MM/DD/YYYY HH:mm:ss');
+                foundLanding = true;
+            }
+        }
+        if (!foundLanding) {
+            const lineageData = buildLineage(
+                'urn:li:dataJob:(urn:li:dataFlow:(airflow,mugatu,PROD),presto.Import-mongo.fees)',
+                lineageQueryData,
+                rootRunInfo,
+                rootRuntimeSLO,
+                rootType,
+                moment.utc(executionDate),
+            );
+            console.log('lineage tree data', lineageData);
+            predictedLandingTime = getPredictedLandingTime(lineageData, moment.utc(executionDate));
+        }
     } catch {
         predictedLandingTime = 'Unable to estimate landing time';
     }
-
+    console.log('predicted landing time: ', predictedLandingTime);
     return <>{predictedLandingTime}</>;
 };
 
