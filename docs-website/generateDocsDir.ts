@@ -106,6 +106,7 @@ function list_markdown_files(): string[] {
     /^docs\/docker\/README\.md/, // This one is just a pointer to another file.
     /^docs\/README\.md/, // This one is just a pointer to the hosted docs site.
     /^\s*$/, //Empty string
+    /^stripe-develop.md/, // Stripe-specific development help
   ];
 
   const markdown_files = all_markdown_files.filter((filepath) => {
