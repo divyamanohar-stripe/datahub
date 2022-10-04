@@ -153,6 +153,7 @@ interface Props {
     slo?: string;
     runtime?: number;
     delay?: number;
+    dpiUrn?: string;
 }
 
 export default function InsightsPreviewCard({
@@ -181,6 +182,7 @@ export default function InsightsPreviewCard({
     slo,
     runtime,
     delay,
+    dpiUrn,
 }: Props) {
     // sometimes these lists will be rendered inside an entity container (for example, in the case of impact analysis)
     // in those cases, we may want to enrich the preview w/ context about the container entity
@@ -206,10 +208,30 @@ export default function InsightsPreviewCard({
                             {(logoUrl && <PreviewImage preview={false} src={logoUrl} alt={platform || ''} />) || (
                                 <LogoContainer>{logoComponent}</LogoContainer>
                             )}
-                            {platform && <PlatformText>{platform}</PlatformText>}
-                            {(logoUrl || logoComponent || platform) && <PlatformDivider />}
-                            {typeIcon && <TypeIcon>{typeIcon}</TypeIcon>}
-                            <PlatformText>{type}</PlatformText>
+                            {(logoUrl || logoComponent) && <PlatformDivider />}
+                            {delay && (
+                                <Tooltip
+                                    title={`This run instance is delayed by ${convertSecsToHumanReadable(
+                                        delay,
+                                    )} compared to the expected runtime ${
+                                        slo ? convertSecsToHumanReadable(parseFloat(slo)) : ''
+                                    }`}
+                                >
+                                    <PlatformText>Delay: {convertSecsToHumanReadable(delay)}</PlatformText>
+                                    <PlatformDivider />
+                                </Tooltip>
+                            )}
+                            {dpiUrn && (
+                                <Tooltip title="The urn of this run instance">
+                                    <PlatformDivider />
+                                    <PlatformText>{dpiUrn}</PlatformText>
+                                </Tooltip>
+                            )}
+                            <Tooltip title={`The run instance belongs to ${type} from ${platform} platform`}>
+                                <PlatformDivider />
+                                {typeIcon && <TypeIcon>{typeIcon}</TypeIcon>}
+                                <PlatformText>{type}</PlatformText>
+                            </Tooltip>
                             {container && (
                                 <Link to={entityRegistry.getEntityUrl(EntityType.Container, container?.urn)}>
                                     <PlatformDivider />
@@ -253,12 +275,6 @@ export default function InsightsPreviewCard({
                                 <>
                                     <PlatformDivider />
                                     <PlatformText>Runtime: {convertSecsToHumanReadable(runtime)}</PlatformText>
-                                </>
-                            )}
-                            {delay && (
-                                <>
-                                    <PlatformDivider />
-                                    <PlatformText>Delay: {convertSecsToHumanReadable(delay)}</PlatformText>
                                 </>
                             )}
                         </PlatformInfo>

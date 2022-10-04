@@ -222,7 +222,7 @@ export const InsightsTab = ({
     return (
         <>
             <div>
-                <Descriptions title="" bordered size="small" column={{ md: 4 }}>
+                <Descriptions title="- Delayed Upstream Jobs" bordered size="small" column={{ md: 10 }}>
                     <Descriptions.Item style={{ fontWeight: 'bold' }} label="Execution Date">
                         <Tooltip title="UTC scheduled run of tasks">
                             <DatePicker
@@ -246,7 +246,7 @@ export const InsightsTab = ({
                         const additionalProperties = additionalPropertiesList?.[index];
                         const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
                         const platformLogoUrl = genericProps?.platform?.properties?.logoUrl;
-                        const dpiUrn = entity?.runs?.runs[entity.runs?.runs?.length - 1]?.urn || '';
+                        const dpiUrn = entity?.runs?.runs[entity.runs?.runs?.length - 1]?.urn;
                         const platformName =
                             genericProps?.platform?.properties?.displayName ||
                             capitalizeFirstLetter(genericProps?.platform?.name);
@@ -270,7 +270,7 @@ export const InsightsTab = ({
                                         logoUrl={platformLogoUrl || undefined}
                                         logoComponent={fallbackIcon}
                                         url={url}
-                                        platform={platformName + dpiUrn || undefined}
+                                        platform={platformName || undefined}
                                         type={subType || entityTypeName}
                                         titleSizePx={14}
                                         tags={genericProps?.globalTags || undefined}
@@ -281,6 +281,7 @@ export const InsightsTab = ({
                                         slo={slo}
                                         runtime={runtime}
                                         delay={delay}
+                                        dpiUrn={dpiUrn}
                                     />
                                 </ListItem>
                                 <ThinDivider />
