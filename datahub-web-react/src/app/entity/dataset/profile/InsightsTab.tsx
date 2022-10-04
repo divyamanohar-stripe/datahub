@@ -1,38 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-nested-ternary */
-import React, { MouseEventHandler, ReactElement, useCallback, useMemo, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Button, DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip } from 'antd';
 import styled from 'styled-components';
 
 import moment from 'moment';
-import { useEntityData, useLineageData } from '../../shared/EntityContext';
+import { useEntityData } from '../../shared/EntityContext';
 import TabToolbar from '../../shared/components/styled/TabToolbar';
 import { DataProcessRunEvent, DataProcessRunStatus, EntityType, LineageDirection } from '../../../../types.generated';
 import { useEntityRegistry } from '../../../useEntityRegistry';
-import { getEntityPath } from '../../shared/containers/profile/utils';
-import { LineageTable } from '../../shared/tabs/Lineage/LineageTable';
-import { ImpactAnalysis } from '../../shared/tabs/Lineage/ImpactAnalysis';
-import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
-import { Entity, IconStyleType } from '../../Entity';
+import { IconStyleType } from '../../Entity';
 import InsightsPreviewCard from '../../../preview/InsightsPreviewCard';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
-
-// Styles
-const StyledTabToolbar = styled(TabToolbar)`
-    justify-content: space-between;
-`;
-
-const StyledButton = styled(Button)<{ isSelected: boolean }>`
-    ${(props) =>
-        props.isSelected &&
-        `
-        color: #1890ff;
-        &:focus {
-            color: #1890ff;
-        }
-    `}
-`;
+import { TimePredictionComponent } from './PredictLandingTime';
+import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
 
 const StyledList = styled(List)`
     margin-top: -1px;
@@ -184,7 +166,7 @@ export const InsightsTab = ({
     const query = '';
     const count = 1000;
     const { urn, entityType } = useEntityData();
-    const [execDate, setExecDate] = useState<number>(properties.defaultDate);
+    const [execDate, setExecDate] = useState(moment.utc().startOf('day').valueOf());
     const { data, loading, error, refetch } = useGetDelaysQuery({
         variables: {
             input: {
@@ -200,6 +182,10 @@ export const InsightsTab = ({
         },
     });
 
+    const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
+        setExecDate(moment.utc(dateString).valueOf());
+    };
+
     const entityRegistry = useEntityRegistry();
     if (loading) return loadingPage;
 
@@ -211,13 +197,9 @@ export const InsightsTab = ({
             return e.entity.type === EntityType.DataJob;
         })
         .map((e) => e.entity) as DataJobEntity[];
+
     const dataJobEntitiesWithRuntime = dataJobEntities.map(addRuntimeToDataJob);
     const delayedEntities = dataJobEntitiesWithRuntime.filter(isEntityDelayed);
-
-    const currentMoment = moment.utc();
-    const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
-        setExecDate(moment.utc(dateString).valueOf() || currentMoment.valueOf());
-    };
 
     return (
         <>
@@ -231,9 +213,12 @@ export const InsightsTab = ({
                                     format: 'HH:mm',
                                 }}
                                 onChange={handleDateChange}
-                                defaultValue={currentMoment}
+                                defaultValue={moment.utc(execDate)}
                             />
                         </Tooltip>
+                    </Descriptions.Item>
+                    <Descriptions.Item style={{ fontWeight: 'bold' }} label="Predicted Landing Time">
+                        <TimePredictionComponent urn={urn} executionDate={execDate} />
                     </Descriptions.Item>
                 </Descriptions>
             </div>

@@ -1,0 +1,112 @@
+fragment runResultsPredictions on DataProcessInstanceResult {
+    runs {
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        externalUrl
+        state {
+            status
+            attempt
+            result {
+                resultType
+                nativeResultType
+            }
+            timestampMillis
+        }
+    }
+}
+
+fragment relationshipFieldsPredictions on EntityWithRelationships {
+    urn
+    type
+    ... on DataJob {
+      	urn
+    }
+  	... on Dataset {
+        urn
+    }
+}
+
+
+fragment fullLineageResultsPredictions on EntityLineageResult {
+    start
+    count
+    total
+    relationships {
+        type
+        entity {
+            ...relationshipFieldsPredictions
+        }
+    }
+}
+
+
+
+fragment searchResultFieldsPredictions on Entity {
+    urn
+    type
+    ... on Dataset {
+        urn
+        upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
+            ...fullLineageResultsPredictions
+        }
+        runs(start: 0, count: 1, direction: OUTGOING) {
+            ...runResultsPredictions
+        }
+    }
+    ... on DataJob {
+      	urn
+      	runtimeSLO {
+      	    runtimeSLO
+      	}
+ 		upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
+            ...fullLineageResultsPredictions
+        }
+        runs(input: $runsInput) {
+            ...runResultsPredictions
+        }
+        globalTags {
+          tags {
+            tag {
+              name
+          }
+        }
+      }
+    }
+}
+
+
+fragment searchAcrossRelationshipResultsPredictions on SearchAcrossLineageResults {
+    start
+    count
+    total
+    searchResults {
+        entity {
+            ...searchResultFieldsPredictions
+        }
+      	degree
+    }
+}
+
+
+
+query searchAcrossLineagePredictions($input: SearchAcrossLineageInput!, $runsInput: DataProcessInstanceInput) {
+    searchAcrossLineage(input: $input) {
+        ...searchAcrossRelationshipResultsPredictions
+    }
+}
+
+query getDataJobPredictions($urn: String!, $runsInput: DataProcessInstanceInput) {
+  dataJob(urn:$urn){
+      type
+      runtimeSLO {
+    		runtimeSLO
+  		}
+    	runs(input: $runsInput ) {
+      	...runResultsPredictions
+  		}
+  }
+}
