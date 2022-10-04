@@ -125,10 +125,11 @@ type DataJobEntity = {
         count: number;
         runs: RunEntity[];
     };
+    runtime?: number;
 };
 
-function calculateRuntimeSeconds(dataJob: DataJobEntity) {
-    if (dataJob.runs?.runs?.length === 0) return undefined;
+function addRuntimeToDataJob(dataJob: DataJobEntity) {
+    if (dataJob.runs?.runs?.length === 0) return { ...dataJob, runtime: undefined };
     const firstRun = dataJob?.runs?.runs[0];
     const startTimestamp =
         firstRun?.state.filter((s) => {
@@ -140,7 +141,7 @@ function calculateRuntimeSeconds(dataJob: DataJobEntity) {
             return s?.status === DataProcessRunStatus.Complete;
         })[0]?.timestampMillis || 0;
     const runtime = endTimestamp - startTimestamp;
-    return runtime / 1000;
+    return { ...dataJob, runtime: runtime / 1000 };
 }
 
 function calculateDelay(runtime?: number, slo?: number) {
@@ -152,7 +153,7 @@ function calculateDelay(runtime?: number, slo?: number) {
 function isEntityDelayed(entity?: DataJobEntity) {
     if (entity === undefined || entity === null) return false;
     const slo = entity.properties?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || undefined;
-    const runtime = calculateRuntimeSeconds(entity);
+    const runtime = entity.runtime || addRuntimeToDataJob(entity).runtime;
     // eslint-disable-next-line eqeqeq
     if (slo == undefined || runtime == undefined) return false;
     return runtime > parseInt(slo, 10);
@@ -210,7 +211,8 @@ export const InsightsTab = ({
             return e.entity.type === EntityType.DataJob;
         })
         .map((e) => e.entity) as DataJobEntity[];
-    const delayedEntities = dataJobEntities.filter(isEntityDelayed);
+    const dataJobEntitiesWithRuntime = dataJobEntities.map(addRuntimeToDataJob);
+    const delayedEntities = dataJobEntitiesWithRuntime.filter(isEntityDelayed);
 
     const currentMoment = moment.utc();
     const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
@@ -239,7 +241,7 @@ export const InsightsTab = ({
             {delayedEntities.length !== 0 && (
                 <StyledList
                     bordered
-                    dataSource={dataJobEntities}
+                    dataSource={delayedEntities}
                     renderItem={(entity, index) => {
                         const additionalProperties = additionalPropertiesList?.[index];
                         const genericProps = entityRegistry.getGenericEntityProperties(entity.type, entity);
@@ -258,8 +260,8 @@ export const InsightsTab = ({
                         const slo =
                             genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value ||
                             'undefined';
-                        const runtime = calculateRuntimeSeconds(entity);
-                        const delay = calculateDelay(runtime, parseInt(slo, 10));
+                        const { runtime } = entity;
+                        const delay = calculateDelay(entity.runtime, parseInt(slo, 10));
                         return (
                             <>
                                 <ListItem>
