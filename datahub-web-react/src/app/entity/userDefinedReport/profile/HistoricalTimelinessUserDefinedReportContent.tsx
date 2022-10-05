@@ -4,31 +4,13 @@ import { Column } from '@ant-design/plots';
 import { Descriptions, Layout, Tag } from 'antd';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { DataJobEntity } from './Types';
+import { HistoricalTimelinessSlaTargetSummary } from './HistoricalTimelinessSlaTargetSummary';
+import { extractDataJobFromEntity, Run } from './data-conversion';
 
 const { Header, Content, Sider } = Layout;
 const DATE_DAILY_DISPLAY_FORMAT = 'YYYY-MM-DD';
 const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD HH:mm';
 const DATE_DISPLAY_TOOLTIP_FORMAT = 'YYYY-MM-DD HH:mm:ss';
-
-type DataJobProperties = {
-    finishedBySla: string;
-    [key: string]: string;
-};
-
-type RunProperties = {
-    executionDate: string;
-    externalUrl: string;
-    state: string;
-    startDate: string;
-    endDate: string;
-};
-
-type Run = RunProperties & {
-    errorTimeLeftToEnd: number;
-    runDuration: number;
-    landingTime: number;
-    color: string | null;
-};
 
 /**
  * Convert seconds into human readable format
@@ -169,7 +151,7 @@ function renderPlotHeader(taskId: string, finishedBySla: string, dataJobEntity) 
  * Create side SLA miss summary with % met deadline and p90 landing time
  * @param runs list of DataJob run results
  */
-function renderSlaMissSummary(runs: Run[]) {
+function renderSlaMissSummary(runs: readonly Run[]) {
     // return color of met deadline tag based on percentage of SLA meets
     function getTagColor(metDeadlinePercentage: number) {
         if (metDeadlinePercentage < 70) return 'red';
@@ -210,7 +192,7 @@ function renderSlaMissSummary(runs: Run[]) {
  * @param runs list of DataJob run results
  * @param allExecDates list of unique execution dates to line up x-axis across charts
  */
-function renderTimelinessPlot(sla: moment.Duration, runs: Run[], allExecDates: string[]) {
+function renderTimelinessPlot(sla: moment.Duration, runs: readonly Run[], allExecDates: string[]) {
     // create mapping of execution date to color of column based whether missed SLA or not
     const slaMissData = new Map();
     let runsPlotData = runs.map((r) => {
@@ -241,6 +223,7 @@ function renderTimelinessPlot(sla: moment.Duration, runs: Run[], allExecDates: s
             startDate: 'none',
             endDate: 'none',
             execDate: date,
+            isWithinSla: false,
             values: 0,
         };
 
@@ -340,50 +323,13 @@ function renderTimelinessPlot(sla: moment.Duration, runs: Run[], allExecDates: s
  * @param allExecDates list of unique execution dates to line up timeliness x-axis across charts
  */
 function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
-    const now = moment.utc();
-    const dataJobProperties = dataJobEntity?.properties?.customProperties?.reduce(
-        (acc, e) => ({ ...acc, [e.key]: e.value }),
-        {},
-    ) as DataJobProperties;
+    const extracted = extractDataJobFromEntity(dataJobEntity);
+    if ('error' in extracted) {
+        return <>{extracted.error}</>;
+    }
 
-    const taskId = dataJobEntity?.jobId;
-
-    if (dataJobProperties === undefined) return <>Task {taskId}: not correctly set up</>;
-
-    const errorSlaDuration = moment.duration(dataJobProperties?.finishedBySla, 'seconds');
-
-    const runs = dataJobEntity?.runs?.runs
-        ?.map(
-            (run) =>
-                ({
-                    ...run?.properties?.customProperties?.reduce((acc, e) => ({ ...acc, [e.key]: e.value }), {}),
-                    externalUrl: run?.externalUrl,
-                } as RunProperties),
-        )
-        .map((r) => {
-            const endDate: moment.Moment = r.endDate === 'None' ? now : moment(r.endDate);
-            const slaTarget: moment.Moment = moment(r.executionDate).add(errorSlaDuration);
-            return {
-                ...r,
-                errorTimeLeftToEnd: slaTarget.diff(endDate, 'seconds'),
-                runDuration: endDate.diff(r.startDate, 'seconds'),
-                landingTime: endDate.diff(r.executionDate, 'seconds'),
-            };
-        }) as Run[];
-
-    // sort by start date to remove all but last try per execution date
-    runs.sort((a, b) => (new Date(a.startDate).getTime() < new Date(b.startDate).getTime() ? 1 : -1));
-    const uniqueExecDates: string[] = [];
-    const latestRuns = runs.filter((run) => {
-        const isDuplicate = uniqueExecDates.includes(run.executionDate);
-        if (!isDuplicate) {
-            uniqueExecDates.push(run.executionDate);
-            return true;
-        }
-        return false;
-    });
-    // sort by execution date
-    latestRuns.sort((a, b) => (new Date(a.executionDate).getTime() > new Date(b.executionDate).getTime() ? 1 : -1));
+    const { dataJobProperties, latestRuns } = extracted;
+    const { jobId: taskId, finishedBySlaDuration: errorSlaDuration } = dataJobProperties;
 
     return (
         <>
@@ -406,12 +352,22 @@ export const HistoricalTimelinessUserDefinedReportContent = (dataJobEntities) =>
         <>
             {Object.entries(dataJobOwnerGrouping).map(([teamName, dataJobEntitiesList]) => {
                 return (
-                    <>
-                        <Descriptions title={teamName} bordered style={{ marginTop: '15px', marginLeft: '15px' }} />
-                        {dataJobEntitiesList.map((dataJobEntity) =>
-                            formatDataAndRenderPlots(dataJobEntity, uniqueExecDates),
-                        )}
-                    </>
+                    <div style={{ marginBottom: '10px', marginTop: '10px' }}>
+                        <Descriptions
+                            title={teamName === 'undefined' ? 'Other' : teamName}
+                            bordered
+                            style={{ marginTop: '15px', marginLeft: '15px' }}
+                        />
+                        <HistoricalTimelinessSlaTargetSummary
+                            dataJobEntitiesList={dataJobEntitiesList}
+                            targetSlaPercentage={0.9}
+                        />
+                        <div style={{ paddingLeft: '50px' }}>
+                            {dataJobEntitiesList.map((dataJobEntity) =>
+                                formatDataAndRenderPlots(dataJobEntity, uniqueExecDates),
+                            )}
+                        </div>
+                    </div>
                 );
             })}
         </>
