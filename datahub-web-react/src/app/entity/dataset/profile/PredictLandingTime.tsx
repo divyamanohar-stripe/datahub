@@ -50,7 +50,7 @@ type TreeDataInfo = {
 };
 
 // calculate predicted landing time
-function getPredictedLandingTime(lineageStruct: TreeDataInfo, executionDate: moment.Moment) {
+function getPredictedLandingTime(lineageData: TreeDataInfo, executionDate: moment.Moment) {
     function predictLandingTime(incomingNode: TreeDataInfo, parents: TreeDataInfo[]) {
         const node = incomingNode;
         node.discovered = true;
@@ -59,14 +59,14 @@ function getPredictedLandingTime(lineageStruct: TreeDataInfo, executionDate: mom
             // if node has no parents
             if (node.startDate === undefined) {
                 // if node has not started, landing time = execution date + runtime SLO
-                node.landingTime = executionDate.add(node.runtimeSLO, 's');
+                node.landingTime = moment(executionDate).add(node.runtimeSLO, 's');
             } else {
                 // if node has started, landing time = start date + runtime SLO
-                node.landingTime = node.startDate.add(node.runtimeSLO, 's');
+                node.landingTime = moment(node.startDate).add(node.runtimeSLO, 's');
             }
         } else if (parents.every((p) => p.startDate !== undefined)) {
             // if all parents have started, get max start date + runtime SLO
-            const parentLandings = parents.map((p) => p.startDate!.add(p.runtimeSLO, 's'));
+            const parentLandings = parents.map((p) => moment(p.startDate!).add(p.runtimeSLO, 's'));
             node.landingTime = moment.max(parentLandings).add(node.runtimeSLO, 's');
         } else {
             // if some parents have not started, traverse upstream and predict their landing times
@@ -77,13 +77,8 @@ function getPredictedLandingTime(lineageStruct: TreeDataInfo, executionDate: mom
             node.landingTime = moment.max(parentLandings).add(node.runtimeSLO, 's');
         }
     }
-    const lineageData = lineageStruct;
-    // if task has already started, landing time = start date + runtime SLO
-    if (lineageData.startDate !== undefined) {
-        lineageData.landingTime = lineageData.startDate.add(lineageData.runtimeSLO, 's');
-    } else {
-        predictLandingTime(lineageData, lineageData.upstreams);
-    }
+
+    predictLandingTime(lineageData, lineageData.upstreams);
 
     if (lineageData.landingTime === undefined) {
         return 'Unable to estimate landing time';
@@ -245,7 +240,6 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
         const rootRunInfo = dataJobPredictions?.dataJob?.runs ?? { runs: [] };
         const rootRuntimeSLO = dataJobPredictions?.dataJob?.runtimeSLO?.runtimeSLO ?? 0;
         const rootType = dataJobPredictions?.dataJob?.type ?? 'DATA_JOB';
-        let foundLanding = false;
         if (rootRunInfo.runs!.length > 0) {
             const formattedProps = rootRunInfo!.runs![0]!.properties!.customProperties!.reduce(
                 (acc, e) => ({ ...acc, [e.key]: e.value }),
@@ -256,28 +250,20 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
                 formattedProps?.endDate !== null &&
                 formattedProps?.endDate !== 'None'
             ) {
-                predictedLandingTime = moment.utc(formattedProps.endDate).format('MM/DD/YYYY HH:mm:ss');
-                foundLanding = true;
-            } else {
-                predictedLandingTime = moment
-                    .utc(formattedProps.startDate)
-                    .add(rootRuntimeSLO, 's')
-                    .format('MM/DD/YYYY HH:mm:ss');
-                foundLanding = true;
+                return <>{moment.utc(formattedProps.endDate).format('MM/DD/YYYY HH:mm:ss')}</>;
             }
+            return <>{moment.utc(formattedProps.startDate).add(rootRuntimeSLO, 's').format('MM/DD/YYYY HH:mm:ss')}</>;
         }
-        if (!foundLanding) {
-            const lineageData = buildLineage(
-                'urn:li:dataJob:(urn:li:dataFlow:(airflow,mugatu,PROD),presto.Import-mongo.fees)',
-                lineageQueryData,
-                rootRunInfo,
-                rootRuntimeSLO,
-                rootType,
-                moment.utc(executionDate),
-            );
-            console.log('lineage tree data', lineageData);
-            predictedLandingTime = getPredictedLandingTime(lineageData, moment.utc(executionDate));
-        }
+        const lineageData = buildLineage(
+            urn,
+            lineageQueryData,
+            rootRunInfo,
+            rootRuntimeSLO,
+            rootType,
+            moment.utc(executionDate),
+        );
+        console.log('lineage tree data', lineageData);
+        predictedLandingTime = getPredictedLandingTime(lineageData, moment.utc(executionDate));
     } catch {
         predictedLandingTime = 'Unable to estimate landing time';
     }
