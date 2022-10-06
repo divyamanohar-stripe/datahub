@@ -200,6 +200,11 @@ export const InsightsTab = ({
 
     const dataJobEntitiesWithRuntime = dataJobEntities.map(addRuntimeToDataJob);
     const delayedEntities = dataJobEntitiesWithRuntime.filter(isEntityDelayed);
+    const predictedLandingToolTip = (
+        <Tooltip title="landing times are estimated from pending upstreams and historical p95 runtime durations">
+            Predicted Landing Time
+        </Tooltip>
+    );
 
     return (
         <>
@@ -217,7 +222,7 @@ export const InsightsTab = ({
                             />
                         </Tooltip>
                     </Descriptions.Item>
-                    <Descriptions.Item style={{ fontWeight: 'bold' }} label="Predicted Landing Time">
+                    <Descriptions.Item style={{ fontWeight: 'bold' }} label={predictedLandingToolTip}>
                         <TimePredictionComponent urn={urn} executionDate={execDate} />
                     </Descriptions.Item>
                 </Descriptions>

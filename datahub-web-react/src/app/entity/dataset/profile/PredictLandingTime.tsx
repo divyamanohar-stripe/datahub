@@ -47,10 +47,25 @@ type TreeDataInfo = {
     degree: number;
     discovered: boolean;
     landingTime?: moment.Moment;
+    strLandingTime?: string;
+    maxParent?: string;
 };
 
 // calculate predicted landing time
 function getPredictedLandingTime(lineageData: TreeDataInfo, executionDate: moment.Moment) {
+    function setMaxParentLanding(node, parentLandings) {
+        const currNode = node;
+        const [maxParent, maxParentTime] = parentLandings.reduce((prev, cur) => {
+            if (cur[1].valueOf() > prev[1].valueOf()) {
+                return cur;
+            }
+            return prev;
+        });
+        currNode.landingTime = moment(maxParentTime).add(currNode.runtimeSLO, 's');
+        currNode.strLandingTime = moment(currNode.landingTime).format();
+        currNode.maxParent = maxParent;
+    }
+
     function predictLandingTime(incomingNode: TreeDataInfo, parents: TreeDataInfo[]) {
         const node = incomingNode;
         node.discovered = true;
@@ -60,21 +75,24 @@ function getPredictedLandingTime(lineageData: TreeDataInfo, executionDate: momen
             if (node.startDate === undefined) {
                 // if node has not started, landing time = execution date + runtime SLO
                 node.landingTime = moment(executionDate).add(node.runtimeSLO, 's');
+                node.strLandingTime = moment(node.landingTime).format();
             } else {
                 // if node has started, landing time = start date + runtime SLO
                 node.landingTime = moment(node.startDate).add(node.runtimeSLO, 's');
+                node.strLandingTime = moment(node.landingTime).format();
             }
         } else if (parents.every((p) => p.startDate !== undefined)) {
             // if all parents have started, get max start date + runtime SLO
-            const parentLandings = parents.map((p) => moment(p.startDate!).add(p.runtimeSLO, 's'));
-            node.landingTime = moment.max(parentLandings).add(node.runtimeSLO, 's');
+            const parentLandings = parents.map(
+                (p) => [p.urn, moment(p.startDate!).add(p.runtimeSLO, 's')] as [string, moment.Moment],
+            );
+            setMaxParentLanding(node, parentLandings);
         } else {
             // if some parents have not started, traverse upstream and predict their landing times
             parents.map((p) => (!p.discovered ? predictLandingTime(p, p.upstreams) : 0));
             const definedParents = parents.filter((p) => p.landingTime !== undefined);
-            const parentLandings = definedParents.map((p) => p.landingTime!);
-            // current node landing time is max parent landing time + runtime SLO
-            node.landingTime = moment.max(parentLandings).add(node.runtimeSLO, 's');
+            const parentLandings = definedParents.map((p) => [p.urn, p.landingTime] as [string, moment.Moment]);
+            setMaxParentLanding(node, parentLandings);
         }
     }
 
@@ -130,7 +148,7 @@ function buildLineage(
 
         const builtNodes: Record<string, TreeDataInfo> = {};
 
-        const buildTree = (currNodeUrn: string): TreeDataInfo => {
+        const buildTree = (currNodeUrn: string, prevNodeDegree): TreeDataInfo => {
             let startDate: moment.Moment | undefined;
             let endDate: moment.Moment | undefined;
             const currNodeRuns = nodeMap[currNodeUrn]?.entity?.runs?.runs;
@@ -161,17 +179,20 @@ function buildLineage(
             builtNodes[currNodeUrn] = newNode;
 
             const newNodeUpstreams = newNode.upstreams;
-            if (endDate === undefined) {
+            if (endDate === undefined && prevNodeDegree < nodeMap[currNodeUrn].degree) {
                 newNodeUpstreams.push(
                     ...nodeMap[currNodeUrn].entity.upstream.relationships.map(
-                        (upstreamUrn) => builtNodes[upstreamUrn.entity.urn] ?? buildTree(upstreamUrn.entity.urn),
+                        (upstreamUrn) =>
+                            builtNodes[upstreamUrn.entity.urn] ??
+                            buildTree(upstreamUrn.entity.urn, nodeMap[currNodeUrn].degree),
                     ),
                 );
             }
+
             return newNode;
         };
 
-        return buildTree(rootUrn);
+        return buildTree(rootUrn, -1);
     };
 
     // return full TreeDataInfo object with all upstream info
