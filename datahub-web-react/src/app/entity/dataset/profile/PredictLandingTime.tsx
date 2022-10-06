@@ -146,8 +146,6 @@ function buildLineage(
             return editMap;
         }, {} as Record<string, RawDataInfo>);
 
-        const builtNodes: Record<string, TreeDataInfo> = {};
-
         const buildTree = (currNodeUrn: string, prevNodeDegree): TreeDataInfo => {
             let startDate: moment.Moment | undefined;
             let endDate: moment.Moment | undefined;
@@ -176,15 +174,12 @@ function buildLineage(
                 discovered: false,
                 landingTime: undefined,
             };
-            builtNodes[currNodeUrn] = newNode;
 
             const newNodeUpstreams = newNode.upstreams;
             if (endDate === undefined && prevNodeDegree < nodeMap[currNodeUrn].degree) {
                 newNodeUpstreams.push(
-                    ...nodeMap[currNodeUrn].entity.upstream.relationships.map(
-                        (upstreamUrn) =>
-                            builtNodes[upstreamUrn.entity.urn] ??
-                            buildTree(upstreamUrn.entity.urn, nodeMap[currNodeUrn].degree),
+                    ...nodeMap[currNodeUrn].entity.upstream.relationships.map((upstreamUrn) =>
+                        buildTree(upstreamUrn.entity.urn, nodeMap[currNodeUrn].degree),
                     ),
                 );
             }
