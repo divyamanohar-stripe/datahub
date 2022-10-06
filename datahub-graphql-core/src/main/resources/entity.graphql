@@ -4442,6 +4442,11 @@ type DataJob implements EntityWithRelationships & Entity {
     runtime slo of a data job
     """
     runtimeSLO: DataJobRuntimeSLO
+
+    """
+    version information of a data job
+    """
+    versionInfo: DataJobVersionInfo
 }
 
 type DataJobRuntimeSLO {
@@ -4449,6 +4454,16 @@ type DataJobRuntimeSLO {
     Job runtime slo
     """
     runtimeSLO: Float
+}
+
+type DataJobVersionInfo {
+    """
+    DataJob Version Info
+    """
+    version: String
+    versionType: String
+    externalUrl: String
+    customProperties: [StringMapEntry!]
 }
 
 """
