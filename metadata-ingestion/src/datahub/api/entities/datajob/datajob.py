@@ -52,6 +52,8 @@ class DataJob:
         parent_instance (Optional[DataProcessInstanceUrn]): The parent execution's urn if applicable
         properties Dict[str, str]: Custom properties to set for the DataProcessInstance
         url (Optional[str]): Url which points to the DataJob at the orchestrator
+        owners Set[str]): A list of user ids that own this job.
+        group_owners Set[str]): A list of group ids that own this job.
         inlets (List[str]): List of urns the DataProcessInstance consumes
         outlest (List[str]): List of urns the DataProcessInstance produces
         input_datajob_urns: List[DataJobUrn] = field(default_factory=list)
@@ -65,7 +67,8 @@ class DataJob:
     properties: Dict[str, str] = field(default_factory=dict)
     url: Optional[str] = None
     tags: Set[str] = field(default_factory=set)
-    owners: Set[Tuple[str, str]] = field(default_factory=set)
+    owners: Set[str] = field(default_factory=set)
+    group_owners: Set[str] = field(default_factory=set)
     inlets: List[DatasetUrn] = field(default_factory=list)
     outlets: List[DatasetUrn] = field(default_factory=list)
     upstream_urns: List[DataJobUrn] = field(default_factory=list)
@@ -81,17 +84,20 @@ class DataJob:
         )
 
     def generate_ownership_aspect(self) -> Iterable[OwnershipClass]:
+        owners = set([builder.make_user_urn(owner) for owner in self.owners]) | set(
+            [builder.make_group_urn(owner) for owner in self.group_owners]
+        )
         ownership = OwnershipClass(
             owners=[
                 OwnerClass(
-                    owner=builder.make_user_urn(owner) if tp == "corpuser" else builder.make_group_urn(owner),
+                    owner=urn,
                     type=OwnershipTypeClass.DEVELOPER,
                     source=OwnershipSourceClass(
                         type=OwnershipSourceTypeClass.SERVICE,
                         # url=dag.filepath,
                     ),
                 )
-                for owner, tp in (self.owners or [])
+                for urn in (owners or [])
             ],
             lastModified=AuditStampClass(
                 time=0,
