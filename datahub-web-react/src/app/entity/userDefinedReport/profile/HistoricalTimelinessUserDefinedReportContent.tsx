@@ -397,7 +397,7 @@ export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ u
 
     return (
         <>
-            <Header style={{ marginBottom: '10px', marginTop: '20px', marginRight: '900px' }}>
+            <Header style={{ marginBottom: '10px', marginTop: '20px' }}>
                 <Descriptions bordered size="small">
                     <Descriptions.Item style={{ fontWeight: 'bold' }} label="Date Range">
                         <Tooltip title="time range of runs to view">

@@ -502,7 +502,13 @@ function renderReportHeader(
     const segmentTimelinessStates = segments.map((s) => s.segmentTimelinessState);
 
     let reportOverallStatusTag;
-    if (segmentRunStates.every((s) => s === SegmentRunState.NOT_STARTED)) {
+    if (segmentRunStates.every((s) => s === SegmentRunState.COMPLETED)) {
+        if (lastSegment.segmentTimelinessState === SegmentTimelinessState.DELAYED) {
+            reportOverallStatusTag = <Tag color="red">{SegmentRunState.COMPLETED}</Tag>;
+        } else {
+            reportOverallStatusTag = <Tag color="blue">{SegmentRunState.COMPLETED}</Tag>;
+        }
+    } else if (segmentRunStates.every((s) => s === SegmentRunState.NOT_STARTED)) {
         reportOverallStatusTag = <Tag color="default">{SegmentRunState.NOT_STARTED}</Tag>;
     } else if (lastSegment.segmentTimelinessState === SegmentTimelinessState.DELAYED) {
         reportOverallStatusTag = <Tag color="red">{SegmentTimelinessState.DELAYED}</Tag>;
