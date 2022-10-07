@@ -1,13 +1,16 @@
-import React, { ComponentProps } from 'react';
+import React, { ComponentProps, FC, useState } from 'react';
 import moment from 'moment-timezone';
 import { Column } from '@ant-design/plots';
-import { Descriptions, Layout, Tag } from 'antd';
+import { Descriptions, Layout, Tag, DatePicker, Tooltip } from 'antd';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
-import { DataJobEntity } from './Types';
+import { DataJobEntity, loadingPage } from './SharedContent';
 import { HistoricalTimelinessSlaTargetSummary } from './HistoricalTimelinessSlaTargetSummary';
 import { extractDataJobFromEntity, Run } from './data-conversion';
+import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../graphql/userDefinedReport.generated';
+import { DataProcessInstanceFilterInputType } from '../../../../types.generated';
 
 const { Header, Content, Sider } = Layout;
+const { RangePicker } = DatePicker;
 const DATE_DAILY_DISPLAY_FORMAT = 'YYYY-MM-DD';
 const DATE_SEARCH_PARAM_FORMAT = 'YYYY-MM-DD HH:mm';
 const DATE_DISPLAY_TOOLTIP_FORMAT = 'YYYY-MM-DD HH:mm:ss';
@@ -344,12 +347,72 @@ function formatDataAndRenderPlots(dataJobEntity, allExecDates) {
     );
 }
 
-export const HistoricalTimelinessUserDefinedReportContent = (dataJobEntities) => {
+interface HistoricalTimelinessProps {
+    urn: string;
+}
+
+export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ urn }) => {
+    const maxRunCount = 1000;
+    const maxEntityCount = 50;
+    const initialEndDate = moment.utc().startOf('day').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('day').subtract(30, 'day').toDate().getTime();
+    const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
+    const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
+
+    const { loading, data } = useGetUserDefinedReportContentFilterLogicalDateQuery({
+        variables: {
+            urn,
+            entityStart: 0,
+            entityCount: maxEntityCount,
+            input: {
+                filters: [
+                    {
+                        type: DataProcessInstanceFilterInputType.AfterLogicalDate,
+                        value: logicalBeginningDate.toString(10),
+                    },
+                    {
+                        type: DataProcessInstanceFilterInputType.BeforeLogicalDate,
+                        value: logicalEndDate.toString(10),
+                    },
+                ],
+                start: 0,
+                count: maxRunCount,
+            },
+        },
+    });
+
+    if (loading) return loadingPage;
+
+    const dataJobEntities = data?.userDefinedReport?.entities?.searchResults
+        ?.filter((e) => {
+            return e.entity.type === 'DATA_JOB';
+        })
+        .map((e) => e.entity) as DataJobEntity[];
     const uniqueExecDates = getAllExecDates(dataJobEntities);
     const dataJobOwnerGrouping = getDataJobOwnerGroup(dataJobEntities);
+    const setReportDates = (dates) => {
+        setLogicalBeginningDate(dates[0].toDate().getTime());
+        setLogicalEndDate(dates[1].toDate().getTime());
+    };
 
     return (
         <>
+            <Header style={{ marginBottom: '10px', marginTop: '20px', marginRight: '900px' }}>
+                <Descriptions bordered size="small">
+                    <Descriptions.Item style={{ fontWeight: 'bold' }} label="Date Range">
+                        <Tooltip title="time range of runs to view">
+                            <RangePicker
+                                format="YYYY-MM-DD HH:mm"
+                                showTime={{
+                                    format: 'HH:mm',
+                                }}
+                                defaultValue={[moment.utc(logicalBeginningDate), moment.utc(logicalEndDate)]}
+                                onChange={setReportDates}
+                            />
+                        </Tooltip>
+                    </Descriptions.Item>
+                </Descriptions>
+            </Header>
             {Object.entries(dataJobOwnerGrouping).map(([teamName, dataJobEntitiesList]) => {
                 return (
                     <div style={{ marginBottom: '10px', marginTop: '10px' }}>

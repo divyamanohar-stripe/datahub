@@ -209,7 +209,13 @@ export const InsightsTab = ({
     return (
         <>
             <div>
-                <Descriptions title="- Delayed Upstream Jobs" bordered size="small" column={{ md: 10 }}>
+                <Descriptions
+                    title="Delayed Upstream Jobs"
+                    style={{ marginTop: '20px', marginLeft: '20px', marginRight: '20px' }}
+                    bordered
+                    size="small"
+                    column={{ md: 10 }}
+                >
                     <Descriptions.Item style={{ fontWeight: 'bold' }} label="Execution Date">
                         <Tooltip title="UTC scheduled run of tasks">
                             <DatePicker

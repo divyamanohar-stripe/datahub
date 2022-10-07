@@ -1,7 +1,7 @@
 import { Column } from '@ant-design/plots';
 import { Descriptions, InputNumber, Steps, Tag } from 'antd';
 import moment from 'moment-timezone';
-import React, { useState, useRef, FC } from 'react';
+import React, { FC, useRef, useState } from 'react';
 import styled from 'styled-components';
 import {
     GetDatasetQuery,
@@ -10,13 +10,13 @@ import {
     useGetDatasetRunsQuery,
 } from '../../../../../graphql/dataset.generated';
 import { ReactComponent as LoadingSvg } from '../../../../../images/datahub-logo-color-loading_pendulum.svg';
-import { RelationshipDirection } from '../../../../../types.generated';
+import { DataProcessInstanceFilterInputType, RelationshipDirection } from '../../../../../types.generated';
 import { useEntityData } from '../../EntityContext';
 import {
-    GetDataJobTimelinessQuery,
     GetDataJobRunsTimelinessQuery,
-    useGetDataJobTimelinessQuery,
+    GetDataJobTimelinessQuery,
     useGetDataJobRunsTimelinessQuery,
+    useGetDataJobTimelinessQuery,
 } from '../../../../../graphql/dataJob.generated';
 
 type DatasetCustomPropertiesWithSla = {
@@ -417,7 +417,7 @@ function renderTimelinessPlot(
                 type: 'text',
                 position: ['max', errorEndSlaInMinutes] as [string, number],
                 content: 'Error End SLA',
-                offsetX: -40,
+                offsetX: -50,
                 offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
@@ -438,7 +438,7 @@ function renderTimelinessPlot(
                 type: 'text',
                 position: ['max', errorStartSlaInMinutes] as [string, number],
                 content: 'Error Start SLA',
-                offsetX: -44,
+                offsetX: -54,
                 offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
@@ -459,7 +459,7 @@ function renderTimelinessPlot(
                 type: 'text',
                 position: ['max', warnEndSlaInMinutes] as [string, number],
                 content: 'Warn End SLA',
-                offsetX: -40,
+                offsetX: -50,
                 offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
@@ -480,7 +480,7 @@ function renderTimelinessPlot(
                 type: 'text',
                 position: ['max', warnStartSlaInMinutes] as [string, number],
                 content: 'Warn Start SLA',
-                offsetX: -44,
+                offsetX: -54,
                 offsetY: 5,
                 style: { textBaseline: 'top' as const },
             };
@@ -774,6 +774,14 @@ export const TimelinessTab: FC<TimelinessTabProps> = ({
             };
         }) as Run[];
 
+    if (runs.length === 0) {
+        return (
+            <LoadingContainer>
+                <LoadingText>No runs to display!</LoadingText>
+            </LoadingContainer>
+        );
+    }
+
     // sort by start date to remove all but last try per execution date
     runs.sort((a, b) => (new Date(a.startDate).getTime() < new Date(b.startDate).getTime() ? 1 : -1));
     const uniqueExecDates: string[] = [];
@@ -837,14 +845,23 @@ export const DatasetTimelinessTab = () => {
 
 export const DataJobTimelinessTab = () => {
     const [runCount, setRunCount] = useState(20);
-
+    const currDate = moment.utc().toDate().getTime();
+    const [logicalDate] = useState(currDate);
     const { urn } = useEntityData();
 
     const { loading: isLoadingDataJob, data: dataJobQueryResponse } = useGetDataJobTimelinessQuery({
         variables: { urn },
     });
     const { loading: isLoadingRuns, data: runsQueryResponse } = useGetDataJobRunsTimelinessQuery({
-        variables: { urn, start: 0, count: runCount },
+        variables: {
+            urn,
+            input: {
+                count: runCount,
+                filters: [
+                    { type: DataProcessInstanceFilterInputType.BeforeLogicalDate, value: logicalDate.toString(10) },
+                ],
+            },
+        },
     });
 
     return (

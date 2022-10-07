@@ -136,6 +136,9 @@ public class DataJobRunsResolver implements DataFetcher<CompletableFuture<DataPr
         case ON_LOGICAL_DATE:
           return new Criterion().setField(LOGICAL_DATE_SEARCH_INDEX_FIELD_NAME).setCondition(Condition.EQUAL)
               .setValue(f.getValue());
+        case AFTER_LOGICAL_DATE:
+          return new Criterion().setField(LOGICAL_DATE_SEARCH_INDEX_FIELD_NAME)
+              .setCondition(Condition.GREATER_THAN_OR_EQUAL_TO).setValue(f.getValue());
         default:
           return null;
         }

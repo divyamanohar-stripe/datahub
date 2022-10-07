@@ -1,3 +1,7 @@
+import React from 'react';
+import styled from 'styled-components';
+import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
+
 export type RunEntity = {
     externalUrl: string;
     properties: {
@@ -32,3 +36,23 @@ export type DataJobEntity = {
         runs: RunEntity[];
     };
 };
+
+// Styles
+const LoadingText = styled.div`
+    margin-top: 18px;
+    font-size: 12px;
+`;
+
+const LoadingContainer = styled.div`
+    padding-top: 40px;
+    padding-bottom: 40px;
+    width: 100%;
+    text-align: center;
+`;
+
+export const loadingPage = (
+    <LoadingContainer>
+        <LoadingSvg height={80} width={80} />
+        <LoadingText>Fetching data...</LoadingText>
+    </LoadingContainer>
+);

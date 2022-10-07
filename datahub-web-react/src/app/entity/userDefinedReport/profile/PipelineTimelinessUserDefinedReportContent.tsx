@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { FC, useCallback, useState } from 'react';
+import { useHistory } from 'react-router';
 import { DeliveredProcedureOutlined, InfoCircleTwoTone } from '@ant-design/icons';
 import { DatePicker, Descriptions, Layout, Steps, Table, Tag, Tooltip } from 'antd';
 import { groupBy, orderBy } from 'lodash';
@@ -6,8 +7,10 @@ import moment from 'moment-timezone';
 import styled from 'styled-components';
 import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
 import { ANTD_GRAY } from '../../shared/constants';
-import { DataJobEntity, RunEntity } from './Types';
+import { DataJobEntity, loadingPage, RunEntity } from './SharedContent';
 import { convertSecsToHumanReadable } from '../../shared/stripe-utils';
+import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../graphql/userDefinedReport.generated';
+import { DataProcessInstanceFilterInputType } from '../../../../types.generated';
 
 const { Header, Sider, Content } = Layout;
 const { Step } = Steps;
@@ -109,6 +112,33 @@ const DATE_DISPLAY_FORMAT = 'MM/DD/YYYY HH:mm:ss';
 const WIP_TEXT = `Predictions are still a WIP.\n Improvements are coming soon!`;
 
 // Helper functions
+const useSearchParams = () => {
+    const history = useHistory();
+
+    const setSearchParam = useCallback(
+        (key: string, value: string | undefined, addToHistory = false) => {
+            const newParams = new URLSearchParams(history.location.search);
+            if (typeof value === 'string') newParams.set(key, value);
+            if (value === undefined) newParams.delete(key);
+            history[addToHistory ? 'push' : 'replace']({
+                ...history.location,
+                search: `?${newParams.toString()}`,
+            });
+        },
+        [history],
+    );
+
+    const getSearchParam = useCallback(
+        (key: string) => new URLSearchParams(history.location.search).get(key),
+        [history],
+    );
+
+    return {
+        setSearchParam,
+        getSearchParam,
+    };
+};
+
 function formatRun(runEntity: RunEntity): FormattedRun {
     function getRunStartTime(p: FormattedRunCustomProperties) {
         const { executionDate, startDate } = p;
@@ -940,22 +970,51 @@ function renderSegmentTasks(
     );
 }
 
-export const PipelineTimelinessUserDefinedReportContent = (
-    reportName,
-    dataJobEntities,
-    logicalDate,
-    setLogicalDate,
-    segmentId,
-    setSegmentId,
-    getSearchParam,
-    setSearchParam,
-) => {
+interface PipelineTimelinessProps {
+    urn: string;
+}
+
+export const PipelineTimelinessComponent: FC<PipelineTimelinessProps> = ({ urn }) => {
+    const maxRunCount = 100;
+    const maxEntityCount = 50;
+    const initialEndDate = moment.utc().startOf('day').toDate().getTime();
+    const [segmentId, setSegmentId] = useState(0);
+    const [logicalDate, setLogicalDate] = useState(initialEndDate);
+    const { getSearchParam, setSearchParam } = useSearchParams();
+
+    const { loading, data } = useGetUserDefinedReportContentFilterLogicalDateQuery({
+        variables: {
+            urn,
+            entityStart: 0,
+            entityCount: maxEntityCount,
+            input: {
+                filters: [
+                    {
+                        type: DataProcessInstanceFilterInputType.BeforeLogicalDate,
+                        value: logicalDate.toString(10),
+                    },
+                ],
+                start: 0,
+                count: maxRunCount,
+            },
+        },
+    });
+
+    if (loading) return loadingPage;
+
+    const reportName = data?.userDefinedReport?.properties?.name;
+    const dataJobEntities = data?.userDefinedReport?.entities?.searchResults
+        ?.filter((e) => {
+            return e.entity.type === 'DATA_JOB';
+        })
+        .map((e) => e.entity) as DataJobEntity[];
+
     const getReportDate = (): moment.Moment => {
         const reportParam = getSearchParam('reportDate');
         if (reportParam === null || !moment(reportParam, DATE_SEARCH_PARAM_FORMAT, true).isValid()) {
             const newReportParam = moment.utc().startOf('day').format(DATE_SEARCH_PARAM_FORMAT);
             setSearchParam('reportDate', newReportParam);
-            setLogicalDate(moment(newReportParam).toDate().getTime() * 1000);
+            setLogicalDate(moment(newReportParam).toDate().getTime());
             return moment(newReportParam);
         }
         return moment.utc(reportParam);
@@ -963,7 +1022,7 @@ export const PipelineTimelinessUserDefinedReportContent = (
     const reportDate = getReportDate();
     const setReportDate = (newReportDate: moment.Moment) => {
         setSearchParam('reportDate', newReportDate.format(DATE_SEARCH_PARAM_FORMAT));
-        setLogicalDate(newReportDate.toDate().getTime() * 1000);
+        setLogicalDate(newReportDate.toDate().getTime());
     };
 
     const currentMoment = moment.utc();

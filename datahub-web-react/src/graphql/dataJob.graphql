@@ -68,9 +68,9 @@ query getDataJobTimeliness($urn: String!) {
     }
 }
 
-query getDataJobRunsTimeliness($urn: String!, $start: Int!, $count: Int!) {
+query getDataJobRunsTimeliness($urn: String!, $input: DataProcessInstanceInput) {
     dataJob(urn: $urn) {
-        runs(input: { start: $start, count: $count }) {
+        runs(input: $input) {
             ...runResultsTimeliness
         }
     }

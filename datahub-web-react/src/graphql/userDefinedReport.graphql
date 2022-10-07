@@ -129,6 +129,15 @@ mutation createUserDefinedReport($input: CreateUserDefinedReportInput!) {
     createUserDefinedReport(input: $input)
 }
 
+query getUserDefinedReportContentType($urn: String!) {
+    userDefinedReport(urn: $urn) {
+        urn
+        properties {
+            name
+            type
+        }
+    }
+}
 
 query getUserDefinedReportContentFilterLogicalDate($urn: String!, $entityStart: Int, $entityCount: Int, $input: DataProcessInstanceInput) {
     userDefinedReport(urn: $urn) {
