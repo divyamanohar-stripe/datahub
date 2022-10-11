@@ -12,6 +12,7 @@ import {
 } from '../../../graphql/dataJob.generated';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
 import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
+import { ChangelogTab } from '../shared/tabs/Changelog/ChangelogTab';
 import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
 import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
 import { SidebarTagsSection } from '../shared/containers/profile/sidebar/SidebarTagsSection';
@@ -114,10 +115,13 @@ export class DataJobEntity implements Entity<DataJob> {
                     component: DataJobFlowTab,
                 },
                 {
+                    name: 'Changelog',
+                    component: ChangelogTab,
+                },
+                {
                     name: 'Properties',
                     component: PropertiesTab,
                 },
-
                 {
                     name: 'Documentation',
                     component: DocumentationTab,

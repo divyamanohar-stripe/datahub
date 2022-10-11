@@ -1,0 +1,23 @@
+query getUpstreamVersions($input: SearchAcrossLineageInput!) {
+  searchAcrossLineage(input: $input) {
+    searchResults {
+      entity {
+        urn
+        type
+        ... on DataJob {
+          jobId
+          versionInfo {
+            version
+            versionType
+            externalUrl
+            customProperties {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+    __typename
+  }
+}
