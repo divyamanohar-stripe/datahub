@@ -57,6 +57,22 @@
       } ],
       "returns" : "com.linkedin.aspect.GetTimeseriesAspectValuesResponse"
     }, {
+      "name" : "getVersionedAspectValues",
+      "parameters" : [ {
+        "name" : "urn",
+        "type" : "string"
+      }, {
+        "name" : "aspect",
+        "type" : "string"
+      }, {
+        "name" : "count",
+        "type" : "long"
+      }, {
+        "name" : "offset",
+        "type" : "long"
+      } ],
+      "returns" : "com.linkedin.aspect.GetVersionedAspectValuesResponse"
+    }, {
       "name" : "ingestProposal",
       "parameters" : [ {
         "name" : "proposal",

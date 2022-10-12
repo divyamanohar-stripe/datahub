@@ -66,6 +66,7 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -973,6 +974,69 @@ public class EbeanEntityServiceTest {
     _retentionService.batchApplyRetention(null, null);
     assertEquals(_entityService.listLatestAspects(entityUrn.getEntityType(), aspectName, 0, 10).getTotalCount(), 1);
     assertEquals(_entityService.listLatestAspects(entityUrn.getEntityType(), aspectName2, 0, 10).getTotalCount(), 1);
+  }
+
+  @Test
+  public void testListVersionedAspects() throws Exception {
+    Urn entityUrn = Urn.createFromString("urn:li:corpuser:test1");
+
+    SystemMetadata metadata1 = new SystemMetadata();
+    metadata1.setLastObserved(1625792689);
+    metadata1.setRunId("run-123");
+
+    String aspectName = PegasusUtils.getAspectNameFromSchema(new CorpUserInfo().schema());
+
+    // Ingest CorpUserInfo Aspect
+    CorpUserInfo writeAspect1 = createCorpUserInfo("email@test.com");
+    _entityService.ingestAspect(entityUrn, aspectName, writeAspect1, TEST_AUDIT_STAMP, metadata1);
+    CorpUserInfo writeAspect1a = createCorpUserInfo("email_a@test.com");
+    _entityService.ingestAspect(entityUrn, aspectName, writeAspect1a, TEST_AUDIT_STAMP, metadata1);
+    CorpUserInfo writeAspect1b = createCorpUserInfo("email_b@test.com");
+    _entityService.ingestAspect(entityUrn, aspectName, writeAspect1b, TEST_AUDIT_STAMP, metadata1);
+
+    String aspectName2 = PegasusUtils.getAspectNameFromSchema(new Status().schema());
+    // Ingest Status Aspect
+    Status writeAspect2 = new Status().setRemoved(true);
+    _entityService.ingestAspect(entityUrn, aspectName2, writeAspect2, TEST_AUDIT_STAMP, metadata1);
+    Status writeAspect2a = new Status().setRemoved(false);
+    _entityService.ingestAspect(entityUrn, aspectName2, writeAspect2a, TEST_AUDIT_STAMP, metadata1);
+
+    assertEquals(_entityService.getAspect(entityUrn, aspectName, 1), writeAspect1);
+    assertEquals(_entityService.getAspect(entityUrn, aspectName2, 1), writeAspect2);
+
+    // case 1: list the latest two versioned aspects (version 0, version 2)
+    List<VersionedAspect> versionedAspectList = _entityService.listVersionedAspects(entityUrn, aspectName, 2, 0);
+    assertEquals(versionedAspectList.size(), 2);
+    assertEquals(versionedAspectList.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList(0L, 2L));
+
+    assertTrue(DataTemplateUtil.areEqual(versionedAspectList.get(0), _entityService.getVersionedAspect(entityUrn, aspectName, 0)));
+    assertTrue(DataTemplateUtil.areEqual(versionedAspectList.get(1), _entityService.getVersionedAspect(entityUrn, aspectName, 2)));
+
+    // case 2: list two versioned aspects with 1 offset (version 2, version 1)
+    List<VersionedAspect> versionedAspectList2 = _entityService.listVersionedAspects(entityUrn, aspectName, 2, 1);
+    assertEquals(versionedAspectList2.size(), 2);
+    assertEquals(versionedAspectList2.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList(2L, 1L));
+
+    // case 3: list two versioned apsects with 2 offset (version 1)
+    List<VersionedAspect> versionedAspectList3 = _entityService.listVersionedAspects(entityUrn, aspectName, 2, 2);
+    assertEquals(versionedAspectList3.size(), 1);
+    assertEquals(versionedAspectList3.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList(1L));
+    assertTrue(DataTemplateUtil.areEqual(versionedAspectList3.get(0), _entityService.getVersionedAspect(entityUrn, aspectName, 1)));
+
+    // case 4: list two versioned apsects with 3 offset ()
+    List<VersionedAspect> versionedAspectList4 = _entityService.listVersionedAspects(entityUrn, aspectName, 2, 3);
+    assertEquals(versionedAspectList4.size(), 0);
+    assertEquals(versionedAspectList4.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList());
+
+    // case 5: list zero versioned apsect with 0 offset ()
+    List<VersionedAspect> versionedAspectList5 = _entityService.listVersionedAspects(entityUrn, aspectName, 0, 0);
+    assertEquals(versionedAspectList5.size(), 0);
+    assertEquals(versionedAspectList5.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList());
+
+    // case 6: not support negative offset ()
+    List<VersionedAspect> versionedAspectList6 = _entityService.listVersionedAspects(entityUrn, aspectName, 1, -1);
+    assertEquals(versionedAspectList6.size(), 0);
+    assertEquals(versionedAspectList6.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList());
   }
 
   @Nonnull

@@ -226,6 +226,22 @@ public abstract class EntityService {
   public abstract VersionedAspect getVersionedAspect(@Nonnull final Urn urn, @Nonnull final String aspectName,
       long version);
 
+
+  /**
+   * Retrieves a certain number of versioned aspects  that belong to the entity specified by urn,
+   * sorted by version number.
+   *
+   * Note that this is a Stripe-folk-only change.
+   *
+   * @param urn urn to fetch
+   * @param aspectName name of the aspect requested, e.g. 'versionInfo'
+   * @param count the count of versioned aspects to be returned (0 means fetching the latest N aspects)
+   * @param offset used in pagination
+   * @return a {@link List} of {@link VersionedAspect}s representing the requested aspects.
+   */
+  public abstract List<VersionedAspect> listVersionedAspects(@Nonnull final Urn urn, @Nonnull final String aspectName,
+      final long count, final long offset) throws Exception;
+
   /**
    * Retrieves a list of all aspects belonging to an entity of a particular type, sorted by urn.
    *

@@ -2,11 +2,13 @@ package com.linkedin.metadata.resources.entity;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.aspect.GetTimeseriesAspectValuesResponse;
+import com.linkedin.aspect.GetVersionedAspectValuesResponse;
 import com.linkedin.common.AuditStamp;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.metadata.Constants;
 import com.linkedin.metadata.aspect.EnvelopedAspectArray;
 import com.linkedin.metadata.aspect.VersionedAspect;
+import com.linkedin.metadata.aspect.VersionedAspectArray;
 import com.linkedin.metadata.entity.EntityService;
 import com.linkedin.metadata.entity.ValidationException;
 import com.linkedin.metadata.query.filter.Filter;
@@ -27,7 +29,14 @@ import com.linkedin.restli.server.resources.CollectionResourceTaskTemplate;
 import io.opentelemetry.extension.annotations.WithSpan;
 import java.net.URISyntaxException;
 import java.time.Clock;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -35,6 +44,7 @@ import javax.inject.Named;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.linkedin.metadata.resources.restli.RestliConstants.*;
+import static com.linkedin.metadata.utils.PegasusUtils.urnToEntityName;
 
 
 /**
@@ -44,9 +54,12 @@ import static com.linkedin.metadata.resources.restli.RestliConstants.*;
 @RestLiCollection(name = "aspects", namespace = "com.linkedin.entity")
 public class AspectResource extends CollectionResourceTaskTemplate<String, VersionedAspect> {
 
+  private static final String ACTION_GET_VERSIONED_ASPECT = "getVersionedAspectValues";
   private static final String ACTION_GET_TIMESERIES_ASPECT = "getTimeseriesAspectValues";
   private static final String ACTION_INGEST_PROPOSAL = "ingestProposal";
 
+  private static final String PARAM_COUNT = "count";
+  private static final String PARAM_OFFSET = "offset";
   private static final String PARAM_ENTITY = "entity";
   private static final String PARAM_ASPECT = "aspect";
   private static final String PARAM_PROPOSAL = "proposal";
@@ -82,6 +95,31 @@ public class AspectResource extends CollectionResourceTaskTemplate<String, Versi
       }
       return new AnyRecord(aspect.data());
     }, MetricRegistry.name(this.getClass(), "get"));
+  }
+
+  @Action(name = ACTION_GET_VERSIONED_ASPECT)
+  @Nonnull
+  @WithSpan
+  public Task<GetVersionedAspectValuesResponse> getVersionedAspectValues(
+      @ActionParam(PARAM_URN) @Nonnull String urnStr,
+      @ActionParam(PARAM_ASPECT) @Nonnull String aspectName,
+      @ActionParam(PARAM_COUNT) @Nonnull Long count,
+      @ActionParam(PARAM_OFFSET) @Nonnull Long offset)
+      throws URISyntaxException {
+    log.info("getVersionedAspectValues (AspectResource.java) {}", urnStr);
+
+    return RestliUtil.toTask(() -> {
+      try {
+          final Urn urn = Urn.createFromString(urnStr);
+          GetVersionedAspectValuesResponse response = new GetVersionedAspectValuesResponse();
+          response.setValues(new VersionedAspectArray(_entityService.listVersionedAspects(urn, aspectName,
+              count.longValue(), offset.longValue())));
+          return response;
+        } catch (Exception e) {
+          throw new RuntimeException(
+              String.format("Failed to batch get versioned aspects with urn: %s", urnStr), e);
+        }
+    }, MetricRegistry.name(this.getClass(), "getVersionedAspectValues"));
   }
 
   @Action(name = ACTION_GET_TIMESERIES_ASPECT)

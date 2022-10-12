@@ -211,6 +211,18 @@ public class EbeanAspectDao {
         .findList().stream().findFirst();
   }
 
+  @Nullable
+  public List<EbeanAspectV2> listAspectsInVersionRange(@Nonnull final String urnString, @Nonnull final String aspectName, final long start, final long end) {
+     return _server.createQuery(EbeanAspectV2.class)
+         .where()
+         .eq(EbeanAspectV2.URN_COLUMN, urnString)
+         .eq(EbeanAspectV2.ASPECT_COLUMN, aspectName)
+         .inRange(EbeanAspectV2.VERSION_COLUMN, start, end)
+         .orderBy()
+         .desc(EbeanAspectV2.VERSION_COLUMN)
+         .findList();
+  }
+
   @Nonnull
   public Map<EbeanAspectV2.PrimaryKey, EbeanAspectV2> batchGet(@Nonnull final Set<EbeanAspectV2.PrimaryKey> keys) {
     validateConnection();

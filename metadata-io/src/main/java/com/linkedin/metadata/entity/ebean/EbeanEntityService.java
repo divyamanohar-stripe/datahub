@@ -288,6 +288,55 @@ public class EbeanEntityService extends EntityService {
 
   @Override
   @Nonnull
+  public List<VersionedAspect> listVersionedAspects(@Nonnull final Urn urn, @Nonnull final String aspectName,
+                                                    final long count, final long offset) throws Exception {
+    log.debug("Invoked listVersionedAspect with urn: {}, aspectName: {}, count: {}, offset: {}",
+        urn, aspectName, count, offset);
+
+    return _entityDao.runInTransactionWithRetry(() -> {
+      List<VersionedAspect> versionedAspects = new ArrayList<>();
+      long end = _entityDao.getMaxVersion(urn.toString(), aspectName) - offset + 1;
+      long start = end - count + 1;
+
+      // corner case:
+      // latest: 0. oldest <- 1 2 3 4 -> newer
+      // when offset is 0, get version 0 and count - 1 aspects in descending order
+      if (offset == 0 && count != 0) {
+        versionedAspects.add(getVersionedAspect(urn, aspectName, 0));
+
+        end = _entityDao.getMaxVersion(urn.toString(), aspectName);
+        start = end - count + 2;
+      }
+
+      if (start <= 0) {
+        start = 1;
+      }
+
+      if (end < start || end <= 0) {
+        return versionedAspects;
+      }
+
+      final List<EbeanAspectV2> ebeanAspectsInVersionRange =
+          _entityDao.listAspectsInVersionRange(urn.toString(), aspectName, start, end + 1);
+
+      for (EbeanAspectV2 ebeanAspect : ebeanAspectsInVersionRange) {
+        RecordTemplate aspectRecord = toAspectRecord(urn, aspectName, ebeanAspect.getMetadata(), getEntityRegistry());
+        Aspect resultAspect = new Aspect();
+        RecordUtils.setSelectedRecordTemplateInUnion(resultAspect, aspectRecord);
+
+        VersionedAspect result = new VersionedAspect();
+        result.setAspect(resultAspect);
+        result.setVersion(ebeanAspect.getKey().getVersion());
+
+        versionedAspects.add(result);
+      }
+
+      return versionedAspects;
+    }, DEFAULT_MAX_TRANSACTION_RETRY);
+  }
+
+  @Override
+  @Nonnull
   public ListResult<RecordTemplate> listLatestAspects(@Nonnull final String entityName,
       @Nonnull final String aspectName, final int start, final int count) {
 

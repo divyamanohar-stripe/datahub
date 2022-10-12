@@ -40,6 +40,7 @@ import com.linkedin.r2.RemoteInvocationException;
 import io.opentelemetry.extension.annotations.WithSpan;
 import java.net.URISyntaxException;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -414,6 +415,27 @@ public class JavaEntityClient implements EntityClient {
             }
         }
         return Optional.empty();
+    }
+
+    @SneakyThrows
+    @Override
+    public <T extends RecordTemplate> List<T> listVersionedAspects(@Nonnull String urn, @Nonnull String aspectName,
+                                                                   @Nonnull Long count, @Nonnull Long offset, @Nonnull Class<T> aspectClass,
+                                                                   @Nonnull Authentication authentication) throws Exception {
+
+        List<VersionedAspect> entities = _entityService.listVersionedAspects(Urn.createFromString(urn), aspectName, count.longValue(), offset.longValue());
+        List<T> recordTemplates = new ArrayList<>();
+        for (VersionedAspect entity : entities) {
+            if (entity.hasAspect()) {
+                DataMap rawAspect = ((DataMap) entity.data().get("aspect"));
+                if (rawAspect.containsKey(aspectClass.getCanonicalName())) {
+                    DataMap aspectDataMap = rawAspect.getDataMap(aspectClass.getCanonicalName());
+                    recordTemplates.add(RecordUtils.toRecordTemplate(aspectClass, aspectDataMap));
+                }
+            }
+        }
+
+        return recordTemplates;
     }
 
     @SneakyThrows

@@ -1,0 +1,14 @@
+namespace com.linkedin.aspect
+
+import com.linkedin.metadata.aspect.VersionedAspect
+
+/**
+ * The response structure of the getVersionedAspectValues API.
+ **/
+record GetVersionedAspectValuesResponse {
+
+  /**
+   * The values returned by the getVersionedAspectValues API.
+   **/
+  values: array[VersionedAspect]
+}

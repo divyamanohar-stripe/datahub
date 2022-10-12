@@ -7,6 +7,7 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.data.DataMap;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.data.template.StringArray;
+import com.linkedin.entity.AspectsDoGetVersionedAspectValuesRequestBuilder;
 import com.linkedin.entity.AspectsDoGetTimeseriesAspectValuesRequestBuilder;
 import com.linkedin.entity.AspectsDoIngestProposalRequestBuilder;
 import com.linkedin.entity.AspectsGetRequestBuilder;
@@ -54,6 +55,7 @@ import com.linkedin.restli.client.Client;
 import com.linkedin.restli.client.RestLiResponseException;
 import com.linkedin.restli.common.HttpStatus;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -62,6 +64,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.mail.MethodNotSupportedException;
@@ -587,6 +590,40 @@ public class RestliEntityClient extends BaseClient implements EntityClient {
     }
 
     return Optional.empty();
+  }
+
+  @SneakyThrows
+  @Override
+  @Nonnull
+  public <T extends RecordTemplate> List<T> listVersionedAspects(@Nonnull String urn, @Nonnull String aspectName,
+      @Nonnull Long count, @Nonnull Long offset, @Nonnull Class<T> aspectClass,
+      @Nonnull Authentication authentication) throws Exception {
+    log.info("listVersionedAspects in restlientitiyclient");
+    AspectsDoGetVersionedAspectValuesRequestBuilder requestBuilder =
+        ASPECTS_REQUEST_BUILDERS.actionGetVersionedAspectValues().urnParam(urn).aspectParam(aspectName).countParam(count).offsetParam(offset);
+
+    List<T> recordTemplates = new ArrayList<>();
+    try {
+      List<VersionedAspect> entities = sendClientRequest(requestBuilder, authentication).getEntity().getValues();
+      for (VersionedAspect entity : entities) {
+        if (entity.hasAspect()) {
+          DataMap rawAspect = ((DataMap) entity.data().get("aspect"));
+          if (rawAspect.containsKey(aspectClass.getCanonicalName())) {
+            DataMap aspectDataMap = rawAspect.getDataMap(aspectClass.getCanonicalName());
+            recordTemplates.add(RecordUtils.toRecordTemplate(aspectClass, aspectDataMap));
+          }
+        }
+      }
+    } catch (RestLiResponseException e) {
+      if (e.getStatus() == 404) {
+        log.debug("Could not find aspect {} for entity {}", aspectName, urn);
+        return recordTemplates;
+      } else {
+        // re-throw other exceptions
+        throw e;
+      }
+    }
+    return recordTemplates;
   }
 
   @SneakyThrows
