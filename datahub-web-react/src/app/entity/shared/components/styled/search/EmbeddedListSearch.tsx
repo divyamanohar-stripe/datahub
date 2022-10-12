@@ -15,7 +15,7 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow-y: hidden;
+    overflow-y: scroll;
 `;
 
 // this extracts the response from useGetSearchResultsForMultipleQuery into a common interface other search endpoints can also produce
