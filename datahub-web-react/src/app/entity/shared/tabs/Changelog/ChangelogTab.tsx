@@ -6,8 +6,7 @@ import { EntityType, LineageDirection } from '../../../../../types.generated';
 import { ANTD_GRAY } from '../../constants';
 import { CurrentStyledTable, UpstreamStyledTable } from '../../components/styled/StyledTable';
 import { useEntityData } from '../../EntityContext';
-import { useGetUpstreamVersionsQuery } from '../../../../../graphql/upstreamVersions.generated';
-import { useGetDataJobVersionQuery } from '../../../../../graphql/currentTaskVersions.generated';
+import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
 
 const NameText = styled(Typography.Text)`
     font-family: 'Roboto Mono', monospace;
@@ -51,6 +50,7 @@ function getCustomProperty(customProperties, fieldName) {
     const field = customProperties?.filter((e) => e.key === fieldName)[0]?.value;
     return field;
 }
+
 const propertyTableColumns = [
     {
         width: 210,
@@ -92,11 +92,59 @@ function renderTitleWithExternalURL(customProperties, externalUrl?) {
     );
 }
 
+function isValidNumber(num?: number) {
+    return !(num === undefined || num === null || num === 0);
+}
+
+function renderNumJobsChanged(numJobsChanged?: number, numDownstreamUniqueProjects?: number): string {
+    if (!isValidNumber(numJobsChanged)) return '';
+    if (!isValidNumber(numDownstreamUniqueProjects)) {
+        return `Affects ${numJobsChanged} tasks.`;
+    }
+    return `Affects ${numJobsChanged} tasks across ${numDownstreamUniqueProjects} teams.`;
+}
+
+function renderNumJobsDefinitionChanged(numJobsDefinitionChanged?: number): string {
+    if (!isValidNumber(numJobsDefinitionChanged)) return '';
+    return `${numJobsDefinitionChanged} airflow definitions were affected.`;
+}
+
+function renderNumJobsLogicChanged(numJobsLogicChanged?: number): string {
+    if (!isValidNumber(numJobsLogicChanged)) return '';
+    return `${numJobsLogicChanged} tasks had a changed Spark job.`;
+}
+function renderAddedTask(numAddedJobs?: number): string {
+    if (!isValidNumber(numAddedJobs)) return '';
+    return `${numAddedJobs} tasks were added.`;
+}
+
+function renderRemovedTask(numRemovedJobs?: number): string {
+    if (!isValidNumber(numRemovedJobs)) return '';
+    return `${numRemovedJobs} tasks were removed.`;
+}
+
+function parseSummary(summary?: string): string | undefined {
+    if (summary === undefined || summary === null) return undefined;
+    const parsedSummary = JSON.parse(summary);
+    const summaryItems = [
+        renderNumJobsChanged(parsedSummary?.numJobsChanged, parsedSummary?.numDownstreamUniqueProjects),
+        renderNumJobsDefinitionChanged(parsedSummary?.numJobsDefinitionChanged),
+        renderNumJobsLogicChanged(parsedSummary?.numJobsLogicChanged),
+        renderAddedTask(parsedSummary?.numAddedJobs),
+        renderRemovedTask(parsedSummary?.numRemovedJobs),
+    ].filter((e) => e.length !== 0);
+    console.log('summaryItems');
+    console.log(parsedSummary);
+    console.log(summaryItems);
+    return summaryItems.join('\r\n');
+}
+
 function returnUIContent(entityWithRelation) {
     const { entity } = entityWithRelation;
     if (entity === undefined || entity === null) return <div />;
     const externalUrl = entity?.versionInfo?.externalUrl;
     const customProperties = entity?.versionInfo?.customProperties;
+
     if (customProperties === undefined || customProperties === null || customProperties.length === 0) return <div />;
     const taskMeta = [
         { key: 'task id', value: entity?.jobId, __typename: 'StringMapEntry' },
@@ -109,6 +157,11 @@ function returnUIContent(entityWithRelation) {
         {
             key: 'timestamp',
             value: convertEpochToISO(getCustomProperty(customProperties, 'createdAt')),
+            __typename: 'StringMapEntry',
+        },
+        {
+            key: 'summary',
+            value: parseSummary(getCustomProperty(customProperties, 'summary')),
             __typename: 'StringMapEntry',
         },
     ].filter((e) => !(e.value === undefined || e.value === null));

@@ -21,3 +21,22 @@ query getUpstreamVersions($input: SearchAcrossLineageInput!) {
     __typename
   }
 }
+
+query getDataJobVersion($urn: String!) {
+  dataJob(urn: $urn) {
+        urn
+        type
+        ... on DataJob {
+          jobId
+          versionInfo {
+            version
+            versionType
+            externalUrl
+            customProperties {
+              key
+              value
+            }
+          }
+        }
+      }
+}
