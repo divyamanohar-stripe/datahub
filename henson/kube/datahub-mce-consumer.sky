@@ -112,6 +112,7 @@ def _service(ctx, replicas, suffix = ""):
         "FAILED_METADATA_CHANGE_EVENT_NAME": "datahub.failed_metadata_change_event",
         "KAFKA_FMCE_TOPIC_NAME": "datahub.failed_metadata_change_event",
         "METADATA_CHANGE_PROPOSAL_TOPIC_NAME": "datahub.metadata_change_proposal",
+        "FAILED_METADATA_CHANGE_PROPOSAL_TOPIC_NAME": "datahub.failed_metadata_change_proposal",
         "DATAHUB_USAGE_EVENT_NAME": "datahub.usage_event",
         "METADATA_CHANGE_LOG_VERSIONED_TOPIC_NAME": "datahub.metadata_changelog_versioned",
         "METADATA_CHANGE_LOG_TIMESERIES_TOPIC_NAME": "datahub.metadata_changelog_timeseries",
