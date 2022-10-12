@@ -1,12 +1,13 @@
 ---
-responsible_team: schema-and-query
+responsible_team: data-governance
 change_notifications:
   slack: true
 review_requirements:
   - assignees:
       - codeowners-schema-and-query
     reviewers:
-      - codeowners-schema-and-query
+      - codeowners-data-orchestration
+      - codeowners-data-productivity
 affected_services:
   - service: service-datahub-frontend
   - service: service-datahub-gms
