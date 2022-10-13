@@ -37,6 +37,18 @@ type DataJobEntity = {
     };
 };
 
+type VersionEntity = {
+    version: string;
+    versionType: string;
+    externalUrl?: string;
+    customProperties?: {
+        key: string;
+        value: string;
+    }[];
+    datajobEntities: { jobId: string; urn: string; isCurrent: boolean }[];
+    includeCurrentTask: boolean;
+};
+
 function DataJobEntityWithRelationMapper(entity: DataJobEntity, isUpstream: boolean) {
     const obj = {
         entity,
@@ -75,15 +87,28 @@ function convertEpochToISO(epoch?: string) {
     return date.toISOString();
 }
 
-function renderTaskIdWithExternalURL(jobId?: string, urn?: string) {
-    if (jobId === undefined || jobId === null) return undefined;
-    if (urn === undefined || urn === null) return jobId;
-    const url = `/tasks/${urn}/Changelog?is_lineage_mode=false`;
-    return (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-            {jobId}
-        </a>
+function renderTaskIdWithExternalURL(dataJob: { jobId?: string; urn?: string; isCurrent: boolean }) {
+    if (dataJob.jobId === undefined || dataJob.jobId === null) return undefined;
+    if (dataJob.urn === undefined || dataJob.urn === null) return dataJob.jobId;
+    const url = `/tasks/${dataJob.urn}/Changelog?is_lineage_mode=false`;
+    return dataJob.isCurrent ? (
+        <div>
+            {dataJob.jobId}
+            <br />
+        </div>
+    ) : (
+        <div>
+            <a href={url} target="_blank" rel="noopener noreferrer">
+                {dataJob.jobId}
+            </a>
+            <br />
+        </div>
     );
+}
+
+function renderTaskIds(dataJobList: { jobId?: string; urn?: string; isCurrent: boolean }[]) {
+    const taskIds = dataJobList.map(renderTaskIdWithExternalURL);
+    return taskIds;
 }
 
 function renderTitleWithExternalURL(customProperties, externalUrl?) {
@@ -150,17 +175,15 @@ function parseSummary(summary?: string): string | undefined {
     return summaryItems.join('\r\n');
 }
 
-function returnUIContent(entityWithRelation) {
-    const { entity } = entityWithRelation;
-    if (entity === undefined || entity === null) return <div />;
-    const externalUrl = entity?.versionInfo?.externalUrl;
-    const customProperties = entity?.versionInfo?.customProperties;
+function returnUIContent(entity: VersionEntity) {
+    const { externalUrl } = entity;
+    const { customProperties } = entity;
 
     if (customProperties === undefined || customProperties === null || customProperties.length === 0) return <div />;
     const taskMeta = [
         {
             key: 'task id',
-            value: renderTaskIdWithExternalURL(entity?.jobId, entity?.urn),
+            value: renderTaskIds(entity.datajobEntities),
             __typename: 'StringMapEntry',
         },
         { key: 'author', value: getCustomProperty(customProperties, 'author'), __typename: 'StringMapEntry' },
@@ -180,7 +203,7 @@ function returnUIContent(entityWithRelation) {
             __typename: 'StringMapEntry',
         },
     ].filter((e) => !(e.value === undefined || e.value === null));
-    if (entityWithRelation.isUpstream === true)
+    if (entity.includeCurrentTask === false)
         return (
             <UpstreamStyledTable pagination={false} columns={propertyTableColumns} dataSource={taskMeta || undefined} />
         );
@@ -248,17 +271,75 @@ export const ChangelogTab = ({
     ].filter((e) => !(e.entity.versionInfo === undefined || e.entity.versionInfo === null));
     console.log('concatDataJobs');
     console.log(concatDataJobsArr);
-    const UIcomponent = concatDataJobsArr
-        ?.filter((e) => {
-            if (!displayUpstream && e.isUpstream) return false;
-            return true;
+
+    function groupVersionWithDataJob(items) {
+        return items.reduce((acc, curr) => {
+            const currVersionInfo = curr.entity.versionInfo; // must not be null
+            const { version } = currVersionInfo;
+            const currentItems = acc[version];
+            const jobInfo = { jobId: curr.entity.jobId, urn: curr.entity.urn, isCurrent: !curr.isUpstream };
+            return {
+                ...acc,
+                [version]: currentItems ? [...currentItems, jobInfo] : [jobInfo],
+            };
+        }, []);
+    }
+
+    function groupVersion(items) {
+        return items.reduce((acc, curr) => {
+            const currVersionInfo = curr.entity.versionInfo; // must not be null
+            if (!currVersionInfo.customProperties || currVersionInfo.customProperties.length === 0) return acc; // do not display versions that have no customProperties (because there is nothing to display)
+            const { version } = currVersionInfo;
+            return {
+                ...acc,
+                [version]: currVersionInfo, // assume same version implies same customProperties
+            };
+        }, []);
+    }
+
+    const versionsWithDataJobArr = groupVersionWithDataJob(concatDataJobsArr); // concatDataJobsArr all have versionInfo
+    const versionsArr = groupVersion(concatDataJobsArr); // versionsWithDataJobArr all have jobId, urn and isCurrent
+
+    function versionArrMapper(versionsWithDataJob, versions): VersionEntity[] {
+        const ret = Object.keys(versionsWithDataJob)
+            .filter((key) => versions[key]) // make sure that the versions associated with the tasks all have customProperties
+            .map(
+                (key) =>
+                    ({
+                        version: key,
+                        versionType: versions[key].versionType,
+                        externalUrl: versions[key].externalUrl, // this field might be undefined
+                        customProperties: versions[key].customProperties, // this field might be undefined
+                        datajobEntities: versionsWithDataJob[key].filter((item) => displayUpstream || item.isCurrent),
+                        includeCurrentTask: versionsWithDataJob[key]
+                            .filter((item) => displayUpstream || item.isCurrent)
+                            .some((e) => e.isCurrent),
+                    } as VersionEntity),
+            );
+        return ret;
+    }
+
+    const versionArr: VersionEntity[] = versionArrMapper(versionsWithDataJobArr, versionsArr);
+    console.log('test groupby');
+    console.log(versionsWithDataJobArr);
+    console.log(versionsArr);
+    console.log('new testing groupby');
+    console.log(versionArr);
+
+    const UIcomponent = versionArr
+        .filter((e) => {
+            return displayUpstream || e.includeCurrentTask;
         })
-        ?.sort((a, b) => {
-            const aCreatedAt = parseInt(getCustomProperty(a?.entity?.versionInfo?.customProperties, 'createdAt'), 10);
-            const bCreatedAt = parseInt(getCustomProperty(b?.entity?.versionInfo?.customProperties, 'createdAt'), 10);
+        .sort((a, b) => {
+            const aCreatedAt = getCustomProperty(a?.customProperties, 'createdAt')
+                ? parseInt(getCustomProperty(a?.customProperties, 'createdAt'), 10)
+                : 0;
+            const bCreatedAt = getCustomProperty(b?.customProperties, 'createdAt')
+                ? parseInt(getCustomProperty(b?.customProperties, 'createdAt'), 10)
+                : 0;
             return bCreatedAt - aCreatedAt;
         })
-        ?.map(returnUIContent);
+        .map(returnUIContent);
     return (
         <div>
             <div>show upstream?</div>
