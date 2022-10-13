@@ -68,7 +68,11 @@ pip3 install scipy
 
 **Problem**: `error: cannot find symbol @javax.annotation.processing.Generated(`. Gradle generates GraphQL source files while running Java 11, then attempts to compile with Java 8.
 
-**Solution**: Set the Java home property explicitly. `$EDITOR ~/.gradle/gradle.properties`
+**Solution1**: Set the Java home property explicitly. `$EDITOR ~/.gradle/gradle.properties`
 ```
 org.gradle.java.home=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
 ```
+**Solution2**: 
+1. Making sure ```java -version``` outputs ```1.8```. Otherwise, run export ```JAVA_HOME=`/usr/libexec/java_home -v 1.8` ``` in your terminal
+2. Clean up build cash: run ```rm -rf datahub-graphql-core/src/mainGeneratedGraphQL/``` & ```./gradlew clean```
+3. Rebuild: for example, ```./gradlew :metadata-service:war:build```

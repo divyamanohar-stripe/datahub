@@ -28,9 +28,29 @@ class Dataset:
     urn: DatasetUrn = field(init=False)
     description: Optional[str] = None
     properties: Dict[str, str] = field(default_factory=dict)
+    owners: Set[str] = field(default_factory=set)
 
     def __post_init__(self):
         self.urn = DatasetUrn.create_from_ids(self.platform_id, self.table_name, self.env)
+
+    def generate_ownership_aspect(self) -> Iterable[OwnershipClass]:
+        ownership = OwnershipClass(
+            owners=[
+                OwnerClass(
+                    owner=builder.make_user_urn(owner),
+                    type=OwnershipTypeClass.DEVELOPER,
+                    source=OwnershipSourceClass(
+                        type=OwnershipSourceTypeClass.SERVICE,
+                    ),
+                )
+                for owner in (self.owners or [])
+            ],
+            lastModified=AuditStampClass(
+                time=0,
+                actor=builder.make_user_urn(self.flow_urn.get_orchestrator_name()),
+            ),
+        )
+        return [ownership]
 
     def generate_mcp(self) -> Iterable[MetadataChangeProposalWrapper]:
         mcp = MetadataChangeProposalWrapper(
@@ -44,6 +64,16 @@ class Dataset:
         )
 
         yield mcp
+
+        for owner in self.generate_ownership_aspect():
+            mcp = MetadataChangeProposalWrapper(
+                entityType="dataset",
+                entityUrn=str(self.urn),
+                aspectName="ownership",
+                aspect=owner,
+                changeType=ChangeTypeClass.UPSERT,
+            )
+            yield mcp
 
     def emit(
         self,
