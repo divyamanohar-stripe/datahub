@@ -75,6 +75,17 @@ function convertEpochToISO(epoch?: string) {
     return date.toISOString();
 }
 
+function renderTaskIdWithExternalURL(jobId?: string, urn?: string) {
+    if (jobId === undefined || jobId === null) return undefined;
+    if (urn === undefined || urn === null) return jobId;
+    const url = `/tasks/${urn}/Changelog?is_lineage_mode=false`;
+    return (
+        <a href={url} target="_blank" rel="noopener noreferrer">
+            {jobId}
+        </a>
+    );
+}
+
 function renderTitleWithExternalURL(customProperties, externalUrl?) {
     if (
         getCustomProperty(customProperties, 'name') === undefined ||
@@ -147,7 +158,11 @@ function returnUIContent(entityWithRelation) {
 
     if (customProperties === undefined || customProperties === null || customProperties.length === 0) return <div />;
     const taskMeta = [
-        { key: 'task id', value: entity?.jobId, __typename: 'StringMapEntry' },
+        {
+            key: 'task id',
+            value: renderTaskIdWithExternalURL(entity?.jobId, entity?.urn),
+            __typename: 'StringMapEntry',
+        },
         { key: 'author', value: getCustomProperty(customProperties, 'author'), __typename: 'StringMapEntry' },
         {
             key: 'title',
