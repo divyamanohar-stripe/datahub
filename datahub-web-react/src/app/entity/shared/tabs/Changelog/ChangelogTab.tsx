@@ -22,7 +22,7 @@ const ValueText = styled(Typography.Text)`
     color: ${ANTD_GRAY[8]};
 `;
 
-type FinalDataJobEntity = {
+type DataJobEntityWithVersions = {
     type: EntityType.DataJob;
     urn: string;
     jobId: string;
@@ -40,21 +40,6 @@ type FinalDataJobEntity = {
     };
 };
 
-type DataJobEntity = {
-    type: EntityType.DataJob;
-    urn: string;
-    jobId: string;
-    versionInfo?: {
-        customProperties?: {
-            key: string;
-            value: string;
-        }[];
-        version: string;
-        versionType: string;
-        externalUrl?: string;
-    };
-};
-
 type VersionEntity = {
     version: string;
     versionType: string;
@@ -67,10 +52,10 @@ type VersionEntity = {
     includeCurrentTask: boolean;
 };
 
-function DataJobEntityWithRelationMapper(entity: DataJobEntity, isUpstream: boolean) {
+function DataJobEntityWithRelationMapper(entity: DataJobEntityWithVersions, isCurrent: boolean) {
     const obj = {
         entity,
-        isUpstream,
+        isCurrent,
     };
     return obj;
 }
@@ -257,15 +242,8 @@ export const ChangelogTab = ({
     });
     console.log('currentDataJob?.data');
     console.log(currentDataJob?.data);
-    const rawData = currentDataJob?.data?.dataJob as FinalDataJobEntity;
-    const dummyDataEntity = {
-        type: rawData?.type,
-        urn: rawData?.urn,
-        jobId: rawData?.jobId,
-        versionInfo: rawData?.versionInfo?.versionInfos ? rawData?.versionInfo?.versionInfos[0] : null,
-    };
-    const currentDataJobArr: DataJobEntity[] =
-        currentDataJob?.data?.dataJob === undefined ? [] : [dummyDataEntity as DataJobEntity];
+    const currentDataJobArr: DataJobEntityWithVersions[] =
+        currentDataJob?.data?.dataJob === undefined ? [] : [currentDataJob?.data?.dataJob as DataJobEntityWithVersions];
     console.log('currentDataJobArr');
     console.log(currentDataJobArr);
     const { data } = useGetUpstreamVersionsQuery({
@@ -281,53 +259,72 @@ export const ChangelogTab = ({
             },
         },
     });
+
     const upstreamDataJobs = data?.searchAcrossLineage?.searchResults
         ?.filter((e) => {
             return e.entity.type === EntityType.DataJob;
         })
-        ?.map((e) => e.entity) as DataJobEntity[];
+        ?.map((e) => e.entity) as DataJobEntityWithVersions[];
+
     console.log('upstreamDataJobs');
     console.log(upstreamDataJobs);
-    const upstreamDataJobsArr = upstreamDataJobs === undefined ? [] : upstreamDataJobs;
+    const upstreamDataJobsArr: DataJobEntityWithVersions[] = upstreamDataJobs === undefined ? [] : upstreamDataJobs;
     console.log(upstreamDataJobsArr);
     const concatDataJobsArr = [
-        ...currentDataJobArr.map((e) => DataJobEntityWithRelationMapper(e, false)),
-        ...upstreamDataJobsArr.map((e) => DataJobEntityWithRelationMapper(e, true)),
+        ...currentDataJobArr.map((e) => DataJobEntityWithRelationMapper(e, true)),
+        ...upstreamDataJobsArr.map((e) => DataJobEntityWithRelationMapper(e, false)),
     ].filter((e) => !(e.entity.versionInfo === undefined || e.entity.versionInfo === null));
     console.log('concatDataJobs');
     console.log(concatDataJobsArr);
 
+    // return a list of datajobs attached to each version
     function groupVersionWithDataJob(items) {
         return items.reduce((acc, curr) => {
-            const currVersionInfo = curr.entity.versionInfo; // must not be null
-            const { version } = currVersionInfo;
-            const currentItems = acc[version];
-            const jobInfo = { jobId: curr.entity.jobId, urn: curr.entity.urn, isCurrent: !curr.isUpstream };
+            const { entity, isCurrent } = curr;
+            const entityUrn = entity.urn;
+            const { jobId, versionInfo } = entity;
+            const { versionInfos } = versionInfo;
+            const versionWithDataJob = versionInfos.reduce((accVersions, currVersion) => {
+                const { version } = currVersion;
+                const currentItem = acc?.[version] || [];
+                const updatedDataJobList = [...currentItem, { jobId, urn: entityUrn, isCurrent }];
+                return {
+                    ...accVersions,
+                    [version]: updatedDataJobList,
+                };
+            }, acc);
             return {
                 ...acc,
-                [version]: currentItems ? [...currentItems, jobInfo] : [jobInfo],
+                ...versionWithDataJob,
             };
-        }, []);
+        }, {});
     }
 
     function groupVersion(items) {
         return items.reduce((acc, curr) => {
-            const currVersionInfo = curr.entity.versionInfo; // must not be null
-            if (!currVersionInfo.customProperties || currVersionInfo.customProperties.length === 0) return acc; // do not display versions that have no customProperties (because there is nothing to display)
-            const { version } = currVersionInfo;
+            const { entity } = curr;
+            const { versionInfo } = entity;
+            const { versionInfos } = versionInfo;
+            const versionInfoDetails = versionInfos.reduce((accVersions, currVersion) => {
+                const { version } = currVersion;
+                return {
+                    ...accVersions,
+                    [version]: currVersion,
+                };
+            }, acc);
             return {
                 ...acc,
-                [version]: currVersionInfo, // assume same version implies same customProperties
+                ...versionInfoDetails,
             };
-        }, []);
+        }, {});
     }
 
-    const versionsWithDataJobArr = groupVersionWithDataJob(concatDataJobsArr); // concatDataJobsArr all have versionInfo
-    const versionsArr = groupVersion(concatDataJobsArr); // versionsWithDataJobArr all have jobId, urn and isCurrent
+    const versionsWithDataJobArr = groupVersionWithDataJob(concatDataJobsArr);
+    const versionsArr = groupVersion(concatDataJobsArr);
 
     function versionArrMapper(versionsWithDataJob, versions): VersionEntity[] {
         const ret = Object.keys(versionsWithDataJob)
-            .filter((key) => versions[key]) // make sure that the versions associated with the tasks all have customProperties
+            .filter((key) => versions[key])
             .map(
                 (key) =>
                     ({
