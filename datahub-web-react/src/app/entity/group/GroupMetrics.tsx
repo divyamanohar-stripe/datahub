@@ -72,43 +72,61 @@ type DatasetEntity = {
     slaProps?: DatasetCustomPropertiesWithSla;
 };
 
+/**
+ * Check if current run has missed any of its SLAs
+ * @param run the current run to examine
+ * @param slaInfo SLA info set on the dataset
+ * @return a list of information about whether we missed SLA, 1=did not miss, -1=missed
+ */
 function checkMetSLA(run: RunCustomProperties, slaInfo?: DatasetCustomPropertiesWithSla) {
+    // if no SLA is set, return 1 (meaning not missed)
     if (slaInfo === undefined) {
         return [1];
     }
-    const startDate = moment(run.startDate);
-    const execDate = moment(run.executionDate);
-    if (slaInfo.warnStartedBySla !== undefined) {
-        const target = moment(execDate).add(+slaInfo.warnStartedBySla, 's');
-        if (startDate > target) {
-            return [-1, SLAMissTypes.warnStartedBy, +slaInfo.warnStartedBySla, moment(startDate).diff(target, 's')];
-        }
-    }
+    const startDate = moment.utc(run.startDate);
+    const execDate = moment.utc(run.executionDate);
+    // prioritize error SLA misses
     if (slaInfo.startedBySla !== undefined) {
         const target = moment(execDate).add(+slaInfo.startedBySla, 's');
         if (startDate > target) {
             return [-1, SLAMissTypes.startedBy, +slaInfo.startedBySla, moment(startDate).diff(target, 's')];
         }
     }
-
-    if (run?.endDate !== undefined) {
-        const endDate = moment(run.endDate);
-        if (slaInfo.warnFinishedBySla !== undefined) {
-            const target = moment(execDate).add(+slaInfo.warnFinishedBySla, 's');
-            if (endDate > target) {
-                return [-1, SLAMissTypes.warnFinishedBy, +slaInfo.warnFinishedBySla, moment(endDate).diff(target, 's')];
-            }
-        }
-        if (slaInfo.finishedBySla !== undefined) {
-            const target = moment(execDate).add(+slaInfo.finishedBySla, 's');
-            if (endDate > target) {
-                return [-1, SLAMissTypes.finishedBy, +slaInfo.finishedBySla, moment(endDate).diff(target, 's')];
-            }
+    if (slaInfo.warnStartedBySla !== undefined) {
+        const target = moment(execDate).add(+slaInfo.warnStartedBySla, 's');
+        if (startDate > target) {
+            return [-1, SLAMissTypes.warnStartedBy, +slaInfo.warnStartedBySla, moment(startDate).diff(target, 's')];
         }
     }
+
+    // get end date, if no end date is set, use current UTC time
+    let endDate;
+    if (run?.endDate !== undefined && run?.endDate !== 'None') {
+        endDate = moment.utc(run.endDate);
+    } else {
+        endDate = moment.utc();
+    }
+    // prioritize error SLA misses
+    if (slaInfo.finishedBySla !== undefined) {
+        const target = moment(execDate).add(+slaInfo.finishedBySla, 's');
+        if (endDate > target) {
+            return [-1, SLAMissTypes.finishedBy, +slaInfo.finishedBySla, moment(endDate).diff(target, 's')];
+        }
+    }
+    if (slaInfo.warnFinishedBySla !== undefined) {
+        const target = moment(execDate).add(+slaInfo.warnFinishedBySla, 's');
+        if (endDate > target) {
+            return [-1, SLAMissTypes.warnFinishedBy, +slaInfo.warnFinishedBySla, moment(endDate).diff(target, 's')];
+        }
+    }
+
     return [1];
 }
 
+/**
+ * format runs to remove all but last try per execution date and sort in order
+ * @param runs the list of runs to format
+ */
 function formatRuns(runs: RunCustomProperties[]) {
     // sort by start date to remove all but last try per execution date
     runs.sort((a, b) => (new Date(a.startDate).getTime() < new Date(b.startDate).getTime() ? 1 : -1));
@@ -126,6 +144,11 @@ function formatRuns(runs: RunCustomProperties[]) {
     return latestRuns;
 }
 
+/**
+ * Gather run and SLA metrics to create chart and table
+ * @param datasetEntities
+ * @return list of [percent met SLA per day (execution date truncated to day), total percent met over all runs, list of SLAMissData objects to generate SLA miss table]
+ */
 function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
     const metSLAMetrics = new Map();
     let missedSLADatasets: any[] = [];
@@ -137,9 +160,9 @@ function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
             runs = formatRuns(runs);
             for (let r = 0; r < runs.length; r++) {
                 const currRun = runs[r];
-                const execDateTruncated = moment(currRun.executionDate).startOf('day').format('YYYY-MM-DD');
+                const execDateTruncated = moment.utc(currRun.executionDate).startOf('day').format('YYYY-MM-DD');
                 const metSLAInfo = checkMetSLA(currRun, slaInfo);
-                // console.log(metSLAInfo);
+                // at idx 0: 1 = met SLA, -1 = missed SLA
                 const metSLA = metSLAInfo[0];
                 if (metSLA < 0) {
                     if (metSLAMetrics.has(execDateTruncated)) {
@@ -150,13 +173,15 @@ function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
                     } else {
                         metSLAMetrics.set(execDateTruncated, [0, 1]);
                     }
+                    // if we missed SLA, create SLAMissData object for SLA miss table
                     const missedSLAData = {
-                        executionDate: moment(currRun.executionDate).format('YYYY-MM-DD HH:mm:ss'),
+                        executionDate: moment.utc(currRun.executionDate).format('YYYY-MM-DD HH:mm:ss'),
                         missType: metSLAInfo[1],
                         sla: convertSecsToHumanReadable(+metSLAInfo[2]),
                         missedBy: convertSecsToHumanReadable(+metSLAInfo[3]),
                         externalUrl: currRun.externalUrl,
                         dataset: currDataset,
+                        state: currRun.state,
                     };
                     missedSLADatasets.push(missedSLAData);
                 } else if (metSLA > 0) {
@@ -182,12 +207,18 @@ function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
         missedSLANumber += value[1];
     });
     percentMetData = orderBy(percentMetData, 'date');
+    // get total percentage of met SLA runs over all runs
     const percentMetVal = +((metSLANumber / (metSLANumber + missedSLANumber)) * 100.0).toFixed(2);
     missedSLADatasets = orderBy(missedSLADatasets, 'executionDate', 'desc');
     return [percentMetData, percentMetVal, missedSLADatasets];
 }
 
+/**
+ * create SLA miss line chart that displays percent of SLA misses over all runs per day
+ * @param data
+ */
 function renderSLAChart(data) {
+    // setting SLA target as 95%
     function getAnnotations() {
         const annotations: any[] = [];
         annotations.push({
@@ -230,22 +261,12 @@ function renderSLAChart(data) {
                 text: 'Percentage Met SLA',
             },
         },
-        // slider: {
-        //     start: 0,
-        //     end: 1,
-        // },
         annotations: getAnnotations(),
     };
     return <Line style={{ marginLeft: '20px', marginRight: '30px' }} {...config} />;
 }
 
 function renderSLAMissTable(data: SLAMissData[]) {
-    // executionDate: string;
-    // missType: SLAMissTypes;
-    // sla: number;
-    // missedBy: number;
-    // externalUrl: string;
-    // dataset: DatasetEntity;
     const columns = [
         {
             title: 'Execution Date',
@@ -255,6 +276,10 @@ function renderSLAMissTable(data: SLAMissData[]) {
             title: 'Dataset',
             dataIndex: 'dataset',
             render: (dataset) => <CompactEntityNameList entities={[dataset]} />,
+        },
+        {
+            title: 'State',
+            dataIndex: 'state',
         },
         {
             title: 'SLA Miss Type',
