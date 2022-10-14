@@ -1,4 +1,4 @@
-query getUpstreamVersions($input: SearchAcrossLineageInput!) {
+query getUpstreamVersions($input: SearchAcrossLineageInput!, $versionInfosInput: VersionInfosInput!) {
   searchAcrossLineage(input: $input) {
     searchResults {
       entity {
@@ -6,7 +6,7 @@ query getUpstreamVersions($input: SearchAcrossLineageInput!) {
         type
         ... on DataJob {
           jobId
-          versionInfo {
+          versionInfo(input: $versionInfosInput) {
             total
             versionInfos {
               version
@@ -25,13 +25,13 @@ query getUpstreamVersions($input: SearchAcrossLineageInput!) {
   }
 }
 
-query getDataJobVersion($urn: String!) {
+query getDataJobVersion($urn: String!, $versionInfosInput: VersionInfosInput!) {
   dataJob(urn: $urn) {
         urn
         type
         ... on DataJob {
           jobId
-          versionInfo {
+          versionInfo(input: $versionInfosInput) {
             total
             versionInfos {
               version

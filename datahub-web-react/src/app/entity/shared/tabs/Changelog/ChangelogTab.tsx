@@ -238,6 +238,10 @@ export const ChangelogTab = ({
     const currentDataJob = useGetDataJobVersionQuery({
         variables: {
             urn,
+            versionInfosInput: {
+                start: 0,
+                count: 10,
+            },
         },
     });
     console.log('currentDataJob?.data');
@@ -256,6 +260,10 @@ export const ChangelogTab = ({
                 start,
                 count,
                 filters,
+            },
+            versionInfosInput: {
+                start: 0,
+                count: 10,
             },
         },
     });
