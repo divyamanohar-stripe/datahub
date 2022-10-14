@@ -982,7 +982,7 @@ interface PipelineTimelinessProps {
 
 export const PipelineTimelinessComponent: FC<PipelineTimelinessProps> = ({ urn }) => {
     const maxRunCount = 100;
-    const maxEntityCount = 50;
+    const maxEntityCount = 75;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
     const [segmentId, setSegmentId] = useState(0);
     const [logicalDate, setLogicalDate] = useState(initialEndDate);
