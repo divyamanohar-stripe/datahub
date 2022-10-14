@@ -13,7 +13,6 @@ import com.linkedin.datahub.graphql.generated.DataJob;
 import com.linkedin.datahub.graphql.generated.DataJobEditableProperties;
 import com.linkedin.datahub.graphql.generated.DataJobInfo;
 import com.linkedin.datahub.graphql.generated.DataJobRuntimeSLO;
-import com.linkedin.datahub.graphql.generated.DataJobVersionInfo;
 import com.linkedin.datahub.graphql.generated.DataJobInputOutput;
 import com.linkedin.datahub.graphql.generated.DataJobProperties;
 import com.linkedin.datahub.graphql.generated.Dataset;
@@ -68,22 +67,6 @@ public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
                 final com.linkedin.datajob.DataJobInfo gmsDataJobInfo = new com.linkedin.datajob.DataJobInfo(data);
                 result.setInfo(mapDataJobInfo(gmsDataJobInfo));
                 result.setProperties(mapDataJobInfoToProperties(gmsDataJobInfo));
-            } else if (DATA_JOB_VERSION_INFO_ASPECT_NAME.equals(name)) {
-                final com.linkedin.datajob.VersionInfo gmsDataJobVersionInfo = new com.linkedin.datajob.VersionInfo(data);
-                final DataJobVersionInfo dataJobVersionInfo = new DataJobVersionInfo();
-                if (gmsDataJobVersionInfo.hasVersion()) {
-                    dataJobVersionInfo.setVersion(gmsDataJobVersionInfo.getVersion());
-                }
-                if (gmsDataJobVersionInfo.hasVersionType()) {
-                    dataJobVersionInfo.setVersionType(gmsDataJobVersionInfo.getVersionType());
-                }
-                if (gmsDataJobVersionInfo.hasExternalUrl()) {
-                    dataJobVersionInfo.setExternalUrl(gmsDataJobVersionInfo.getExternalUrl().toString());
-                }
-                if (gmsDataJobVersionInfo.hasCustomProperties()) {
-                    dataJobVersionInfo.setCustomProperties(StringMapMapper.map(gmsDataJobVersionInfo.getCustomProperties()));
-                }
-                result.setVersionInfo(dataJobVersionInfo);
             } else if (DATA_JOB_INPUT_OUTPUT_ASPECT_NAME.equals(name)) {
                 final com.linkedin.datajob.DataJobInputOutput gmsDataJobInputOutput = new com.linkedin.datajob.DataJobInputOutput(data);
                 result.setInputOutput(mapDataJobInputOutput(gmsDataJobInputOutput));

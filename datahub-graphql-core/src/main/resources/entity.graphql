@@ -4446,8 +4446,36 @@ type DataJob implements EntityWithRelationships & Entity {
     """
     version information of a data job
     """
-    versionInfo: DataJobVersionInfo
+    versionInfo(input: VersionInfosInput): DataJobVersionInfosResult
 }
+
+input VersionInfosInput {
+    start: Int
+    count: Int
+}
+
+type DataJobVersionInfosResult {
+    """
+    The number of versionInfos to include in result set
+    """
+    count: Int
+
+    """
+    The offset of the result set
+    """
+    start: Int
+
+    """
+    The total number of versions returned
+    """
+    total: Int
+
+    """
+    The data process instances that produced or consumed the entity
+    """
+    versionInfos: [DataJobVersionInfo]
+}
+
 
 type DataJobRuntimeSLO {
     """

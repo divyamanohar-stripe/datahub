@@ -22,6 +22,24 @@ const ValueText = styled(Typography.Text)`
     color: ${ANTD_GRAY[8]};
 `;
 
+type FinalDataJobEntity = {
+    type: EntityType.DataJob;
+    urn: string;
+    jobId: string;
+    versionInfo?: {
+        total: number;
+        versionInfos: {
+            customProperties?: {
+                key: string;
+                value: string;
+            }[];
+            version: string;
+            versionType: string;
+            externalUrl?: string;
+        }[];
+    };
+};
+
 type DataJobEntity = {
     type: EntityType.DataJob;
     urn: string;
@@ -239,8 +257,15 @@ export const ChangelogTab = ({
     });
     console.log('currentDataJob?.data');
     console.log(currentDataJob?.data);
+    const rawData = currentDataJob?.data?.dataJob as FinalDataJobEntity;
+    const dummyDataEntity = {
+        type: rawData?.type,
+        urn: rawData?.urn,
+        jobId: rawData?.jobId,
+        versionInfo: rawData?.versionInfo?.versionInfos ? rawData?.versionInfo?.versionInfos[0] : null,
+    };
     const currentDataJobArr: DataJobEntity[] =
-        currentDataJob?.data?.dataJob === undefined ? [] : [currentDataJob.data.dataJob as DataJobEntity];
+        currentDataJob?.data?.dataJob === undefined ? [] : [dummyDataEntity as DataJobEntity];
     console.log('currentDataJobArr');
     console.log(currentDataJobArr);
     const { data } = useGetUpstreamVersionsQuery({

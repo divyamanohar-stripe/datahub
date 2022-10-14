@@ -81,6 +81,7 @@ import com.linkedin.datahub.graphql.resolvers.group.RemoveGroupMembersResolver;
 import com.linkedin.datahub.graphql.resolvers.group.RemoveGroupResolver;
 import com.linkedin.datahub.graphql.resolvers.jobs.EntityRunsResolver;
 import com.linkedin.datahub.graphql.resolvers.jobs.DataJobRunsResolver;
+import com.linkedin.datahub.graphql.resolvers.jobs.DatajobVersionInfosResolver;
 import com.linkedin.datahub.graphql.resolvers.user.UpdateUserStatusResolver;
 import com.linkedin.datahub.graphql.resolvers.policy.GetGrantedPrivilegesResolver;
 import com.linkedin.datahub.graphql.resolvers.ingest.execution.CancelIngestionExecutionRequestResolver;
@@ -1156,6 +1157,7 @@ public class GmsGraphQLEngine {
                     )
                 )
                 .dataFetcher("runs", new DataJobRunsResolver(entityClient))
+                .dataFetcher("versionInfo", new DatajobVersionInfosResolver(entityClient))
             )
             .type("DataJobInputOutput", typeWiring -> typeWiring
                 .dataFetcher("inputDatasets", new AuthenticatedResolver<>(

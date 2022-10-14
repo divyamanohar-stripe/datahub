@@ -7,12 +7,15 @@ query getUpstreamVersions($input: SearchAcrossLineageInput!) {
         ... on DataJob {
           jobId
           versionInfo {
-            version
-            versionType
-            externalUrl
-            customProperties {
-              key
-              value
+            total
+            versionInfos {
+              version
+              versionType
+              externalUrl
+              customProperties {
+                key
+                value
+              }
             }
           }
         }
@@ -29,12 +32,15 @@ query getDataJobVersion($urn: String!) {
         ... on DataJob {
           jobId
           versionInfo {
-            version
-            versionType
-            externalUrl
-            customProperties {
-              key
-              value
+            total
+            versionInfos {
+              version
+              versionType
+              externalUrl
+              customProperties {
+                key
+                value
+              }
             }
           }
         }
