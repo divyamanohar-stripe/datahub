@@ -126,3 +126,67 @@ mutation updateCorpGroupProperties($urn: String!, $input: CorpGroupUpdateInput!)
         urn
     }
 }
+
+
+fragment groupRunResults on DataProcessInstanceResult {
+    count
+    start
+    total
+    runs {
+        urn
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        state(startTimeMillis: null, endTimeMillis: null, limit: 1) {
+            status
+            attempt
+            result {
+                resultType
+                nativeResultType
+            }
+            timestampMillis
+        }
+        externalUrl
+    }
+}
+
+fragment groupSearchResultFields on Entity {
+    urn
+    type
+    ... on Dataset {
+        name
+        properties {
+            name
+            customProperties {
+                key
+                value
+            }
+        }
+      runs: runs(start: 0, count: $runCount, direction: OUTGOING) {
+            ...groupRunResults
+        }
+
+    }
+
+}
+
+
+fragment groupSearchResults on SearchResults {
+    start
+    count
+    total
+    searchResults {
+        entity {
+            ...groupSearchResultFields
+        }
+    }
+}
+
+query getGroupMetrics($input: SearchAcrossEntitiesInput!, $runCount: Int!) {
+    searchAcrossEntities(input: $input) {
+        ...groupSearchResults
+    }
+}

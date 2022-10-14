@@ -56,3 +56,8 @@ export const loadingPage = (
         <LoadingText>Fetching data...</LoadingText>
     </LoadingContainer>
 );
+
+export const ExternalUrlLink = styled.a`
+    font-size: 16px;
+    color: grey;
+`;

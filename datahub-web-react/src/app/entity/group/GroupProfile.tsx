@@ -10,15 +10,17 @@ import { decodeUrn } from '../shared/utils';
 import { RoutedTabs } from '../../shared/RoutedTabs';
 import GroupInfoSidebar from './GroupInfoSideBar';
 import { GroupAssets } from './GroupAssets';
+import { GroupMetrics } from './GroupMetrics';
 
 const messageStyle = { marginTop: '10%' };
 
 export enum TabType {
     Assets = 'Assets',
     Members = 'Members',
+    Metrics = 'Metrics',
 }
 
-const ENABLED_TAB_TYPES = [TabType.Assets, TabType.Members];
+const ENABLED_TAB_TYPES = [TabType.Assets, TabType.Members, TabType.Metrics];
 
 const MEMBER_PAGE_SIZE = 15;
 
@@ -60,6 +62,14 @@ export default function GroupProfile() {
                 name: TabType.Assets,
                 path: TabType.Assets.toLocaleLowerCase(),
                 content: <GroupAssets urn={urn} />,
+                display: {
+                    enabled: () => true,
+                },
+            },
+            {
+                name: TabType.Metrics,
+                path: TabType.Metrics.toLocaleLowerCase(),
+                content: <GroupMetrics urn={urn} />,
                 display: {
                     enabled: () => true,
                 },
