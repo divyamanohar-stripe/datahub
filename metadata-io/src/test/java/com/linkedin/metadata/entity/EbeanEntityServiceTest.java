@@ -1037,6 +1037,10 @@ public class EbeanEntityServiceTest {
     List<VersionedAspect> versionedAspectList6 = _entityService.listVersionedAspects(entityUrn, aspectName, 1, -1);
     assertEquals(versionedAspectList6.size(), 0);
     assertEquals(versionedAspectList6.stream().map(versionedAspect -> versionedAspect.getVersion()).collect(Collectors.toList()), Arrays.asList());
+
+    // case 7: no versioned aspects ingested
+    List<VersionedAspect> versionedAspectList7 = _entityService.listVersionedAspects(entityUrn, "fakeAspectName", 2, 0);
+    assertEquals(versionedAspectList7.size(), 0);
   }
 
   @Nonnull

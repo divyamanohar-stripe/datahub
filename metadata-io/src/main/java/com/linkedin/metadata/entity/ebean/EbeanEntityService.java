@@ -302,7 +302,10 @@ public class EbeanEntityService extends EntityService {
       // latest: 0. oldest <- 1 2 3 4 -> newer
       // when offset is 0, get version 0 and count - 1 aspects in descending order
       if (offset == 0 && count != 0) {
-        versionedAspects.add(getVersionedAspect(urn, aspectName, 0));
+        VersionedAspect versionedAspect = getVersionedAspect(urn, aspectName, 0);
+        if (versionedAspect != null) {
+          versionedAspects.add(versionedAspect);
+        }
 
         end = _entityDao.getMaxVersion(urn.toString(), aspectName);
         start = end - count + 2;
