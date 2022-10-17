@@ -7,6 +7,7 @@ import { ANTD_GRAY } from '../../constants';
 import { CurrentStyledTable, UpstreamStyledTable } from '../../components/styled/StyledTable';
 import { useEntityData } from '../../EntityContext';
 import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
+import { DataJobEntityWithVersions } from '../../types';
 
 const NameText = styled(Typography.Text)`
     font-family: 'Roboto Mono', monospace;
@@ -21,24 +22,6 @@ const ValueText = styled(Typography.Text)`
     font-size: 12px;
     color: ${ANTD_GRAY[8]};
 `;
-
-type DataJobEntityWithVersions = {
-    type: EntityType.DataJob;
-    urn: string;
-    jobId: string;
-    versionInfo?: {
-        total: number;
-        versionInfos: {
-            customProperties?: {
-                key: string;
-                value: string;
-            }[];
-            version: string;
-            versionType: string;
-            externalUrl?: string;
-        }[];
-    };
-};
 
 type VersionEntity = {
     version: string;

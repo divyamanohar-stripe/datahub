@@ -120,3 +120,21 @@ export type EntityAndType = {
     urn: string;
     type: EntityType;
 };
+
+export type DataJobEntityWithVersions = {
+    type: EntityType.DataJob;
+    urn: string;
+    jobId: string;
+    versionInfo?: {
+        total: number;
+        versionInfos: {
+            customProperties?: {
+                key: string;
+                value: string;
+            }[];
+            version: string;
+            versionType: string;
+            externalUrl?: string;
+        }[];
+    };
+};

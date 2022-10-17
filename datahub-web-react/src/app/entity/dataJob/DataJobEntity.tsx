@@ -87,10 +87,6 @@ export class DataJobEntity implements Entity<DataJob> {
                 {
                     name: 'Insights',
                     component: InsightsTab,
-                    display: {
-                        visible: (_, _1) => true,
-                        enabled: (_, dataJob: GetDataJobQuery) => (dataJob?.dataJob?.incoming?.count || 0) !== 0,
-                    },
                 },
                 {
                     name: 'Timeliness',

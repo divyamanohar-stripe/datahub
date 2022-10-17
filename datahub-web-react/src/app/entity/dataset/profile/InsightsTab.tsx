@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-nested-ternary */
 import React, { useState } from 'react';
-import { Button, DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip } from 'antd';
+import { DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip, Table } from 'antd';
 import styled from 'styled-components';
 
 import moment from 'moment';
 import { useEntityData } from '../../shared/EntityContext';
-import TabToolbar from '../../shared/components/styled/TabToolbar';
 import { DataProcessRunEvent, DataProcessRunStatus, EntityType, LineageDirection } from '../../../../types.generated';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
@@ -15,6 +14,8 @@ import InsightsPreviewCard from '../../../preview/InsightsPreviewCard';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { TimePredictionComponent } from './PredictLandingTime';
 import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
+import { useGetDataJobVersionQuery } from '../../../../graphql/getVersions.generated';
+import { DataJobEntityWithVersions } from '../../shared/types';
 
 const StyledList = styled(List)`
     margin-top: -1px;
@@ -34,6 +35,77 @@ const StyledList = styled(List)`
         padding-top: 15px;
     }
 ` as typeof List;
+
+function isValidNumber(num?: number) {
+    return !(num === undefined || num === null || num === 0);
+}
+
+function renderNumJobsChanged(numJobsChanged?: number, numDownstreamUniqueProjects?: number): string {
+    if (!isValidNumber(numJobsChanged)) return '';
+    if (!isValidNumber(numDownstreamUniqueProjects)) {
+        return `Affects ${numJobsChanged} tasks.`;
+    }
+    return `Affects ${numJobsChanged} tasks across ${numDownstreamUniqueProjects} teams.`;
+}
+
+function convertEpochToISO(epoch?: string) {
+    if (epoch === undefined || epoch === null) return undefined;
+    const toInt = parseInt(epoch, 10) * 1000;
+    const date = new Date(toInt);
+    return date.toISOString();
+}
+
+const columns = [
+    {
+        title: 'Title',
+        dataIndex: 'customProperties',
+        key: 'customProperties',
+        render: (customProperties: any, row) => {
+            const title = customProperties?.filter((e) => e.key === 'name')[0]?.value;
+            return (
+                <a href={row.externalUrl} target="_blank" rel="noopener noreferrer">
+                    {title}
+                </a>
+            );
+        },
+    },
+    {
+        title: 'Author',
+        dataIndex: 'customProperties',
+        key: 'customProperties',
+        render: (customProperties) => {
+            return customProperties?.filter((e) => e.key === 'author')[0]?.value;
+        },
+    },
+    {
+        title: 'Timestamp',
+        dataIndex: 'customProperties',
+        key: 'customProperties',
+        render: (customProperties) => {
+            const timestamp = customProperties?.filter((e) => e.key === 'createdAt')[0]?.value;
+            return convertEpochToISO(timestamp);
+        },
+    },
+    {
+        title: 'Summary',
+        dataIndex: 'customProperties',
+        key: 'customProperties',
+        render: (customProperties) => {
+            const summary = customProperties?.filter((e) => e.key === 'summary')[0]?.value;
+            if (summary === undefined || summary === null) {
+                return '';
+            }
+            try {
+                const parsedSummary = JSON.parse(summary);
+                const numJobsChanged = parsedSummary?.numJobsChanged;
+                const numDownstreamUniqueProjects = parsedSummary?.numDownstreamUniqueProjects;
+                return renderNumJobsChanged(numJobsChanged, numDownstreamUniqueProjects);
+            } catch (e) {
+                return '';
+            }
+        },
+    },
+];
 
 const ListItem = styled.div`
     padding-right: 40px;
@@ -69,6 +141,12 @@ const loadingPage = (
 const noDelayedJobsPage = (
     <LoadingContainer>
         <LoadingText>No Delayed Jobs to display!</LoadingText>
+    </LoadingContainer>
+);
+
+const noPullRequestsPage = (
+    <LoadingContainer>
+        <LoadingText>No Pull Requests to display!</LoadingText>
     </LoadingContainer>
 );
 
@@ -141,6 +219,28 @@ function isEntityDelayed(entity?: DataJobEntity) {
     return runtime > parseInt(slo, 10);
 }
 
+function useGetJobs(urn, entityType) {
+    const maxVersionCount = 3;
+    const currentDataJob = useGetDataJobVersionQuery({
+        variables: {
+            urn,
+            versionInfosInput: {
+                start: 0,
+                count: maxVersionCount,
+            },
+        },
+        skip: entityType !== EntityType.DataJob,
+    });
+    if (currentDataJob?.data?.dataJob === undefined) {
+        return [];
+    }
+    const currentDataJobInfo: DataJobEntityWithVersions = currentDataJob.data.dataJob! as DataJobEntityWithVersions;
+    if (currentDataJobInfo?.versionInfo?.versionInfos === undefined) {
+        return [];
+    }
+    return currentDataJobInfo.versionInfo?.versionInfos;
+}
+
 export const InsightsTab = ({
     properties = { defaultDirection: LineageDirection.Upstream, defaultDate: Date.now() },
 }: {
@@ -166,6 +266,7 @@ export const InsightsTab = ({
     const query = '';
     const count = 1000;
     const { urn, entityType } = useEntityData();
+    const currJobVersionsArr = useGetJobs(urn, entityType);
     const [execDate, setExecDate] = useState(moment.utc().startOf('day').valueOf());
     const { data, loading, error, refetch } = useGetDelaysQuery({
         variables: {
@@ -208,6 +309,19 @@ export const InsightsTab = ({
 
     return (
         <>
+            <div>
+                <Descriptions
+                    title={<a href={`/tasks/${urn}/Changelog?is_lineage_mode=false`}>Recent Pull Requests</a>}
+                    style={{ marginTop: '20px', marginLeft: '20px', marginRight: '20px' }}
+                    bordered
+                    size="small"
+                    column={{ md: 10 }}
+                />
+            </div>
+            {currJobVersionsArr.length === 0 && noPullRequestsPage}
+            {currJobVersionsArr.length !== 0 && (
+                <Table dataSource={currJobVersionsArr} columns={columns} pagination={false} />
+            )}
             <div>
                 <Descriptions
                     title="Delayed Upstream Jobs"
