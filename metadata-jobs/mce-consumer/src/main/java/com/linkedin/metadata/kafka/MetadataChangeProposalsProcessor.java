@@ -59,15 +59,27 @@ public class MetadataChangeProposalsProcessor {
     log.debug("Record {}", record);
 
     MetadataChangeProposal event = new MetadataChangeProposal();
-    try {
-      event = EventUtils.avroToPegasusMCP(record);
-      log.debug("MetadataChangeProposal {}", event);
-      // TODO: Get this from the event itself.
-      entityClient.ingestProposal(event, this.systemAuthentication);
-    } catch (Throwable throwable) {
-      log.error("MCP Processor Error", throwable);
-      log.error("Message: {}", record);
-      sendFailedMCP(event, throwable);
+
+    // NOTE: Using retry to avoid ingestion request hitting a bad GMS instance.
+    int retryCount = 0;
+    int maxTries = 3;
+    while(true) {
+      try {
+        event = EventUtils.avroToPegasusMCP(record);
+        log.debug("MetadataChangeProposal {}", event);
+        // TODO: Get this from the event itself.
+        entityClient.ingestProposal(event, this.systemAuthentication);
+        break;
+      } catch (Throwable throwable) {
+        // handle exception
+        if (++retryCount == maxTries) {
+          log.error("MCP Processor Error", throwable);
+          log.error("Message: {}", record);
+          sendFailedMCP(event, throwable);
+          break;
+        }
+        log.error("Retrying to ingest MCP - {}, retryCount - {}, maxTries - {}", record, retryCount, maxTries);
+      }
     }
   }
 
