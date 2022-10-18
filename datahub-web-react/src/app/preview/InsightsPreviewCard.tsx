@@ -150,7 +150,7 @@ interface Props {
     // this is provided by the impact analysis view. it is used to display
     // how the listed node is connected to the source node
     degree?: number;
-    slo?: string;
+    slo?: number;
     runtime?: number;
     delay?: number;
     dpiUrn?: string;
@@ -213,9 +213,7 @@ export default function InsightsPreviewCard({
                                 <Tooltip
                                     title={`This run instance is delayed by ${convertSecsToHumanReadable(
                                         delay,
-                                    )} compared to the expected runtime ${
-                                        slo ? convertSecsToHumanReadable(parseFloat(slo)) : ''
-                                    }`}
+                                    )} compared to the expected runtime ${slo ? convertSecsToHumanReadable(slo) : ''}`}
                                 >
                                     <PlatformText>Delay: {convertSecsToHumanReadable(delay)}</PlatformText>
                                     <PlatformDivider />
@@ -266,9 +264,7 @@ export default function InsightsPreviewCard({
                             {slo && (
                                 <>
                                     <PlatformDivider />
-                                    <PlatformText>
-                                        Expected Runtime: {convertSecsToHumanReadable(parseFloat(slo))}
-                                    </PlatformText>
+                                    <PlatformText> Expected Runtime: {convertSecsToHumanReadable(slo)} </PlatformText>
                                 </>
                             )}
                             {runtime && (

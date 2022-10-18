@@ -370,11 +370,9 @@ export const InsightsTab = ({
                         const subType =
                             genericProps?.subTypes?.typeNames?.length && genericProps?.subTypes?.typeNames[0];
                         const entityCount = genericProps?.entityCount;
-                        const slo =
-                            genericProps?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value ||
-                            'undefined';
+                        const slo = genericProps?.runtimeSLO?.runtimeSLO;
                         const { runtime } = entity;
-                        const delay = calculateDelay(entity.runtime, parseInt(slo, 10));
+                        const delay = calculateDelay(entity.runtime, slo);
                         return (
                             <>
                                 <ListItem>

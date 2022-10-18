@@ -74,6 +74,9 @@ export type GenericEntityProperties = {
     downstream?: Maybe<EntityLineageResult>;
     subTypes?: Maybe<SubTypes>;
     entityCount?: number;
+    runtimeSLO?: Maybe<{
+        runtimeSLO: number;
+    }>;
     container?: Maybe<Container>;
     health?: Maybe<Health>;
     status?: Maybe<Status>;
