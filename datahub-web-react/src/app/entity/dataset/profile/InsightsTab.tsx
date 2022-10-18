@@ -186,6 +186,9 @@ type DataJobEntity = {
         runs: RunEntity[];
     };
     runtime?: number;
+    runtimeSLO?: {
+        runtimeSLO?: number;
+    };
 };
 
 function addRuntimeToDataJob(dataJob: DataJobEntity) {

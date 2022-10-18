@@ -10,6 +10,9 @@ query getDelays($input: SearchAcrossLineageInput!, $exec_date: String!) {
         ... on DataJob {
           urn
           type
+          runtimeSLO {
+            runtimeSLO
+          }
           dataFlow {
             urn
             type
