@@ -9,11 +9,11 @@ https://jira.corp.stripe.com/browse/SCHMAQUERY-1557
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Dict, Iterable, Optional, Union, cast
-
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, Optional, Set, Union, cast
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
-from datahub.metadata.schema_classes import ChangeTypeClass, DatasetPropertiesClass
+from datahub.metadata.schema_classes import ChangeTypeClass, DatasetPropertiesClass, OwnershipClass, OwnerClass, OwnershipTypeClass, AuditStampClass, OwnershipSourceTypeClass, OwnershipSourceClass
 from datahub.utilities.urns.dataset_urn import DatasetUrn
+import datahub.emitter.mce_builder as builder
 
 if TYPE_CHECKING:
     from datahub.emitter.kafka_emitter import DatahubKafkaEmitter
