@@ -36,6 +36,21 @@ const LinkButton = styled(Button)`
     }
 `;
 
+function getIcebergLink(entityData): string | undefined {
+    if (entityData?.platform?.name !== 'iceberg') {
+        return undefined;
+    }
+
+    const icebergName = entityData?.name;
+    const schemaName = icebergName?.split('.').at(0);
+    const tableName = icebergName?.split('.').at(1);
+    if (schemaName === undefined || tableName === undefined) {
+        return undefined;
+    }
+
+    return `https://hubble.corp.stripe.com/viz/dashboards/27644--iceberg-table-information?schema_name=${schemaName}&table_name=${tableName}`;
+}
+
 export const SidebarAboutSection = () => {
     const { entityData } = useEntityData();
     const refetch = useRefetch();
@@ -43,8 +58,9 @@ export const SidebarAboutSection = () => {
 
     const description = entityData?.editableProperties?.description || entityData?.properties?.description;
     const links = entityData?.institutionalMemory?.elements || [];
+    const icebergURL = getIcebergLink(entityData);
 
-    const isUntouched = !description && !(links?.length > 0);
+    const isUntouched = !icebergURL && !description && !(links?.length > 0);
 
     return (
         <div>
@@ -87,6 +103,13 @@ export const SidebarAboutSection = () => {
                     >
                         {description}
                     </StripMarkdownText>
+                </DescriptionTypography>
+            )}
+            {icebergURL && (
+                <DescriptionTypography>
+                    <a href={icebergURL} target="_blank" rel="noopener noreferrer">
+                        View Iceberg Table Information
+                    </a>
                 </DescriptionTypography>
             )}
             {links?.length > 0 ? (
