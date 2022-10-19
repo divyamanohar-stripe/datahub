@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, Optional, Set, Union, cast
+
+from datahub.utilities.urns.data_flow_urn import DataFlowUrn
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.metadata.schema_classes import ChangeTypeClass, DatasetPropertiesClass, OwnershipClass, OwnerClass, OwnershipTypeClass, AuditStampClass, OwnershipSourceTypeClass, OwnershipSourceClass
 from datahub.utilities.urns.dataset_urn import DatasetUrn
@@ -25,6 +27,7 @@ class Dataset:
     platform_id: str
     table_name: str
     env: str
+    flow_urn: DataFlowUrn
     urn: DatasetUrn = field(init=False)
     description: Optional[str] = None
     properties: Dict[str, str] = field(default_factory=dict)
