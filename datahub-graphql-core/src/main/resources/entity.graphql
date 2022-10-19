@@ -890,7 +890,7 @@ type Dataset implements EntityWithRelationships & Entity {
     """
     History of datajob runs that either produced or consumed this dataset
     """
-    runs(start: Int, count: Int, direction: RelationshipDirection!): DataProcessInstanceResult
+    runs(input: DataProcessInstanceInput, direction: RelationshipDirection!): DataProcessInstanceResult
 }
 
 """

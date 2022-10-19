@@ -53,7 +53,7 @@ fragment searchResultFieldsPredictions on Entity {
         upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
             ...fullLineageResultsPredictions
         }
-        runs(start: 0, count: 1, direction: OUTGOING) {
+        runs(input: {start: 0, count: 1}, direction: OUTGOING) {
             ...runResultsPredictions
         }
     }

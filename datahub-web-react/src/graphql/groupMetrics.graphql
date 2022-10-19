@@ -95,7 +95,7 @@ fragment groupSearchResultFields on Entity {
                 value
             }
         }
-        runs: runs(start: 0, count: $runCount, direction: OUTGOING) {
+        runs: runs(input: {start: 0, count: $runCount}, direction: OUTGOING) {
             ...groupRunResults
         }
         downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
