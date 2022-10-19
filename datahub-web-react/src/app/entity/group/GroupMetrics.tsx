@@ -7,8 +7,8 @@ import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
 import { convertSecsToHumanReadable } from '../shared/stripe-utils';
 import { ExternalUrlLink, loadingPage } from '../userDefinedReport/profile/SharedContent';
-import { useGetGroupMetricsQuery } from '../../../graphql/group.generated';
-import { EntityType } from '../../../types.generated';
+import { useGetGroupMetricsQuery } from '../../../graphql/groupMetrics.generated';
+import { EntityType, CorpGroup } from '../../../types.generated';
 
 interface SLAMissData {
     executionDate: string;
@@ -70,7 +70,18 @@ type DatasetEntity = {
     };
     totalRuns?: RunCustomProperties[];
     slaProps?: DatasetCustomPropertiesWithSla;
+    downstream: { relationships: any[] };
 };
+
+interface DownstreamTeam {
+    teamName: string;
+    slack?: string;
+    email?: string;
+    homePage?: string;
+    entities: any[];
+    count?: number;
+    ownerEntity?: CorpGroup;
+}
 
 /**
  * Check if current run has missed any of its SLAs
@@ -314,6 +325,124 @@ function renderSLAMissTable(data: SLAMissData[]) {
     );
 }
 
+function getOwnerName(ownership) {
+    let teamName;
+    let ownerEntity;
+    let idx = 0;
+    if (ownership !== undefined && ownership !== null && ownership.owners.length > 0) {
+        for (idx = 0; idx < ownership.owners.length; idx++) {
+            teamName = ownership?.owners[idx]?.owner?.properties?.displayName;
+            ownerEntity = ownership?.owners[idx]?.owner;
+            if (teamName === undefined) {
+                teamName = ownership?.owners[idx]?.owner?.name;
+            }
+            if (teamName !== undefined) {
+                break;
+            }
+        }
+    }
+    if (teamName !== undefined) {
+        return [teamName, ownerEntity, idx];
+    }
+    return ['No Team Defined', undefined, idx];
+}
+
+function getDownstreamTeams(datasetEntities: DatasetEntity[]) {
+    let teamMap: DownstreamTeam[] = [];
+    for (let i = 0; i < datasetEntities.length; i++) {
+        const downstreams = datasetEntities[i].downstream.relationships;
+        for (let d = 0; d < downstreams.length; d++) {
+            const currDownstream = downstreams[d].entity;
+            const teamInfo = getOwnerName(currDownstream.ownership);
+            const teamName = teamInfo[0];
+            const ownerEntity = teamInfo[1];
+            const ownerIdx = teamInfo[2];
+            const email = currDownstream.ownership?.owners[ownerIdx]?.owner?.properties?.email;
+            const homePage = currDownstream.ownership?.owners[ownerIdx]?.owner?.editableProperties?.description;
+            const slack = currDownstream.ownership?.owners[ownerIdx]?.owner?.editableProperties?.slack;
+            const idx = teamMap.findIndex((t) => t.teamName === teamName);
+            if (idx > -1) {
+                const { entities } = teamMap[idx];
+                entities.push(currDownstream);
+            } else {
+                const newDownstreamTeam = {
+                    teamName,
+                    slack,
+                    email,
+                    homePage,
+                    entities: [currDownstream],
+                    ownerEntity,
+                } as DownstreamTeam;
+                teamMap.push(newDownstreamTeam);
+            }
+        }
+    }
+    teamMap.map((team) => {
+        const t = team;
+        t.count = t.entities.length;
+        return t;
+    });
+    teamMap = orderBy(teamMap, 'count', 'desc');
+    return teamMap;
+}
+
+function renderDownstreamTeamsTable(downstreamTeams: DownstreamTeam[]) {
+    function renderExpandableRows(downstreamEntities) {
+        const columnss = [
+            {
+                title: 'Entity',
+                render: (ownerEntity) => {
+                    if (ownerEntity?.urn !== undefined) {
+                        return <CompactEntityNameList entities={[ownerEntity]} />;
+                    }
+                    return 'No Team Defined';
+                },
+            },
+        ];
+        return <Table columns={columnss} dataSource={downstreamEntities.entities} size="small" />;
+    }
+    const columns = [
+        {
+            title: 'Team',
+            dataIndex: 'ownerEntity',
+            render: (ownerEntity) => {
+                if (ownerEntity?.urn !== undefined) {
+                    return <CompactEntityNameList entities={[ownerEntity]} />;
+                }
+                return 'No Team Defined';
+            },
+        },
+        {
+            title: 'Home Page',
+            dataIndex: 'homePage',
+        },
+        {
+            title: 'Slack',
+            dataIndex: 'slack',
+        },
+        {
+            title: 'Email',
+            dataIndex: 'email',
+        },
+        {
+            title: 'Downstream Entities Owned',
+            dataIndex: 'count',
+        },
+    ];
+    return (
+        <Table
+            style={{ marginLeft: '20px', marginRight: '30px' }}
+            rowKey="teamName"
+            columns={columns}
+            expandable={{
+                expandedRowRender: renderExpandableRows,
+            }}
+            dataSource={downstreamTeams}
+            size="small"
+        />
+    );
+}
+
 function renderHeader(teamSLAPercent: number) {
     const color = teamSLAPercent < 95 ? 'red' : 'green';
     const tag = <Tag color={color}>{teamSLAPercent.toString(10)} %</Tag>;
@@ -375,13 +504,16 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     const teamSLAPercent = metSLAData[1];
     const missedSLADatasets = metSLAData[2];
     console.log(missedSLADatasets);
-
+    const downstreamTeams = getDownstreamTeams(datasetEntities);
+    console.log('downstream teams', downstreamTeams);
     return (
         <>
             {renderHeader(teamSLAPercent)}
             {renderSLAChart(chartData)}
             <PageHeader title="Recent SLA Misses" />
             {renderSLAMissTable(missedSLADatasets)}
+            <PageHeader title="Top Downstream Teams" />
+            {renderDownstreamTeamsTable(downstreamTeams)}
         </>
     );
 };

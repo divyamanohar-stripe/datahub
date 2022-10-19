@@ -1,0 +1,125 @@
+fragment groupOwnershipFields on Ownership {
+    owners {
+        owner {
+            ... on CorpGroup {
+                urn
+                type
+                name
+                properties {
+                    displayName
+                    email
+                }
+                editableProperties {
+                    description
+                    slack
+                }
+            }
+        }
+    }
+}
+
+fragment groupRelationshipFields on EntityWithRelationships {
+    urn
+    type
+    ... on DataJob {
+        urn
+        type
+        properties {
+            name
+        }
+        dataFlow {
+            platform {
+                ...platformFields
+            }
+        }
+        ownership {
+            ...groupOwnershipFields
+        }
+    }
+    ... on Dataset {
+        name
+        type
+        ownership {
+            ...groupOwnershipFields
+        }
+    }
+}
+
+fragment groupFullLineageResults on EntityLineageResult {
+    start
+    count
+    total
+    relationships {
+        type
+        entity {
+            ...groupRelationshipFields
+        }
+    }
+}
+
+
+fragment groupRunResults on DataProcessInstanceResult {
+    count
+    start
+    total
+    runs {
+        urn
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        state(startTimeMillis: null, endTimeMillis: null, limit: 1) {
+            status
+            attempt
+            result {
+                resultType
+                nativeResultType
+            }
+            timestampMillis
+        }
+        externalUrl
+    }
+}
+
+fragment groupSearchResultFields on Entity {
+    urn
+    type
+    ... on Dataset {
+        name
+        properties {
+            name
+            customProperties {
+                key
+                value
+            }
+        }
+        runs: runs(start: 0, count: $runCount, direction: OUTGOING) {
+            ...groupRunResults
+        }
+        downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
+            ...groupFullLineageResults
+        }
+
+    }
+
+}
+
+
+fragment groupSearchResults on SearchResults {
+    start
+    count
+    total
+    searchResults {
+        entity {
+            ...groupSearchResultFields
+        }
+    }
+}
+
+query getGroupMetrics($input: SearchAcrossEntitiesInput!, $runCount: Int!) {
+    searchAcrossEntities(input: $input) {
+        ...groupSearchResults
+    }
+}
