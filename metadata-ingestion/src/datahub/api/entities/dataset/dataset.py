@@ -32,11 +32,15 @@ class Dataset:
     description: Optional[str] = None
     properties: Dict[str, str] = field(default_factory=dict)
     owners: Set[str] = field(default_factory=set)
+    group_owners: Set[str] = field(default_factory=set)
 
     def __post_init__(self):
         self.urn = DatasetUrn.create_from_ids(self.platform_id, self.table_name, self.env)
 
     def generate_ownership_aspect(self) -> Iterable[OwnershipClass]:
+        owners = set([builder.make_user_urn(owner) for owner in self.owners]) | set(
+            [builder.make_group_urn(owner) for owner in self.group_owners]
+        )
         ownership = OwnershipClass(
             owners=[
                 OwnerClass(
@@ -46,7 +50,7 @@ class Dataset:
                         type=OwnershipSourceTypeClass.SERVICE,
                     ),
                 )
-                for owner in (self.owners or [])
+                for owner in (owners or [])
             ],
             lastModified=AuditStampClass(
                 time=0,
