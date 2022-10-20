@@ -392,7 +392,6 @@ export const InsightsTab = ({
                                         slo={slo}
                                         runtime={runtime}
                                         delay={delay}
-                                        dpiUrn={dpiUrn}
                                     />
                                 </ListItem>
                                 <ThinDivider />

@@ -153,7 +153,6 @@ interface Props {
     slo?: number;
     runtime?: number;
     delay?: number;
-    dpiUrn?: string;
 }
 
 export default function InsightsPreviewCard({
@@ -182,7 +181,6 @@ export default function InsightsPreviewCard({
     slo,
     runtime,
     delay,
-    dpiUrn,
 }: Props) {
     // sometimes these lists will be rendered inside an entity container (for example, in the case of impact analysis)
     // in those cases, we may want to enrich the preview w/ context about the container entity
@@ -216,13 +214,6 @@ export default function InsightsPreviewCard({
                                     )} compared to the expected runtime ${slo ? convertSecsToHumanReadable(slo) : ''}`}
                                 >
                                     <PlatformText>Delay: {convertSecsToHumanReadable(delay)}</PlatformText>
-                                    <PlatformDivider />
-                                </Tooltip>
-                            )}
-                            {dpiUrn && (
-                                <Tooltip title="The urn of this run instance">
-                                    <PlatformDivider />
-                                    <PlatformText>{dpiUrn}</PlatformText>
                                 </Tooltip>
                             )}
                             <Tooltip title={`The run instance belongs to ${type} from ${platform} platform`}>
