@@ -249,7 +249,7 @@ export const EntityProfile = <T, U>({
                             split="vertical"
                             minSize={window.innerWidth - 400}
                             maxSize={window.innerWidth - 250}
-                            defaultSize={window.innerWidth - 400}
+                            defaultSize={window.innerWidth - 300}
                             resizerStyle={resizerStyles}
                             style={{
                                 position: 'inherit',
