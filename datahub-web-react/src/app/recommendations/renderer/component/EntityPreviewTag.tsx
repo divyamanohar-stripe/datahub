@@ -43,7 +43,7 @@ type Props = {
 
 export const EntityPreviewTag = ({ displayName, url, platformLogoUrl, logoComponent, onClick }: Props) => {
     return (
-        <Link to={url} onClick={onClick}>
+        <Link to={url} onClick={onClick} target="_blank">
             <EntityTag>
                 <TitleContainer>
                     <IconContainer>

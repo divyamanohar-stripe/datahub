@@ -109,7 +109,7 @@ const columns = [
         render: (externalUrl) =>
             externalUrl && (
                 <Tooltip title="View task run details">
-                    <ExternalUrlLink href={externalUrl}>
+                    <ExternalUrlLink href={externalUrl} target="_blank">
                         <DeliveredProcedureOutlined />
                     </ExternalUrlLink>
                 </Tooltip>
