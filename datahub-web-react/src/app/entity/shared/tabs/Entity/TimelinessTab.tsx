@@ -123,7 +123,7 @@ function renderDescriptions(
         };
 
         const finishedAtText: string =
-            latestRunEndDate === 'None' ? 'Finished' : `Finished at ${formatDateString(latestRunEndDate)}`;
+            latestRunEndDate === 'None' ? 'Finished' : `${latestRun.state} at ${formatDateString(latestRunEndDate)}`;
         const currentStep: number = stateToStepMapping[latestRunState] || 0;
         const latestRunWaitingTimeText =
             latestRunStartDate === 'None' ? 'Waiting to start' : `Started at ${formatDateString(latestRunStartDate)}`;
@@ -726,14 +726,18 @@ export const TimelinessTab: FC<TimelinessTabProps> = ({
                 } as RunCustomPropertiesWithExternalUrl),
         )
         .map((r) => {
-            const endDate: moment.Moment = r.endDate === 'None' ? now : moment(r.endDate);
+            let endDate: moment.Moment = r.endDate === 'None' ? now : moment(r.endDate);
             const startDate: moment.Moment = r.startDate === 'None' ? now : moment(r.startDate);
+            if (r.state === 'skipped' && r.endDate === 'None') {
+                endDate = startDate;
+            }
             const slaTarget: moment.Moment = moment(r.executionDate).add(errorSlaDuration);
             const startSlaTarget: moment.Moment = moment(r.executionDate).add(errorStartSlaDuration);
             const warnSlaTarget: moment.Moment = moment(r.executionDate).add(warnSlaDuration);
             const warnStartSlaTarget: moment.Moment = moment(r.executionDate).add(warnStartSlaDuration);
             return {
                 ...r,
+                endDate: moment.utc(endDate).format('YYYY-MM-DD HH:mm:ss.SSSSZ'),
                 errorTimeLeftToEnd: slaTarget.diff(endDate),
                 errorTimeLeftToStart: startSlaTarget.diff(startDate),
                 warnTimeLeftToEnd: warnSlaTarget.diff(endDate),

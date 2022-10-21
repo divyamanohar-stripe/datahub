@@ -152,8 +152,11 @@ function formatRun(runEntity: RunEntity): FormattedRun {
     }
 
     function getRunLandingTime(p: FormattedRunCustomProperties) {
-        const { state, endDate, executionDate } = p;
+        const { state, endDate, executionDate, startDate } = p;
         if (state === RunState.SUCCESS) return moment.utc(endDate).diff(executionDate, UnitOfTime.SECONDS);
+        if (state === RunState.SKIPPED && endDate === 'None')
+            return moment.utc(startDate).diff(executionDate, UnitOfTime.SECONDS);
+
         return null;
     }
 
