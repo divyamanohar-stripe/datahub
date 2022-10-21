@@ -336,7 +336,7 @@ function formatDataJob(
 function getDataJobWithTimeliness(dataJob: FormattedDataJob, currentMoment: moment.Moment): DataJobWithTimeliness {
     function checkMissedSLA(j: FormattedDataJob): boolean | null {
         const { dataJobSLAMoment, currentRun, currentRunState } = j;
-        if (dataJobSLAMoment === null || currentRunState === RunState.SKIPPED) return null;
+        if (dataJobSLAMoment === null) return null;
         if (currentRunState === RunState.NOT_STARTED || currentRun === null) return currentMoment > dataJobSLAMoment;
 
         const { endDate } = currentRun;
