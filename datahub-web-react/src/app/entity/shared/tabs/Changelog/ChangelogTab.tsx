@@ -8,7 +8,8 @@ import { CurrentStyledTable, UpstreamStyledTable } from '../../components/styled
 import { useEntityData } from '../../EntityContext';
 import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
 import { DataJobEntityWithVersions } from '../../types';
-
+import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
+/* eslint eqeqeq: 0 */
 const NameText = styled(Typography.Text)`
     font-family: 'Roboto Mono', monospace;
     font-weight: 600;
@@ -44,7 +45,7 @@ function DataJobEntityWithRelationMapper(entity: DataJobEntityWithVersions, isCu
 }
 
 function getCustomProperty(customProperties, fieldName) {
-    if (customProperties === undefined || customProperties === null) return undefined;
+    if (customProperties == null) return undefined;
     const field = customProperties?.filter((e) => e.key === fieldName)[0]?.value;
     return field;
 }
@@ -64,18 +65,15 @@ const propertyTableColumns = [
 ];
 
 function convertEpochToISO(epoch?: string) {
-    if (epoch === undefined || epoch === null) return undefined;
+    if (epoch == null) return undefined;
     const toInt = parseInt(epoch, 10) * 1000;
     const date = new Date(toInt);
-    console.log('date');
-    console.log(toInt);
-    console.log(date);
     return date.toISOString();
 }
 
 function renderTaskIdWithExternalURL(dataJob: { jobId?: string; urn?: string; isCurrent: boolean }) {
-    if (dataJob.jobId === undefined || dataJob.jobId === null) return undefined;
-    if (dataJob.urn === undefined || dataJob.urn === null) return dataJob.jobId;
+    if (dataJob.jobId == null) return undefined;
+    if (dataJob.urn == null) return dataJob.jobId;
     const url = `/tasks/${dataJob.urn}/Changelog?is_lineage_mode=false`;
     return dataJob.isCurrent ? (
         <div>
@@ -98,13 +96,10 @@ function renderTaskIds(dataJobList: { jobId?: string; urn?: string; isCurrent: b
 }
 
 function renderTitleWithExternalURL(customProperties, externalUrl?) {
-    if (
-        getCustomProperty(customProperties, 'name') === undefined ||
-        getCustomProperty(customProperties, 'name') === null
-    ) {
+    if (getCustomProperty(customProperties, 'name') == null) {
         return undefined;
     }
-    if (externalUrl === undefined || externalUrl === null) {
+    if (externalUrl == null) {
         return getCustomProperty(customProperties, 'name');
     }
     return (
@@ -115,7 +110,7 @@ function renderTitleWithExternalURL(customProperties, externalUrl?) {
 }
 
 function isValidNumber(num?: number) {
-    return !(num === undefined || num === null || num === 0);
+    return !(num == null || num === 0);
 }
 
 function renderNumJobsChanged(numJobsChanged?: number, numDownstreamUniqueProjects?: number): string {
@@ -146,7 +141,7 @@ function renderRemovedTask(numRemovedJobs?: number): string {
 }
 
 function parseSummary(summary?: string): string | undefined {
-    if (summary === undefined || summary === null) return undefined;
+    if (summary == null) return undefined;
     const parsedSummary = JSON.parse(summary);
     const summaryItems = [
         renderNumJobsChanged(parsedSummary?.numJobsChanged, parsedSummary?.numDownstreamUniqueProjects),
@@ -155,9 +150,6 @@ function parseSummary(summary?: string): string | undefined {
         renderAddedTask(parsedSummary?.numAddedJobs),
         renderRemovedTask(parsedSummary?.numRemovedJobs),
     ].filter((e) => e.length !== 0);
-    console.log('summaryItems');
-    console.log(parsedSummary);
-    console.log(summaryItems);
     return summaryItems.join('\r\n');
 }
 
@@ -165,7 +157,7 @@ function returnUIContent(entity: VersionEntity) {
     const { externalUrl } = entity;
     const { customProperties } = entity;
 
-    if (customProperties === undefined || customProperties === null || customProperties.length === 0) return <div />;
+    if (customProperties == null || customProperties.length === 0) return <div />;
     const taskMeta = [
         {
             key: 'task id',
@@ -188,8 +180,8 @@ function returnUIContent(entity: VersionEntity) {
             value: parseSummary(getCustomProperty(customProperties, 'summary')),
             __typename: 'StringMapEntry',
         },
-    ].filter((e) => !(e.value === undefined || e.value === null));
-    if (entity.includeCurrentTask === false)
+    ].filter((e) => !(e.value == null));
+    if (!entity.includeCurrentTask)
         return (
             <UpstreamStyledTable pagination={false} columns={propertyTableColumns} dataSource={taskMeta || undefined} />
         );
@@ -227,13 +219,7 @@ export const ChangelogTab = ({
             },
         },
     });
-    console.log('currentDataJob?.data');
-    console.log(currentDataJob?.data);
-    const currentDataJobArr: DataJobEntityWithVersions[] =
-        currentDataJob?.data?.dataJob === undefined ? [] : [currentDataJob?.data?.dataJob as DataJobEntityWithVersions];
-    console.log('currentDataJobArr');
-    console.log(currentDataJobArr);
-    const { data } = useGetUpstreamVersionsQuery({
+    const { data, loading } = useGetUpstreamVersionsQuery({
         variables: {
             input: {
                 urn,
@@ -250,6 +236,9 @@ export const ChangelogTab = ({
             },
         },
     });
+    if (loading || currentDataJob.loading) return loadingPage;
+    const currentDataJobArr: DataJobEntityWithVersions[] =
+        currentDataJob?.data?.dataJob == null ? [] : [currentDataJob?.data?.dataJob as DataJobEntityWithVersions];
 
     const upstreamDataJobs = data?.searchAcrossLineage?.searchResults
         ?.filter((e) => {
@@ -257,16 +246,11 @@ export const ChangelogTab = ({
         })
         ?.map((e) => e.entity) as DataJobEntityWithVersions[];
 
-    console.log('upstreamDataJobs');
-    console.log(upstreamDataJobs);
-    const upstreamDataJobsArr: DataJobEntityWithVersions[] = upstreamDataJobs === undefined ? [] : upstreamDataJobs;
-    console.log(upstreamDataJobsArr);
+    const upstreamDataJobsArr: DataJobEntityWithVersions[] = upstreamDataJobs == null ? [] : upstreamDataJobs;
     const concatDataJobsArr = [
         ...currentDataJobArr.map((e) => DataJobEntityWithRelationMapper(e, true)),
         ...upstreamDataJobsArr.map((e) => DataJobEntityWithRelationMapper(e, false)),
-    ].filter((e) => !(e.entity.versionInfo === undefined || e.entity.versionInfo === null));
-    console.log('concatDataJobs');
-    console.log(concatDataJobsArr);
+    ].filter((e) => !(e.entity.versionInfo == null));
 
     // return a list of datajobs attached to each version
     function groupVersionWithDataJob(items) {
@@ -333,11 +317,6 @@ export const ChangelogTab = ({
     }
 
     const versionArr: VersionEntity[] = versionArrMapper(versionsWithDataJobArr, versionsArr);
-    console.log('test groupby');
-    console.log(versionsWithDataJobArr);
-    console.log(versionsArr);
-    console.log('new testing groupby');
-    console.log(versionArr);
 
     const UIcomponent = versionArr
         .filter((e) => {
@@ -355,8 +334,12 @@ export const ChangelogTab = ({
         .map(returnUIContent);
     return (
         <div>
-            <div>show upstream?</div>
-            <Switch checked={displayUpstream === true} onChange={() => setDisplayUpstream(!displayUpstream)} />
+            <Switch
+                checkedChildren="Show Upstream"
+                unCheckedChildren="Hide Upstream"
+                checked={displayUpstream === true}
+                onChange={() => setDisplayUpstream(!displayUpstream)}
+            />
             {UIcomponent}
         </div>
     );
