@@ -152,10 +152,9 @@ function formatRun(runEntity: RunEntity): FormattedRun {
     }
 
     function getRunLandingTime(p: FormattedRunCustomProperties) {
-        const { state, endDate, executionDate, startDate } = p;
-        if (state === RunState.SUCCESS) return moment.utc(endDate).diff(executionDate, UnitOfTime.SECONDS);
-        if (state === RunState.SKIPPED && endDate === 'None')
-            return moment.utc(startDate).diff(executionDate, UnitOfTime.SECONDS);
+        const { state, endDate, executionDate } = p;
+        if (state === RunState.SUCCESS || state === RunState.SKIPPED)
+            return moment.utc(endDate).diff(executionDate, UnitOfTime.SECONDS);
 
         return null;
     }
@@ -165,6 +164,9 @@ function formatRun(runEntity: RunEntity): FormattedRun {
         (acc, e) => ({ ...acc, [e.key]: e.value }),
         {},
     ) as FormattedRunCustomProperties;
+    if (formattedRunCustomProperties.endDate === 'None' && formattedRunCustomProperties.state === RunState.SKIPPED) {
+        formattedRunCustomProperties.endDate = formattedRunCustomProperties.startDate;
+    }
     const startTime = getRunStartTime(formattedRunCustomProperties);
     const duration = getRunDuration(formattedRunCustomProperties);
     const landingTime = getRunLandingTime(formattedRunCustomProperties);
@@ -212,7 +214,7 @@ function formatDataJob(
 
     function getRunsAverageLandingMoment(runs: FormattedRun[]) {
         const successRunCount = runs.filter((r) => {
-            return r.state === RunState.SUCCESS;
+            return r.state === RunState.SUCCESS || r.state === RunState.SKIPPED;
         }).length;
         if (successRunCount === 0) return null;
 
