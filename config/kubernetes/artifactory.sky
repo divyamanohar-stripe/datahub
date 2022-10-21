@@ -66,8 +66,8 @@ def artifactory_publish_job(
         mount_host_volume("/etc/ssl/private", volume_args = {"type": "Directory"}),
         run_as_unprivileged(),
 
-        # Delete completed job after 7 days.
-        ttlSecondsAfterFinished = 60 * 60 * 24 * 7,
+        # Delete completed job after 12 hours.
+        ttlSecondsAfterFinished = 60 * 60 * 12,
 
         *extra_plugins
     )

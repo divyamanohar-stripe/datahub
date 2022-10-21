@@ -18,7 +18,7 @@ def consul_meta_envoy_priority_routing(routing_header, routing_assignment, meta 
     Creates consul metadata telling Envoy to priority route to this service.
 
     Note: this also requires `priority_based_routing` to be set to `true` for the target service;
-    see https://sn-docs.corp.stripe.com/user-guide/configuration/service-flags for details.
+    see https://go/envoy-service-flags for details.
 
     Args:
         routing_header: The header for Envoy to look up when priority routing to this service.

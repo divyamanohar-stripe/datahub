@@ -74,9 +74,6 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, disable
     plugin = compose_plugins(*all_plugins)
     _apply_plugin(ctx, plugin, deployment)
 
-    # Raise warnings if the deployment strategy is not recommended
-    _validate_strategy(ctx, deployment)
-
     # for shared msp, services get registered at update time, but the plugin needs them
     # at create time, so we init and update the networking plugin after all the others
     if shared_msp:
@@ -134,16 +131,115 @@ def _apply_plugin(ctx, plugin, deployment):
     for container in all_containers(deployment["pod"]):
         plugin.update_containers(ctx, plugin, container)
 
+def deployment_options(**kwargs):
+    """
+    Defines options for a deployment.
+
+    The arguments map directly to fields on the DeploymentSpec in Kubernetes. Commonly used
+    options include `replicas` and `strategy`.
+
+    Args:
+        **kwargs: Options to apply to the deployment. These map directly to fields on the Kubernetes
+            [DeploymentSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deploymentspec-v1-apps).
+
+    Returns:
+        A plugin that applies the options to a deployment.
+    """
+    return deployment_plugin(
+        _update_deployment_options,
+        kwargs = kwargs,
+    )
+
+_apps = proto.package("k8s.io.api.apps.v1")
+_core = proto.package("k8s.io.api.core.v1")
+
+def _update_deployment_options(ctx, plugin, deployment_def):
+    deployment_def["kwargs"].update(plugin.kwargs)
+
+def _render_deployment(ctx, deployment_def):
+    deployment_def["metadata"] = struct(**deployment_def["metadata"])
+    deployment = struct(**deployment_def)
+
+    _validate_deployment(ctx, deployment)
+
+    pod_template = deployment.pod["render"](ctx, deployment.pod)
+    _validate_pod_container_resources(ctx, pod_template)
+
+    return _apps.Deployment(
+        metadata = render_metadata(ctx, deployment.metadata),
+        spec = _apps.DeploymentSpec(
+            selector = render_selector(ctx, deployment.metadata),
+            template = pod_template,
+            **deployment.kwargs
+        ),
+    )
+
+def _validate_pod_container_resources(ctx, pod_template):
+    containers_with_resources = 0
+    first_container_with_resources = None
+    for container in pod_template.spec.containers:
+        if _container_has_resources(container):
+            containers_with_resources += 1
+
+        if containers_with_resources > 1:
+            warn(ctx, "".join([
+                "More than one container in a Deployment specified requests or limits on resources, which will soon be disallowed. ",
+                "The sidecar container with name " + container.name + " needs to have its CPU and memory resource requirements removed: ",
+                "container with name " + first_container_with_resources + " already specified CPU or memory resources for this Deployment. ",
+            ]))
+        else:
+            first_container_with_resources = container.name
+
+def _container_has_resources(container):
+    if not container.resources:
+        return False
+
+    if container.resources.limits:
+        if container.resources.limits["cpu"] or container.resources.limits["memory"]:
+            return True
+
+    if container.resources.requests:
+        if container.resources.requests["cpu"] or container.resources.requests["memory"]:
+            return True
+
+    return False
+
+
+def _validate_deployment(ctx, deployment):
+    name = deployment.metadata.name
+    replicas = deployment.kwargs.get("replicas", None)
+
+    if replicas == None:
+        fail("There are no replicas specified in the deployment for %s. Without replicas specified, Kubernetes will fall back on 1 replica which is unsafe. Please explicitly specify replicas in your deployment." % name)
+
+    if replicas == 1 and get_env(ctx) == "prod" and not ("-canary" in name or "canary-" in name):
+        warn(ctx, "".join([
+            "WARNING: %s is only configured with 1 replica in production. " % name,
+            "Please ensure before continuing that this level of risk is acceptable for your service!"
+        ]))
+
+    annotations = deployment.metadata.annotations
+    _validate_dynamic_replicas_desired_count(ctx, name, replicas, annotations)
+
+    strategy = deployment.kwargs["strategy"]
+    _validate_strategy_max_unavailable(ctx, name, replicas, strategy)
+
+# see config/kubernetes/helpers/dynamic.sky
+def _validate_dynamic_replicas_desired_count(ctx, name, replicas, annotations):
+    enabled = annotations.get("stripe.io/dynamic-replicas-enabled", "no")
+    if enabled != "yes":
+        return
+
+    desired = annotations.get("stripe.io/dynamic-replicas-count-desired", "")
+    if desired != str(replicas):
+        fail("%s has dynamic replicas enabled, but its desired count (%s) does not match the given replica count (%s)" % (name, desired, replicas))
 
 # max_unavailable must be less than 1/6th the number of total pods to ensure
 # uptime availability across AZs during deployment events (ir-aqua-factorial)
 MAX_PERCENT = 16
 MIN_REPLICAS_FOR_CHECK = 6
-def _validate_strategy(ctx, deployment):
-    name = deployment["metadata"].get("name", None)
-    replicas = deployment["kwargs"].get("replicas", None)
-    strategy = deployment["kwargs"].get("strategy", None)
-    if name == None or replicas == None or strategy == None:
+def _validate_strategy_max_unavailable(ctx, name, replicas, strategy):
+    if strategy == None:
         return
 
     # Only RollingUpdate deployment strategies are checked.
@@ -197,76 +293,3 @@ def _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, lit
                 "The specified value is %d%%. " % percent,
                 "Please reduce the MaxUnavailable percent below the threshold."
             ]))
-
-
-def deployment_options(**kwargs):
-    """
-    Defines options for a deployment.
-
-    The arguments map directly to fields on the DeploymentSpec in Kubernetes. Commonly used
-    options include `replicas` and `strategy`.
-
-    Args:
-        **kwargs: Options to apply to the deployment. These map directly to fields on the Kubernetes
-            [DeploymentSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deploymentspec-v1-apps).
-
-    Returns:
-        A plugin that applies the options to a deployment.
-    """
-    return deployment_plugin(
-        _update_deployment_options,
-        kwargs = kwargs,
-    )
-
-_apps = proto.package("k8s.io.api.apps.v1")
-_core = proto.package("k8s.io.api.core.v1")
-
-def _update_deployment_options(ctx, plugin, deployment_def):
-    deployment_def["kwargs"].update(plugin.kwargs)
-
-def _render_deployment(ctx, deployment_def):
-    deployment_def["metadata"] = struct(**deployment_def["metadata"])
-    deployment = struct(**deployment_def)
-
-    pod_template = deployment.pod["render"](ctx, deployment.pod)
-    _validate_pod_container_resources(ctx, pod_template)
-
-    return _apps.Deployment(
-        metadata = render_metadata(ctx, deployment.metadata),
-        spec = _apps.DeploymentSpec(
-            selector = render_selector(ctx, deployment.metadata),
-            template = pod_template,
-            **deployment.kwargs
-        ),
-    )
-
-def _validate_pod_container_resources(ctx, pod_template):
-    containers_with_resources = 0
-    first_container_with_resources = None
-    for container in pod_template.spec.containers:
-        if _container_has_resources(container):
-            containers_with_resources += 1
-
-        if containers_with_resources > 1:
-            warn(ctx, "".join([
-                "More than one container in a Deployment specified requests or limits on resources, which will soon be disallowed. ",
-                "The sidecar container with name " + container.name + " needs to have its CPU and memory resource requirements removed: ",
-                "container with name " + first_container_with_resources + " already specified CPU or memory resources for this Deployment. ",
-            ]))
-        else:
-            first_container_with_resources = container.name
-
-def _container_has_resources(container):
-    if not container.resources:
-        return False
-
-    if container.resources.limits:
-        if container.resources.limits["cpu"] or container.resources.limits["memory"]:
-            return True
-
-    if container.resources.requests:
-        if container.resources.requests["cpu"] or container.resources.requests["memory"]:
-            return True
-
-    return False
-

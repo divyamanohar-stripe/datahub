@@ -24,12 +24,12 @@ load(
 # When trying to test a digest from a non-master branch, use stripe-qa instead of stripe in the URI
 
 _CONTAINER_IMAGES = {
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MJMnQLGz30uqg9
-    # Git Commit: 9b32ec67d08b6bccc24fac2e21ad74150595d04c
-    # Summary   : 08/25/2022: envoy-config-srv: enable streamed initial snapshot in prod (#3049)
-    "prod":    "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:ede3d87c0acdcc6078b5ebf00b206e1b65f0311a2928b7ec1623837499af44a5",
-    "preprod": "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:ede3d87c0acdcc6078b5ebf00b206e1b65f0311a2928b7ec1623837499af44a5",
-    "qa":      "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:ede3d87c0acdcc6078b5ebf00b206e1b65f0311a2928b7ec1623837499af44a5",
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MZ4vjtHsYwoxCZ
+    # Git Commit: d2fc3e89716f7f19bc29043f6882c59281a29d5f
+    # Summary   : 10/06/2022: Use AWS_AVAILABILITY_ZONE env variable for setting localityZone (#3225)
+    "prod":    "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:5061be4ad9bdd92dd29ff38808e3dc5e3318446a140ede6565544a42a42ebca1",
+    "preprod": "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:5061be4ad9bdd92dd29ff38808e3dc5e3318446a140ede6565544a42a42ebca1",
+    "qa":      "containers.global.prod.stripe.io/stripe/traffic/envoy-monitor@sha256:5061be4ad9bdd92dd29ff38808e3dc5e3318446a140ede6565544a42a42ebca1",
 }
 
 

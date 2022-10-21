@@ -33,16 +33,19 @@ def generate_pod_name(prefix, monster_service, monster_isolation_group, suffix):
 def monster_deployment(ctx, config, port, suffix = ""):
     return monster_deployment_shared_msp(ctx, config, port, suffix=suffix)
 
-def make_deployment_options_plugin(config):
+def make_deployment_options_plugins(config):
     if config.monster_isolation_group in AUTOSCALED_HOST_SETS:
         min_replicas = 0 if config.replicas == 0 else max(2, config.replicas // 4)
-        return dynamic_replicas(config.replicas, config.replicas * 2, min_replicas)
+        return [
+            deployment_options(replicas = config.replicas),
+            dynamic_replicas(config.replicas, config.replicas * 2, min_replicas)
+        ]
 
     # We limit how many previous revisions of ReplicaSet's we keep around to limit
     # the amount of metadata the k8s control plane has to serve up for Monster
     # See: https://jira.corp.stripe.com/browse/RUN_ORCH-11446, http://go/ir/gray-fuse, http://go/ir/whim-tangent
     # And: https://unofficial-kubernetes.readthedocs.io/en/latest/concepts/workloads/controllers/deployment/#revision-history-limit
-    return deployment_options(replicas = config.replicas, revisionHistoryLimit = 3)
+    return [deployment_options(replicas = config.replicas, revisionHistoryLimit = 3)]
 
 def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
     formatted_isolation_group = config.monster_isolation_group.replace("_", "-")
@@ -237,8 +240,8 @@ def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
 
         use_offload_profiles(),
         autoset_shard(),
-        make_deployment_options_plugin(config),
 
         shared_msp = True,
         strategy = config.strategy,
+        *make_deployment_options_plugins(config),
     )

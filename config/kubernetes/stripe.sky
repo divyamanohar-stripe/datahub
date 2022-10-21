@@ -123,8 +123,12 @@ def stripe_pod(
             condition=is_shared_msp,
             plugin=compose_plugins(
                 _validate_shared_msp_params_plugin(**all_args),
-                use_shared_msp(namespace=namespace, name=name, instance_type=instance_type, availability_tier=defaulted_availability_tier)
-            ),
+                use_shared_msp(namespace=namespace, name=name, instance_type=instance_type, availability_tier=defaulted_availability_tier),
+                # go/sod:sansshell; only limited to shared MSP and QA (as of 2022Q3)
+                conditional_plugin(
+                    condition=lambda ctx, _: get_env(ctx) == "qa",
+                    plugin=sansshell_sidecar()),
+                )
         ),
         conditional_plugin(
             condition=is_dedicated_msp,
@@ -143,10 +147,6 @@ def stripe_pod(
                 node_selectors(dedicated_msp_atier)
             ),
         ),
-        # go/sod:sansshell; only limited to QA for now
-        conditional_plugin(
-            condition=lambda ctx, _: get_env(ctx) == "qa",
-            plugin=sansshell_sidecar()),
     ]
     if use_shared_msp_service_account:
         plugins.append(shared_msp_service_account_plugin())

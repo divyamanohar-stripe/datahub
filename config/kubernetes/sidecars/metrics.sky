@@ -129,6 +129,7 @@ def metrics(
     allow_name_modification=True,
     config=None,
     enable_prober=False,
+    pod_id_enabled_sinks=[],
 ):
     """
     Adds a Veneur instance as a sidecar to receive and forward metrics.
@@ -166,6 +167,7 @@ def metrics(
         image_name: `string` name of image to pull. Defaults to "stripe/observability/veneur"
         allow_name_modification: `bool` whether we'll allow the image_name to be modified by the image() func. Default: True
         enable_prober: `bool` whether to enable the prober (should be used only by veneur-prober-srv); Default: False
+        pod_id_enabled_sinks: `list(string)` allowlist of sinks which should tag "pod_id" on metrics
         config: struct of configuration options passed to the deployment, defined in `metrics_config`, these
             will override args passed to the function
 
@@ -180,6 +182,7 @@ def metrics(
         image_name = config.image_name
         allow_name_modification = config.allow_name_modification
         enable_prober = config.enable_prober
+        pod_id_enabled_sinks = config.pod_id_enabled_sinks
 
     # deployment.sky has been modified to accept a veneur image label that defaults to none
     # its always passed to us so lets deal with that value here
@@ -226,6 +229,11 @@ def metrics(
 
     if extra_tags:
         command = command + ["-extra-tags", extra_tags]
+
+    if len(pod_id_enabled_sinks) > 0:
+        sink_flags = [["-pod-id-enabled-sink", sink_name] for sink_name in pod_id_enabled_sinks]
+        flattened_sink_flags = [item for sublist in sink_flags for item in sublist]
+        command = command + ["-pod-id", "$(STRIPE_POD_NAME)"] + flattened_sink_flags
 
     if len(drop_metric_prefixes) > 0:
         command = command + ["-drop-metric-prefixes", ",".join(drop_metric_prefixes)]
@@ -357,6 +365,7 @@ def metrics_config(**kwargs):
         allow_name_modification: `bool` whether we'll allow the image_name to be modified by the image() func. Default: True
         enable_vnext_metrics: `bool` whether to enable vnext metrics
         enable_prober: `bool` whether to enable the prober (should be used only by veneur-prober-srv); Default: False
+        pod_id_enabled_sinks: `list(string)` allowlist of sinks which should tag "pod_id" on metrics
 
     Returns:
         deployment plugin containing struct with passed config options
@@ -378,6 +387,7 @@ def _metrics_config(
     allow_name_modification=True,
     enable_vnext_metrics=False,
     enable_prober=False,
+    pod_id_enabled_sinks=[],
 ):
     if enable_vnext_metrics:
       attach_routing_rules = True
@@ -399,6 +409,7 @@ def _metrics_config(
             allow_name_modification=allow_name_modification,
             image_name=image_name,
             enable_prober=enable_prober,
+            pod_id_enabled_sinks=pod_id_enabled_sinks,
         )
     )
 

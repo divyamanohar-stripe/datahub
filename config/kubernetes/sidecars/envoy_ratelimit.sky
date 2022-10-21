@@ -5,7 +5,12 @@ load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/helpers/context.sky", "get_env", "get_cluster")
 load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-
+load("config/kubernetes/networking/internal/helpers.sky", "host_mount_stripe_cas")
+load(
+    "config/kubernetes/helpers/security.sky",
+    "mount_credentials_proxy",
+    "use_credentials_proxy",
+)
 
 
 # Defines how to extract the kubernetes namespace value and pass it process
@@ -24,7 +29,7 @@ NAMESPACE = struct(
 # cmh - QA (don't fail but there is no redis cluster in QA), Preprod, Prod (nw cluster)
 # All other options will fail.
 def get_redis_cluster_addr(ctx):
-    if get_cluster(ctx) not in ["bom", "northwest", "cmh"]:
+    if get_cluster(ctx) not in ["bom", "northwest", "cmh"] or get_env(ctx) not in ["qa", "preprod", "prod"]:
         fail("Invalid cluster/env combination: {}/{}".format(get_cluster(ctx), get_env(ctx)))
 
     if get_cluster(ctx) == "cmh":
@@ -38,13 +43,36 @@ def get_redis_cluster_addr(ctx):
 
     return "service-to-service-ratelimit.elasticache.{}.{}.stripe.io:6379".format(get_cluster(ctx), get_env(ctx))
 
+MEMENTO_ROLLOUT_HOST_TYPES = [
+    "userauthcodegrpc",
+    "merchant-ui-api",
+]
+
+def get_cache_arg(ctx, host_type):
+    if get_cluster(ctx) == "northwest" and get_env(ctx) == "qa":
+        return ["--use-memento"]
+    if get_cluster(ctx) == "cmh" and get_env(ctx) in ["qa", "preprod"]:
+        return ["--use-memento"]
+    if get_cluster(ctx) in ["northwest", "cmh"] and get_env(ctx) == "prod" and host_type in MEMENTO_ROLLOUT_HOST_TYPES:
+        return ["--use-memento"]
+
+    return ["--redis-cluster-address", get_redis_cluster_addr(ctx)]
+
 def get_config_srv_addr(ctx):
-    # BOM doesn't have config-srv.
     # CMH, NW do have config-srv
-    if get_cluster(ctx) == "bom":
-        return "config-srv.northwest.service.envoy:10080"
-    else:
+    # BOM and others don't have config-srv.
+    if get_cluster(ctx) in ["northwest", "cmh"]:
         return "config-srv.service.envoy:10080"
+    else:
+        return "config-srv.northwest.service.envoy:10080"
+
+def get_updater_logging_option(ctx, host_type):
+    # KProxy is emitting tons of logs as they have thousands of buckets.
+    # By setting a command-line-arg we'll silence those.
+    if get_env(ctx) in ["preprod", "prod", "qa"] and host_type in ["kproxy"]:
+        return ["--no-log-update-lines"]
+    else:
+        return []
 
 def ratelimit_sidecar(ctx, label, host_type):
     """
@@ -61,7 +89,10 @@ def ratelimit_sidecar(ctx, label, host_type):
     Returns:
         A plugin that installs the envoy-ratelimit-srv sidecar.
     """
-    command = ["/bin/envoy-ratelimit-srv", "--host-type", host_type, "--stats-addr", "127.0.0.1:8200", "--use-config-srv", "--config-srv-address", get_config_srv_addr(ctx), "--redis-cluster-address", get_redis_cluster_addr(ctx), "--use-global-ratelimiter"]
+    command = ["/bin/envoy-ratelimit-srv", "--host-type", host_type, "--stats-addr", "127.0.0.1:8200", "--use-config-srv", "--config-srv-address", get_config_srv_addr(ctx)]
+    command.extend(get_cache_arg(ctx, host_type))
+    command.append("--use-global-ratelimiter")
+    command.extend(get_updater_logging_option(ctx, host_type))
     return compose_plugins(
         container(
             name = "envoy-ratelimit-srv",
@@ -80,7 +111,11 @@ def ratelimit_sidecar(ctx, label, host_type):
                     NAMESPACE.env_var: NAMESPACE.field,
                 }),
             ],
+            # Memento needs access to stripe-cas for authentication
         ),
         container_port(20081, "envoy-ratelimit-srv", "grpc"),
         container_port(20082, "envoy-ratelimit-srv", "http"),
+        host_mount_stripe_cas("envoy-ratelimit-srv"),
+        use_credentials_proxy(),
+        mount_credentials_proxy("envoy-ratelimit-srv"),
     )

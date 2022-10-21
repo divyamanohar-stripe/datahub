@@ -9,6 +9,17 @@ load("config/kubernetes/helpers/constants.sky", "CONFIG_SRV_SIDECAR_NAME", "CONS
 
 _core = proto.package("k8s.io.api.core.v1")
 
+
+# Shim for proto rename to support 1.22 -> 1.23 upgrade. Once we are on 1.23
+# everywhere we can remove this. See
+# https://github.com/kubernetes/api/commit/cca52a076791d31b1796453ece4b2f4df97406a2
+def LifecycleHandler(*args, **kwargs):
+    if hasattr(_core, "LifecycleHandler"):
+        return _core.LifecycleHandler(*args, **kwargs)
+    else:
+        return _core.Handler(*args, **kwargs)
+
+
 def pre_stop(action, container_name = None):
     """
     Perform an action when the container is about to be terminated.
@@ -42,7 +53,7 @@ def exec_action(*command):
     Returns
         An action that can be added to a container using the `pre_stop` plugin.
     """
-    return _core.Handler(
+    return LifecycleHandler(
         exec = _core.ExecAction(
             command = list(command),
         ),

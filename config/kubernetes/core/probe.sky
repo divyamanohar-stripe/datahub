@@ -16,6 +16,17 @@ load("config/kubernetes/plugins/types.sky", "container_plugin")
 _core = proto.package("k8s.io.api.core.v1")
 IntOrString = proto.package("k8s.io.apimachinery.pkg.util.intstr").IntOrString
 
+
+# Shim for proto rename to support 1.22 -> 1.23 upgrade. Once we are on 1.23
+# everywhere we can remove this. See
+# https://github.com/kubernetes/api/commit/cca52a076791d31b1796453ece4b2f4df97406a2
+def ProbeHandler(*args, **kwargs):
+    if hasattr(_core, "ProbeHandler"):
+        return _core.ProbeHandler(*args, **kwargs)
+    else:
+        return _core.Handler(*args, **kwargs)
+
+
 def probes(liveness = None, readiness = None, startup = None, container_name = None):
     """
     Add one or more probes to a container.
@@ -75,7 +86,7 @@ def http_probe(path, port, headers = {}, scheme = None, **kwargs):
         )
 
     return _core.Probe(
-        handler = _core.Handler(
+        handler = ProbeHandler(
             httpGet = _core.HTTPGetAction(
                 path = path,
                 port = IntOrString(intVal = port),
@@ -105,7 +116,7 @@ def tcp_probe(port, **kwargs):
     """
 
     return _core.Probe(
-        handler = _core.Handler(
+        handler = ProbeHandler(
             tcpSocket = _core.TCPSocketAction(
                 port = IntOrString(intVal = port),
             )
@@ -129,7 +140,7 @@ def command_probe(command, **kwargs):
         that can be applied to a container using the `probes` plugin.
     """
     return _core.Probe(
-        handler = _core.Handler(
+        handler = ProbeHandler(
             exec = _core.ExecAction(
                 command = command,
             ),

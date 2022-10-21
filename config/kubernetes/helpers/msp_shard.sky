@@ -138,8 +138,6 @@ def _shard_from_henson(ctx, plugin, resource_def):
     a shard that makes sense.
     """
     shard = get_target_shard(ctx)
-    if not shard:
-        print("Got None shard selection from henson ctx")
     resource_def["metadata"]["annotations"].update(
         _shard_annotations(shard)
     )

@@ -32,6 +32,7 @@ ENVOY_RUNTIME_DIR = "/run/stripe/envoy"
 ENVOY_SYSTEM_FLAGS_PATH = "%s/envoy_file_system_flags" % ENVOY_RUNTIME_DIR
 ENVOY_CONFIG_SRV_RUNTIME_DIR = "/run/stripe/envoy-config-srv"
 ENVOY_CONFIG_SRV_PERSISTENT_DRAIN_FILE = "%s/draining" % ENVOY_CONFIG_SRV_RUNTIME_DIR
+ENVOY_CONFIG_SRV_SERVICE_REGISTRATIONS_DIR = "/etc/serviceregistry/services"
 
 
 def _default_sidecar_version(target):
@@ -45,17 +46,17 @@ def _default_sidecar_version(target):
     """
     # Prod sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MJMnQLGz30uqg9
-    # Git Commit: 9b32ec67d08b6bccc24fac2e21ad74150595d04c
-    # Summary   : 08/25/2022: envoy-config-srv: enable streamed initial snapshot in prod (#3049)
-    prod_digest   = "a07e596d46a132413eefdca6e645edf2e04cc0c6aa940220688e3933401647ca"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MdGuXv5g3lMId9
+    # Git Commit: 8eb39254cfd851f617f0fcd299800d7ec7a3a965
+    # Summary   : 10/18/2022: add http2_enabled property merge logic (#3263)
+    prod_digest   = "0084fb5df79d33c6200f2a0c558e7156fdb718c81581cb0fa12cc9321c22738b"
 
     # QA sha256 digest
     #
-    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MJMnQLGz30uqg9
-    # Git Commit: 9b32ec67d08b6bccc24fac2e21ad74150595d04c
-    # Summary   : 08/25/2022: envoy-config-srv: enable streamed initial snapshot in prod (#3049)
-    qa_digest   = "a07e596d46a132413eefdca6e645edf2e04cc0c6aa940220688e3933401647ca"
+    # CI Build  : https://cibot.corp.stripe.com/builds/kube-tools--bui_MdfrTXwCrzIps4
+    # Git Commit: ed5185bf08590038813be188f7ccfde743ce9efb
+    # Summary   : 10/18/2022: Serviceregistry: bump max metadata value length
+    qa_digest   = "8796ff5d81732678b5bc88ae75db3e6292755c62b1d61d5d9a83acd71a7827ae"
 
     return {
         "version": match(
@@ -104,7 +105,7 @@ def _default_sidecar_config(target):
         of the current workload.
 
         Where possible, these defaults are skycfg equivalents to those in
-        go/kube-tools/blob/master/envoy-config-srv-config/envoy-config-srv-overrides.yaml
+        go/kube-tools/blob/master/envoy-config-srv/config/envoy-config-srv.yaml
     """
     return merge_configs(
         {
@@ -120,7 +121,7 @@ def _default_sidecar_config(target):
             # envoy bootstrap config. Implement this when we modify the
             # envoy-sidecar skycfg to adopt MSP SN configurability
             # For reference, tracing for host-based services is defined in
-            # https://git.corp.stripe.com/stripe-internal/kube-tools/blob/master/envoy-config-srv-config/envoy-config-srv-overrides.yaml
+            # https://git.corp.stripe.com/stripe-internal/kube-tools/blob/37d558309e1eb5cd02a3ebbf0f195e1166c15cd7/envoy-config-srv/config/envoy-config-srv.yaml#L51
             "enable_tracing": False,
             # TODO(mattkipps): clusterfe-srv should set this value in `networking_config` when it is migrated to Shared MSP
             "enable_clusterfe_listener": False,
@@ -175,6 +176,11 @@ def _default_sidecar_config(target):
             "mproxy_local_rate_limit": None,
             "control_locality_aware_routing": control_locality_aware_routing(False, True),
             "enable_streamed_initial_snapshot": True,
+            "enable_dual_registration": match(
+                target,
+                False,
+                when(env = "qa", value = True),
+            ),
         },
         # Use the match block below to conditionally set configuration options in QA/Prod:
         match(

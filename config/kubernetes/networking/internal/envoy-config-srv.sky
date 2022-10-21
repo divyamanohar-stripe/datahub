@@ -1,11 +1,10 @@
 # DO NOT EDIT: http://go/vendor-skycfg
 load("config/kubernetes/core/container.sky", "container", "container_port")
 load("config/kubernetes/core/probe.sky", "http_probe", "probes")
-load("config/kubernetes/core/volume.sky", "mount_host_volume")
+load("config/kubernetes/core/volume.sky", "mount_host_volume", "mount_pod_volume")
 load("config/kubernetes/core/pod.sky", "pod_share_pid_namespace")
 load(
     "config/kubernetes/helpers/context.sky",
-    "get_env",
     "get_henson_config",
 )
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
@@ -21,6 +20,7 @@ load(
     "CDS_PORT",
     "DEBUG_PORT",
     "ENVOY_CONFIG_SRV_RUNTIME_DIR",
+    "ENVOY_CONFIG_SRV_SERVICE_REGISTRATIONS_DIR",
     "ENVOY_LOGS_DIR",
     "ENVOY_RUNTIME_DIR",
     "LDS_PORT",
@@ -42,12 +42,14 @@ load(
 )
 ENVOY_MONITOR_PORT = 18300
 _veneur_sock_dir = "/veneur-sockets"
+_consul_proxy_dir = "/run/stripe/consul-proxy"
 
-def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_target, user_overrides, should_use_combined_container):
+def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_target, user_overrides, combined_sn_sidecar, consul_agent_services):
     apply_user_config_ratchets(config_target, user_overrides)
     name = "envoy-config-srv"
-    return compose_plugins(
-        pod_share_pid_namespace(True),
+    plugins = []
+    plugins.extend([
+        pod_share_pid_namespace(True), # this is needed for kube-prestop to work
         envoy_config_srv_container(
             ctx,
             name,
@@ -55,7 +57,8 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
             local_consul_services,
             config_target,
             user_overrides,
-            should_use_combined_container,
+            combined_sn_sidecar,
+            consul_agent_services
         ),
         host_mount_stripe_cas(name),
         # Need this for:
@@ -80,15 +83,13 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
                 "reason": "envoy-config-srv sidecar must persist debug info",
             },
         ),
-        mount_host_volume(
-            "/etc/serviceregistry/services",
+        mount_pod_volume(
+            path = ENVOY_CONFIG_SRV_SERVICE_REGISTRATIONS_DIR,
             container_name = name,
-            mount_args = {"read_only": True},
-            volume_args = {
-                "type": "DirectoryOrCreate",
-                "reason": "envoy-config-srv sidecar needs access to this directory to register dynamic services with discovery v2",
-            },
+            mount_args = {"read_only": True},  # change to false if we need to support dynamic service registrations
+            volume_args = {"type": "DirectoryOrCreate"},
         ),
+        pod_mount(name, ENVOY_CONFIG_SRV_SERVICE_REGISTRATIONS_DIR),
         mount_splunk_forwarded_basedir(container_name = name),
         # When `use_envoy_admin_healthcheck: true`, envoy-config-srv writes the
         # system flags here, to be consumed exactly-once by the next boot of envoy
@@ -104,9 +105,24 @@ def envoy_config_srv_sidecar(ctx, namespace, local_consul_services, config_targe
         # TODO(xyu): verify whether these mounts are needed
         # - ENVOY_LOGS_DIR
         # - consul-proxy
-    )
+    ])
 
-def envoy_config_srv_container(ctx, self, namespace, local_consul_services, config_target, user_overrides, should_use_combined_container):
+    if not combined_sn_sidecar.standalone_consul_sidecar:
+        plugins.append(
+            mount_host_volume(
+                _consul_proxy_dir,
+                container_name = name,
+                mount_args = {"read_only": True},
+                volume_args = {
+                    "type": "Directory",
+                    "reason": "Allows accessing host Consul agent from within a network-isolated pod.",
+                },
+            )
+        )
+
+    return compose_plugins(*plugins)
+
+def envoy_config_srv_container(ctx, self, namespace, local_consul_services, config_target, user_overrides, combined_sn_sidecar, consul_agent_services):
     args = generate_sidecar_cli_args(config_target, user_overrides)
     monitor_args = generate_monitor_cli_args(user_overrides)
     egress_tier = args["egress_proxy_tier"]
@@ -139,9 +155,6 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         "--env=%s" % config_target.env,
         # NB(xyu): This is actually the _identity_ used to compute reachability
         "--host-type=%s" % namespace,
-        # NB(xyu): We can only expose this info at runtime, so setting this
-        # cli to read the file mounted from /pay/conf.
-        "--locality-zone=file:///pay/conf/ec2_placement_availability_zone",
         "--listener-port=%s" % UNPRIVILEGED_ENVOY_PORT,
         "--lds-addr=localhost:%s" % LDS_PORT,
         "--debug-addr=0.0.0.0:%s" % DEBUG_PORT,
@@ -176,7 +189,7 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         "--remove-query-params-from-access-logs",
     ]
 
-    if should_use_combined_container:
+    if not combined_sn_sidecar.standalone_envoy_monitor:
         command.append("--envoy-monitor-use-raw-config-json=" + json.marshal(envoy_monitor_config()))
         command.append("--envoy-monitor-proxy-upstream-addr=unixgram://%s" % upstream_stats_sock)
         command.append("--envoy-monitor-proxy-listen-addr=udp://localhost:%s" % ENVOY_MONITOR_PORT)
@@ -187,6 +200,13 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         command.append("--envoy-monitor-process-names=envoy-monitor")
         if monitor_args["envoy_scrape_histogram_metrics"]:
             command.append("--envoy-monitor-scrape-histogram-metrics")
+
+    if not combined_sn_sidecar.standalone_consul_sidecar:
+        command.append("--consul-sidecar-services-json=" + json.marshal(consul_agent_services))
+        _proxy_file = "consul-proxy-srv.sock"
+        command.append("--consul-sidecar-service-address=$(STRIPE_POD_IP)")
+        command.append("--consul-sidecar-consul-address=unix://{}/{}".format(_consul_proxy_dir, _proxy_file))
+        command.append("--consul-sidecar-bind-tcp-shim=127.0.0.1:8500")
 
     if args["enable_inbound_websockets"]:
         command.append("--enable-websockets")
@@ -208,7 +228,7 @@ def envoy_config_srv_container(ctx, self, namespace, local_consul_services, conf
         ),
     ]
 
-    if should_use_combined_container:
+    if not combined_sn_sidecar.standalone_envoy_monitor:
         plugins.append(container_port(
             ENVOY_MONITOR_PORT,
             container_name = self,
@@ -276,17 +296,18 @@ def _envoy_config_srv_config(ctx, local_consul_services, config_target, user_ove
                 "your service doesn't egress any traffic, then you are all set!\n",
                 "\nOtherwise:\n",
                 "  - Please use the wizard in Amp at http://go/shared-msp/migration-guide\n",
-                "  - For additional help, please ping us in #outbound-acls\n",
+                "  - For additional help with MSP and skycfg, please reach out to #msp\n",
+                "  - For additional help with networking ACLs, please reach out to #service-networking\n",
             ]),
         )
     if (cfg["enable_local_reachability"] == False):
         print(
             "".join([
                 "WARNING: You are using a breakglass to infer rather than explicitly declare ",
-                "Outbound ACLs for your service (#outbound-acls). ",
-                "This is deprecated and no longer supported. ",
-                "If traffic to/from your service breaks, you are on your own, so ",
-                "please revert use of this breakglass as soon as you can.",
+                "outbound networking ACLs for your service. ",
+                "This is unsupported and could break traffic to/from your service. ",
+                "Please revert use of this breakglass as soon as you can. ",
+                "Reach out to #service-networking for help.",
             ]),
         )
 

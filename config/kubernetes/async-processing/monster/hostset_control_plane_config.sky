@@ -37,7 +37,7 @@ A100_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(fanout_replicas=6, fanout_retry_replicas=6, feeder_replicas=2, express_replicas=59),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=4),
             }
         ),
     ]
@@ -51,12 +51,12 @@ A200_HOST_SETS = struct(
             qa={
                 "northwest":    cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=16),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=4),
             },
             prod={
                 "northwest":    cluster(fanout_replicas=24, fanout_retry_replicas=24, feeder_replicas=30, express_replicas=16),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=4),
             }
         ),
         host_set(
@@ -111,7 +111,7 @@ A200_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=3),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=2),
             }
         ),
         host_set(
@@ -119,6 +119,9 @@ A200_HOST_SETS = struct(
             qa={
                 "northwest":    cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+            },
+            preprod={
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
             },
             prod={
@@ -166,7 +169,7 @@ A200_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=3),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=2),
             }
         ),
         host_set(
@@ -174,6 +177,9 @@ A200_HOST_SETS = struct(
             qa={
                 "northwest":    cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+            },
+            preprod={
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
             },
             prod={
@@ -218,7 +224,7 @@ A200_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(fanout_replicas=5, fanout_retry_replicas=5, feeder_replicas=5),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=3),
             }
         ),
         host_set(
@@ -226,6 +232,9 @@ A200_HOST_SETS = struct(
             qa={
                 "northwest":    cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+            },
+            preprod={
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
             },
             prod={
@@ -256,8 +265,8 @@ A200_HOST_SETS = struct(
             },
             prod={
                 "northwest":    cluster(fanout_replicas=32, fanout_retry_replicas=32, feeder_replicas=32),
-                "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "bom":          cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=4),
+                "cmh":          cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=4),
             }
         ),
         host_set(
@@ -283,7 +292,7 @@ A200_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=3),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=2),
             }
         ),
         host_set(
@@ -293,10 +302,13 @@ A200_HOST_SETS = struct(
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
             },
-            prod={
-                "northwest":    cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=3, express_replicas=6),
-                "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+            preprod={
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+            },
+            prod={
+                "northwest":    cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=3, express_replicas=8),
+                "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=4),
             }
         ),
         host_set(
@@ -319,10 +331,13 @@ A200_HOST_SETS = struct(
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
                 "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
             },
+            preprod={
+                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+            },
             prod={
                 "northwest":    cluster(fanout_replicas=6, fanout_retry_replicas=6, feeder_replicas=7),
                 "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=3),
             }
         ),
         host_set(
@@ -364,7 +379,7 @@ A200_HOST_SETS = struct(
             prod={
                 "northwest":    cluster(api_replicas=2, fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=3),
                 "bom":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
-                "cmh":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2),
+                "cmh":          cluster(api_replicas=2, fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=2),
             }
         ),
         host_set(
@@ -376,8 +391,8 @@ A200_HOST_SETS = struct(
             },
             prod={
                 "northwest":    cluster(fanout_replicas=24, fanout_retry_replicas=24, feeder_replicas=32, express_replicas=56),
-                "bom":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "bom":          cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=4, express_replicas=4),
+                "cmh":          cluster(fanout_replicas=4, fanout_retry_replicas=4, feeder_replicas=4, express_replicas=4),
             }
         ),
     ]
@@ -392,7 +407,7 @@ A400_HOST_SETS = struct(
             qa={
                 "northwest":    cluster(api_replicas=2, fanout_replicas=8, fanout_retry_replicas=8, feeder_replicas=5, express_replicas=2),
                 "bom":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
+                "cmh":          cluster(api_replicas=2, fanout_replicas=3, fanout_retry_replicas=3, feeder_replicas=3, express_replicas=2),
             },
             preprod={
                 "cmh":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=4, express_replicas=2),
@@ -403,7 +418,7 @@ A400_HOST_SETS = struct(
                 # but shows CPU load spikes on more than 2 boxes, so we're slightly overprovisioning
                 # as a starting point
                 "bom":          cluster(api_replicas=3, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=2, express_replicas=2),
-                "cmh":          cluster(api_replicas=2, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=6, express_replicas=2),
+                "cmh":          cluster(api_replicas=3, fanout_replicas=2, fanout_retry_replicas=2, feeder_replicas=12, express_replicas=2),
             }
         ),
         host_set(

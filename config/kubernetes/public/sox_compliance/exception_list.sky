@@ -648,6 +648,12 @@ _CRONS = [
 		"namespace": "kubeacronnoegress"
 	},
 
+    {
+        # this job creates snapshots of emails with sample data and send it to a vendor for translation
+        # it does not handle any financial data
+        "name": "i18n--email-lqa-runner",
+        "namespace": "kubeacronnoegress",
+    },
 ]
 
 def cron_in_exceptions(namespace, name):

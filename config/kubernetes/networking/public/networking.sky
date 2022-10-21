@@ -24,6 +24,10 @@ load(
     "POD_NETWORKING_HOST_VOLUME_PATH",
     "POD_NETWORKING_BASEDIR",
 )
+load(
+    "config/kubernetes/networking/internal/helpers.sky",
+    "get_combined_sn_sidecar",
+)
 
 load(
     "config/kubernetes/networking/internal/consul.sky",
@@ -39,11 +43,6 @@ load("config/kubernetes/networking/internal/config/override.sky", "target")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/envoy_ratelimit.sky", "ratelimit_sidecar")
-
-def _should_use_combined_container(env, availability_tier):
-    if env == "qa" or (env == "prod" and availability_tier == "400") :
-        return True
-    return False
 
 def networking(ctx, namespace, pod_termination_grace_period_seconds, availability_tier = "A400", host_network = True, register_services = [], config = None):
     """
@@ -69,6 +68,7 @@ def networking(ctx, namespace, pod_termination_grace_period_seconds, availabilit
     Returns:
         A pod plugin that can be used with an entrypoint like `deployment`.
     """
+    plugins = []
     sn_stack_plugins = []
     use_network_isolation = not host_network
 
@@ -125,6 +125,8 @@ def networking(ctx, namespace, pod_termination_grace_period_seconds, availabilit
         availability_tier = availability_tier,
     )
 
+    _combined_sn_sidecar = get_combined_sn_sidecar(_env, availability_tier, host_network)
+
     if use_network_isolation:
         # Registered services are fed into xDS sidecar to configure envoy ingress
         xds_static_consul_config = []
@@ -154,17 +156,20 @@ def networking(ctx, namespace, pod_termination_grace_period_seconds, availabilit
             "/usr/bin/curl -X POST localhost:10093/stripe-healthcheck/fail; "+' '.join(envoy_config_srv_prestop_call)
         ]
 
-        should_use_combined_container = _should_use_combined_container(_env, availability_tier)
         sn_stack_plugins.extend([
             envoy_sidecar(ctx, namespace, config_target, config),
-            envoy_config_srv_sidecar(ctx, namespace, xds_static_consul_config, config_target, config, should_use_combined_container),
+            envoy_config_srv_sidecar(ctx, namespace, xds_static_consul_config, config_target, config, _combined_sn_sidecar, consul_agent_services),
             pre_stop(exec_action(*exec_command), container_name = ENVOY_CONFIG_SRV_SIDECAR_NAME),
         ])
-        if should_use_combined_container:
-            sn_stack_plugins.append(_create_pod_networking_dirs(ctx, ENVOY_CONFIG_SRV_SIDECAR_NAME, "envoy"))
-        else:
+
+        pod_networking_dirs = []
+        pod_networking_dirs.extend([ENVOY_CONFIG_SRV_SIDECAR_NAME, "envoy"])
+
+        if _combined_sn_sidecar.standalone_envoy_monitor:
             sn_stack_plugins.append(envoy_monitor_sidecar(ctx, namespace, config))
-            sn_stack_plugins.append(_create_pod_networking_dirs(ctx, ENVOY_CONFIG_SRV_SIDECAR_NAME, "envoy", ENVOY_MONITOR_SIDECAR_NAME))
+            pod_networking_dirs.append(ENVOY_MONITOR_SIDECAR_NAME)
+
+        sn_stack_plugins.append(_create_pod_networking_dirs(ctx, *pod_networking_dirs))
 
         # NB: This is a bit of an abstraction violation, but safe to do since
         # we've ratcheted `enable_global_ratelimit` and enforcing that it must
@@ -174,35 +179,38 @@ def networking(ctx, namespace, pod_termination_grace_period_seconds, availabilit
                 ratelimit_sidecar(ctx, "latest", namespace),
             ])
 
-        plugins_for_consul_sidecar.extend([
-            probes(
-                readiness = None,
-                liveness = None,
-                startup = command_probe(
-                    # NB: Succeed ~immediately to avoid failure due to timeoutSeconds (default: 1s)
-                    # i.e. we exclusively rely on initialDelaySeconds here
-                    ["/usr/bin/true"],
-                    initialDelaySeconds = DEFAULT_NEW_ENDPOINT_PROPAGATION_SECONDS,  # Delay the initial check from running
-                    periodSeconds = 1,  # check interval
-                    failureThreshold = 2,  # kill the container after failureThreshold*periodSeconds if we don't have a passing result
+        if _combined_sn_sidecar.standalone_consul_sidecar:
+            plugins_for_consul_sidecar.extend([
+                probes(
+                    readiness = None,
+                    liveness = None,
+                    startup = command_probe(
+                        # NB: Succeed ~immediately to avoid failure due to timeoutSeconds (default: 1s)
+                        # i.e. we exclusively rely on initialDelaySeconds here
+                        ["/usr/bin/true"],
+                        initialDelaySeconds = DEFAULT_NEW_ENDPOINT_PROPAGATION_SECONDS,  # Delay the initial check from running
+                        periodSeconds = 1,  # check interval
+                        failureThreshold = 2,  # kill the container after failureThreshold*periodSeconds if we don't have a passing result
+                    ),
+                    container_name = "consul-sidecar",
                 ),
-                container_name = "consul-sidecar",
-            ),
-        ])
+            ])
 
-    return compose_plugins(
+    plugins.append(
         pod_plugin(
             _assert_host_network_matches_pod_def,
             host_network = host_network,
-        ),
-        consul_sidecar(
+        )
+    )
+    if _combined_sn_sidecar.standalone_consul_sidecar:
+        plugins.append(consul_sidecar(
             use_proxy = use_network_isolation,
             use_probes = use_network_isolation,
             services = consul_agent_services,
             plugins = plugins_for_consul_sidecar,
-        ),
-        *sn_stack_plugins
-    )
+        ))
+    plugins.extend(sn_stack_plugins)
+    return compose_plugins(*plugins)
 
 def _assert_host_network_matches_pod_def(ctx, networking_args, pod_def):
     from_pod = pod_def["host_network"]

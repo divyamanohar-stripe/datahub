@@ -4,6 +4,7 @@ Functions to enable dynamic replica scaling for a deployment
 """
 
 load("config/kubernetes/plugins/types.sky", "deployment_plugin")
+load("config/kubernetes/helpers/warning.sky", "warn")
 
 
 def dynamic_replicas(desired_count=1, max_count=1, min_count=1):
@@ -23,6 +24,14 @@ def dynamic_replicas(desired_count=1, max_count=1, min_count=1):
         max_count: The maximum number of replicas the deployment should have
             (for autoscaling)
     """
+    if min_count > max_count:
+        fail("min_count (%d) is greater than max_count (%d)" % (min_count, max_count))
+    if desired_count > max_count:
+        fail("desired_count (%d) is greater than max_count (%d)" % (desired_count, max_count))
+
+    if desired_count < min_count:
+        fail("desired_count (%d) is less than min_count (%d)" % (desired_count, min_count))
+
     return deployment_plugin(
         _add_dynamic_replicas,
         desired_count=str(desired_count),

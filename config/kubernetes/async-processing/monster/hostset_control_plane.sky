@@ -5,9 +5,8 @@
 
 load("config/kubernetes/async-processing/monster/util.sky", "ALL_CLUSTERS")
 
-# TODO: change after more broad control plane rollout
-DEFAULT_FANOUT_COUNT = 0
-DEFAULT_FANOUT_RETRY_COUNT = 0
+DEFAULT_FANOUT_COUNT = 2
+DEFAULT_FANOUT_RETRY_COUNT = 2
 DEFAULT_FEEDER_COUNT = 2
 DEFAULT_SWEEPER_COUNT = 2
 
@@ -20,8 +19,6 @@ DEFAULT_EXPRESS_COUNT = 0
 # 0 means size is 0. None means it is unset (default value may be used).
 #
 # For more details, see the user guide at http://go/monster-hostset-decl.
-
-
 def cluster(
         fanout_replicas=None,
         fanout_retry_replicas=None,
@@ -48,8 +45,6 @@ def no_replicas_cluster():
 # zero is false-y, so it gets treated the same as None.
 #
 # Returns None if there are no non-None values in vals.
-
-
 def _first_set(*vals):
     for val in vals:
         if val != None:
@@ -58,8 +53,6 @@ def _first_set(*vals):
     return None
 
 # (Private API) Returns a template cluster for defaults based on global constants
-
-
 def _global_default_template_cluster():
     return cluster(
         fanout_replicas=DEFAULT_FANOUT_COUNT,
@@ -73,8 +66,6 @@ def _global_default_template_cluster():
 # (Test API) Defines defaults to hold default values. Only test
 # code actually calls this, to set stable defaults so assertions don't depend
 # on production defaults. Do not use in production.
-
-
 def worker_defs(template_cluster=_global_default_template_cluster()):
     if template_cluster == None:
         fail("template_cluster cannot be None in worker_defs")
@@ -92,8 +83,6 @@ def worker_defs(template_cluster=_global_default_template_cluster()):
     )
 
 # (Private API) Executes the default cascade given a new template cluster,
-
-
 def _merge_templates(new_cluster, old_defs):
     if new_cluster == None:
         return old_defs
@@ -117,8 +106,6 @@ def _merge_templates(new_cluster, old_defs):
 # (Private API) Creates a final JSON document containing, for a given cluster,
 # all of the properties relevant to deployments. Final values are
 # looked up according to the default cascade if necessary.
-
-
 def render_cluster(cluster_map, cluster_name, defs):
     c = cluster_map.get(cluster_name, cluster())
     return {
@@ -136,8 +123,6 @@ def render_cluster(cluster_map, cluster_name, defs):
 # environment (prod, qa), all of the properties relevant to
 # deployments. This is the union of the result of `render_cluster`, for each
 # cluster known.
-
-
 def render_env(env_map, defs):
     # short-hand for per-env default
     if type(env_map) != "dict":
@@ -153,8 +138,6 @@ def render_env(env_map, defs):
 # Creates a deployment declaration for an isolation group (aka host-set)
 # shared_msp is on by default.
 # When is_canary set to True, it would be included in the canary stage of a control plane deployment
-
-
 def host_set(name, default=None, qa=None, preprod=no_replicas_cluster(), prod=None, is_canary=False, defs=worker_defs()):
     defs = _merge_templates(default, defs)
     qa_json = render_env(qa or {}, defs)

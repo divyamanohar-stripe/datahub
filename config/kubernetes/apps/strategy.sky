@@ -118,9 +118,28 @@ def rolling_update_statefulset_strategy(partition = 0):
         )
     )
 
-def blue_green_deployment_strategy():
+def blue_green_deployment_strategy_shared_msp():
+    """
+    Creates a default deployment strategy to use for shared msp blue-green deployment.
+
+    This strategy will be used automatically when your service is deployed using blue-green deployments.
+
+    Returns:
+        A [DeploymentStrategy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#deploymentstrategy-v1-apps)
+        that can be used as the `strategy` parameter for a `deployment` or the
+        `deployment_options` plugin.
+    """
+    return rolling_update_strategy(
+        max_unavailable = "0%",
+        max_surge = "100%",
+    )
+
+def blue_green_deployment_strategy_dedicated_msp():
     """
     Creates a default deployment strategy to use for blue-green deployment.
+    Unlike shared msp blue/green deployments, this uses an update strategy that
+    does not assume that there's any extra capacity available for the service
+    to use.
 
     This strategy will be used automatically when your service is deployed using blue-green deployments.
 

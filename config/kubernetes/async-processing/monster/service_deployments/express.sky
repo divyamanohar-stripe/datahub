@@ -4,14 +4,17 @@ load("config/kubernetes/async-processing/monster/config.sky", "get_msp_availabil
 load("config/kubernetes/async-processing/monster/jmxfetch.sky", "add_jmxfetch_sidecar")
 load("config/kubernetes/core/container.sky", "container_port")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
+load("config/kubernetes/helpers/bluegreen.sky", "add_blue_green_to_env_vars")
 load("config/kubernetes/helpers/context.sky", "get_cluster")
 load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/helpers/security.sky", "add_security_groups")
 load("config/kubernetes/sidecars/confidant.sky", "auto_secrets")
 load("config/kubernetes/sidecars/config_srv.sky", "config_srv_sidecar")
-load("config/kubernetes/sidecars/consul.sky", "consul_service")
+load("config/kubernetes/sidecars/consul.sky", "consul_service", "consul_check")
 load("config/kubernetes/stripe.sky", "stripe_pod")
+load("config/kubernetes/networking/public/consul.sky", "consul_tag_envoy_healthcheck")
+
 load(
     "config/kubernetes/async-processing/monster/util.sky",
     "format_isolation_group",
@@ -61,6 +64,8 @@ def monster_express_deployment(ctx, unformatted_host_set, config):
     port = 8080
     jmx_port = 8086
 
+    healthcheck_path = "/healthcheck"
+
     runtime_args = [
         # See src/scala/com/stripe/monster/express/BUILD for how we generate a container image
         # that ultimately contains this Scala binary
@@ -89,6 +94,10 @@ def monster_express_deployment(ctx, unformatted_host_set, config):
             # Empty lists are filtered out by this list comprehension
             command = [el for arg in runtime_args for el in arg],
         ),
+
+        # Add an environment variable to be able to distinguish blue vs. green pods
+        add_blue_green_to_env_vars(),
+
         container_env_vars(
             vars = {
                 "JAVA_OPTS": " ".join([
@@ -110,10 +119,10 @@ def monster_express_deployment(ctx, unformatted_host_set, config):
         # identify the deployment
         monster_deployment_labels(config),
 
-        # generic healthcheck for deployment control
+        # generic healthcheck for deployment control and traffic routing
         healthchecked_service(
             port = port,
-            name = "monster-express",
+            name = consul_service_name,
             # When we're instructed to shutdown by a SIGTERM, this is how long we'll wait (in seconds)
             # to gracefully drain traffic before we're forcibly stopped by a SIGKILL
             #
@@ -126,10 +135,14 @@ def monster_express_deployment(ctx, unformatted_host_set, config):
             request_drain_grace_period_seconds = 300,
         ),
 
-        # per-host-set Consul registry for SRV-based work sharing
+        # legacy consul service that includes all Monster Express nodes
         consul_service(
             port = port,
-            name = consul_service_name,
+            name = "monster-express",
+            # consul healthcheck
+            checks = [consul_check(healthcheck_path, port)],
+            # envoy healthcheck requires the following consul tag
+            tags = [consul_tag_envoy_healthcheck(healthcheck_path)],
         ),
         add_security_groups(
             "monsterexpress",

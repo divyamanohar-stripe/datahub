@@ -69,6 +69,7 @@ def pay_server_pod(**kwargs):
         container_env_vars({
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
+            "STRIPE_BUNDLE_USE_SORBET_RUBY": "true",
         }),
         use_mongo_caches(use_legacy_host_mounts = True),
         mount_host_volume("/pay/conf", volume_args = {

@@ -2025,6 +2025,11 @@ m6a_12xlarge = struct(
     slack_cpu_millicores=1000,
 )
 
+m6a_24xlarge = struct(
+    name="m6a.24xlarge",
+    slack_cpu_millicores=1000,
+)
+
 _INSTANCE_TYPES_BY_NAME = {
     c5_xlarge.name: c5_xlarge,
     c5_2xlarge.name: c5_2xlarge,
@@ -2079,6 +2084,7 @@ _INSTANCE_TYPES_BY_NAME = {
     m6i_12xlarge.name: m6i_12xlarge,
     c6a_12xlarge.name: c6a_12xlarge,
     m6a_12xlarge.name: m6a_12xlarge,
+    m6a_24xlarge.name: m6a_24xlarge,
 }
 
 def get_instance_type_by_name(name):
