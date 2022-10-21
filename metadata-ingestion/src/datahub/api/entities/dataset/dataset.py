@@ -44,7 +44,7 @@ class Dataset:
         ownership = OwnershipClass(
             owners=[
                 OwnerClass(
-                    owner=builder.make_user_urn(owner),
+                    owner=owner,
                     type=OwnershipTypeClass.DEVELOPER,
                     source=OwnershipSourceClass(
                         type=OwnershipSourceTypeClass.SERVICE,
