@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Empty, List, message, Pagination, Typography } from 'antd';
+import { Button, Empty, List, message, Pagination, Typography, Tabs } from 'antd';
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useListUserDefinedReportsQuery } from '../../graphql/userDefinedReport.generated';
@@ -59,6 +59,13 @@ export const UserDefinedReportsList = () => {
         (a, b) => (b.entities?.total || 0) - (a.entities?.total || 0),
     );
 
+    const pipelineUserDefinedReports = userDefinedReports.filter(
+        (udr) => udr.properties?.type === 'PIPELINE_TIMELINESS',
+    );
+    const historicalUserDefinedReports = userDefinedReports.filter(
+        (udr) => udr.properties?.type === 'HISTORICAL_TIMELINESS',
+    );
+
     const onChangePage = (newPage: number) => {
         setPage(newPage);
     };
@@ -81,18 +88,42 @@ export const UserDefinedReportsList = () => {
                         </Button>
                     </div>
                 </TabToolbar>
-                <UserDefinedReportsStyledList
-                    bordered
-                    locale={{
-                        emptyText: (
-                            <Empty description="No User Defined Reports!" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                        ),
-                    }}
-                    dataSource={userDefinedReports}
-                    renderItem={(item: any) => (
-                        <UserDefinedReportListItem userDefinedReport={item as UserDefinedReport} />
-                    )}
-                />
+                <Tabs defaultActiveKey="1" style={{ marginLeft: '15px', marginRight: '15px' }}>
+                    <Tabs.TabPane tab="Pipeline Timeliness" key="1">
+                        <UserDefinedReportsStyledList
+                            bordered
+                            locale={{
+                                emptyText: (
+                                    <Empty
+                                        description="No User Defined Reports!"
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    />
+                                ),
+                            }}
+                            dataSource={pipelineUserDefinedReports}
+                            renderItem={(item: any) => (
+                                <UserDefinedReportListItem userDefinedReport={item as UserDefinedReport} />
+                            )}
+                        />
+                    </Tabs.TabPane>
+                    <Tabs.TabPane tab="Historical Timeliness" key="2">
+                        <UserDefinedReportsStyledList
+                            bordered
+                            locale={{
+                                emptyText: (
+                                    <Empty
+                                        description="No User Defined Reports!"
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    />
+                                ),
+                            }}
+                            dataSource={historicalUserDefinedReports}
+                            renderItem={(item: any) => (
+                                <UserDefinedReportListItem userDefinedReport={item as UserDefinedReport} />
+                            )}
+                        />
+                    </Tabs.TabPane>
+                </Tabs>
                 <UserDefinedReportsPaginationContainer>
                     <PaginationInfo>
                         <b>
