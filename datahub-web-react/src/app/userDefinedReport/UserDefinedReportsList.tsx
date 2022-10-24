@@ -53,8 +53,6 @@ export const UserDefinedReportsList = () => {
         fetchPolicy: 'no-cache',
     });
 
-    const totalUserDefinedReports = data?.listUserDefinedReports?.total || 0;
-    const lastResultIndex = start + pageSize > totalUserDefinedReports ? totalUserDefinedReports : start + pageSize;
     const userDefinedReports = (data?.listUserDefinedReports?.userDefinedReports || []).sort(
         (a, b) => (b.entities?.total || 0) - (a.entities?.total || 0),
     );
@@ -62,9 +60,15 @@ export const UserDefinedReportsList = () => {
     const pipelineUserDefinedReports = userDefinedReports.filter(
         (udr) => udr.properties?.type === 'PIPELINE_TIMELINESS',
     );
+    const pipelineTotalUDRCount = pipelineUserDefinedReports.length;
+    const pipelineLastResultIndex = start + pageSize > pipelineTotalUDRCount ? pipelineTotalUDRCount : start + pageSize;
+
     const historicalUserDefinedReports = userDefinedReports.filter(
         (udr) => udr.properties?.type === 'HISTORICAL_TIMELINESS',
     );
+    const historicalTotalUDRCount = historicalUserDefinedReports.length;
+    const historicalLastResultIndex =
+        start + pageSize > historicalTotalUDRCount ? historicalTotalUDRCount : start + pageSize;
 
     const onChangePage = (newPage: number) => {
         setPage(newPage);
@@ -88,7 +92,7 @@ export const UserDefinedReportsList = () => {
                         </Button>
                     </div>
                 </TabToolbar>
-                <Tabs defaultActiveKey="1" style={{ marginLeft: '15px', marginRight: '15px' }}>
+                <Tabs defaultActiveKey="1" style={{ marginRight: '15px', marginLeft: '15px' }}>
                     <Tabs.TabPane tab="Pipeline Timeliness" key="1">
                         <UserDefinedReportsStyledList
                             bordered
@@ -105,6 +109,24 @@ export const UserDefinedReportsList = () => {
                                 <UserDefinedReportListItem userDefinedReport={item as UserDefinedReport} />
                             )}
                         />
+                        <UserDefinedReportsPaginationContainer>
+                            <PaginationInfo>
+                                <b>
+                                    {pipelineLastResultIndex > 0 ? (page - 1) * pageSize + 1 : 0} -{' '}
+                                    {pipelineLastResultIndex}
+                                </b>{' '}
+                                of <b>{pipelineTotalUDRCount}</b>
+                            </PaginationInfo>
+                            <Pagination
+                                current={page}
+                                pageSize={pageSize}
+                                total={pipelineTotalUDRCount}
+                                showLessItems
+                                onChange={onChangePage}
+                                showSizeChanger={false}
+                            />
+                            <span />
+                        </UserDefinedReportsPaginationContainer>
                     </Tabs.TabPane>
                     <Tabs.TabPane tab="Historical Timeliness" key="2">
                         <UserDefinedReportsStyledList
@@ -122,25 +144,26 @@ export const UserDefinedReportsList = () => {
                                 <UserDefinedReportListItem userDefinedReport={item as UserDefinedReport} />
                             )}
                         />
+                        <UserDefinedReportsPaginationContainer>
+                            <PaginationInfo>
+                                <b>
+                                    {historicalLastResultIndex > 0 ? (page - 1) * pageSize + 1 : 0} -{' '}
+                                    {historicalLastResultIndex}
+                                </b>{' '}
+                                of <b>{historicalTotalUDRCount}</b>
+                            </PaginationInfo>
+                            <Pagination
+                                current={page}
+                                pageSize={pageSize}
+                                total={historicalTotalUDRCount}
+                                showLessItems
+                                onChange={onChangePage}
+                                showSizeChanger={false}
+                            />
+                            <span />
+                        </UserDefinedReportsPaginationContainer>
                     </Tabs.TabPane>
                 </Tabs>
-                <UserDefinedReportsPaginationContainer>
-                    <PaginationInfo>
-                        <b>
-                            {lastResultIndex > 0 ? (page - 1) * pageSize + 1 : 0} - {lastResultIndex}
-                        </b>{' '}
-                        of <b>{totalUserDefinedReports}</b>
-                    </PaginationInfo>
-                    <Pagination
-                        current={page}
-                        pageSize={pageSize}
-                        total={totalUserDefinedReports}
-                        showLessItems
-                        onChange={onChangePage}
-                        showSizeChanger={false}
-                    />
-                    <span />
-                </UserDefinedReportsPaginationContainer>
                 <CreateUserDefinedReportModal
                     visible={isCreatingUserDefinedReport}
                     onClose={() => setIsCreatingUserDefinedReport(false)}
