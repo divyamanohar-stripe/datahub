@@ -79,6 +79,7 @@ inbound_config:
         - host_type: datahub
         - host_type: mydev
         - host_type: mydata
+        - host_type: airflowscheduler
   outbound_services:
     - service_name: schema-registry
       mtls_authorities:
