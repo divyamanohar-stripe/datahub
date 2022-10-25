@@ -273,6 +273,15 @@ function renderSLAChart(data) {
             },
         },
         annotations: getAnnotations(),
+        point: {
+            size: 2.5,
+            shape: 'circle',
+            style: {
+                fill: 'CornflowerBlue',
+                stroke: 'CornflowerBlue',
+                lineWidth: 2,
+            },
+        },
     };
     return <Line style={{ marginLeft: '20px', marginRight: '30px' }} {...config} />;
 }
@@ -328,11 +337,13 @@ function renderSLAMissTable(data: SLAMissData[]) {
 function getOwnerName(ownership) {
     let teamName;
     let ownerEntity;
+    let ownerUrn;
     let idx = 0;
     if (ownership !== undefined && ownership !== null && ownership.owners.length > 0) {
         for (idx = 0; idx < ownership.owners.length; idx++) {
             teamName = ownership?.owners[idx]?.owner?.properties?.displayName;
             ownerEntity = ownership?.owners[idx]?.owner;
+            ownerUrn = ownership?.owners[idx]?.owner?.urn;
             if (teamName === undefined) {
                 teamName = ownership?.owners[idx]?.owner?.name;
             }
@@ -342,12 +353,12 @@ function getOwnerName(ownership) {
         }
     }
     if (teamName !== undefined) {
-        return [teamName, ownerEntity, idx];
+        return [teamName, ownerEntity, idx, ownerUrn];
     }
-    return ['No Team Defined', undefined, idx];
+    return ['No Team Defined', undefined, idx, undefined];
 }
 
-function getDownstreamTeams(datasetEntities: DatasetEntity[]) {
+function getDownstreamTeams(datasetEntities: DatasetEntity[], urn) {
     let teamMap: DownstreamTeam[] = [];
     for (let i = 0; i < datasetEntities.length; i++) {
         const downstreams = datasetEntities[i].downstream.relationships;
@@ -357,23 +368,26 @@ function getDownstreamTeams(datasetEntities: DatasetEntity[]) {
             const teamName = teamInfo[0];
             const ownerEntity = teamInfo[1];
             const ownerIdx = teamInfo[2];
+            const ownerUrn = teamInfo[3];
             const email = currDownstream.ownership?.owners[ownerIdx]?.owner?.properties?.email;
             const homePage = currDownstream.ownership?.owners[ownerIdx]?.owner?.editableProperties?.description;
             const slack = currDownstream.ownership?.owners[ownerIdx]?.owner?.editableProperties?.slack;
             const idx = teamMap.findIndex((t) => t.teamName === teamName);
-            if (idx > -1) {
-                const { entities } = teamMap[idx];
-                entities.push(currDownstream);
-            } else {
-                const newDownstreamTeam = {
-                    teamName,
-                    slack,
-                    email,
-                    homePage,
-                    entities: [currDownstream],
-                    ownerEntity,
-                } as DownstreamTeam;
-                teamMap.push(newDownstreamTeam);
+            if (ownerUrn !== urn) {
+                if (idx > -1) {
+                    const { entities } = teamMap[idx];
+                    entities.push(currDownstream);
+                } else {
+                    const newDownstreamTeam = {
+                        teamName,
+                        slack,
+                        email,
+                        homePage,
+                        entities: [currDownstream],
+                        ownerEntity,
+                    } as DownstreamTeam;
+                    teamMap.push(newDownstreamTeam);
+                }
             }
         }
     }
@@ -504,7 +518,7 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     const teamSLAPercent = metSLAData[1];
     const missedSLADatasets = metSLAData[2];
     console.log(missedSLADatasets);
-    const downstreamTeams = getDownstreamTeams(datasetEntities);
+    const downstreamTeams = getDownstreamTeams(datasetEntities, urn);
     console.log('downstream teams', downstreamTeams);
     return (
         <>
