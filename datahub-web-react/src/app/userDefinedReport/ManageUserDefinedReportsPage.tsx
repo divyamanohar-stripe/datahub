@@ -32,7 +32,14 @@ export const ManageUserDefinedReportsPage = () => {
                 <PageHeaderContainer>
                     <PageTitle level={3}>User Defined Reports</PageTitle>
                     <Typography.Paragraph type="secondary">
-                        View your DataHub user defined reports. Take administrative actions.
+                        View your DataHub user defined reports. Learn how to set up your own report
+                        <a
+                            href="https://confluence.corp.stripe.com/display/DATAPLAT/Self-Serve+User+Defined+Report"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            {' here.'}
+                        </a>
                     </Typography.Paragraph>
                 </PageHeaderContainer>
                 <ListContainer>

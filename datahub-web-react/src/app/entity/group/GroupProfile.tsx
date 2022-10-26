@@ -59,17 +59,17 @@ export default function GroupProfile() {
     const getTabs = () => {
         return [
             {
-                name: TabType.Assets,
-                path: TabType.Assets.toLocaleLowerCase(),
-                content: <GroupAssets urn={urn} />,
+                name: TabType.Metrics,
+                path: TabType.Metrics.toLocaleLowerCase(),
+                content: <GroupMetrics urn={urn} />,
                 display: {
                     enabled: () => true,
                 },
             },
             {
-                name: TabType.Metrics,
-                path: TabType.Metrics.toLocaleLowerCase(),
-                content: <GroupMetrics urn={urn} />,
+                name: TabType.Assets,
+                path: TabType.Assets.toLocaleLowerCase(),
+                content: <GroupAssets urn={urn} />,
                 display: {
                     enabled: () => true,
                 },
