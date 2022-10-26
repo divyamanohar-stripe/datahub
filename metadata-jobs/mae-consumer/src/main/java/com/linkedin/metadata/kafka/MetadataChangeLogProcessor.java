@@ -1,5 +1,6 @@
 package com.linkedin.metadata.kafka;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
@@ -35,6 +36,7 @@ public class MetadataChangeLogProcessor {
 
   private final List<MetadataChangeLogHook> hooks;
   private final Histogram kafkaLagStats = MetricUtils.get().histogram(MetricRegistry.name(this.getClass(), "kafkaLag"));
+  private final Counter failedMCLCounter = MetricUtils.counter(this.getClass(), "failed");  
 
   @Autowired
   public MetadataChangeLogProcessor(@Nonnull final UpdateIndicesHook updateIndicesHook,
@@ -59,6 +61,7 @@ public class MetadataChangeLogProcessor {
       log.debug("Successfully converted Avro MCL to Pegasus MCL. urn: {}, key: {}", event.getEntityUrn(),
           event.getEntityKeyAspect());
     } catch (Exception e) {
+      failedMCLCounter.inc();
       MetricUtils.counter(this.getClass(), "avro_to_pegasus_conversion_failure").inc();
       log.error("Error deserializing message due to: ", e);
       log.error("Message: {}", record.toString());
@@ -74,6 +77,7 @@ public class MetadataChangeLogProcessor {
         hook.invoke(event);
       } catch (Exception e) {
         // Just skip this hook and continue.
+        failedMCLCounter.inc();
         MetricUtils.counter(this.getClass(), hook.getClass().getSimpleName() + "_failure").inc();
         log.error("Failed to execute MCL hook with name {}", hook.getClass().getCanonicalName(), e);
       }

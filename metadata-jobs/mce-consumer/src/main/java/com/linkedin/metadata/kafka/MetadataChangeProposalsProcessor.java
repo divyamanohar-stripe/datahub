@@ -1,5 +1,6 @@
 package com.linkedin.metadata.kafka;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.datahub.authentication.Authentication;
@@ -46,6 +47,7 @@ public class MetadataChangeProposalsProcessor {
   private final Producer<String, IndexedRecord> kafkaProducer;
 
   private final Histogram kafkaLagStats = MetricUtils.get().histogram(MetricRegistry.name(this.getClass(), "kafkaLag"));
+  private final Counter failedMCPCounter = MetricUtils.counter(this.getClass(), "failed");  
 
   @Value("${FAILED_METADATA_CHANGE_PROPOSAL_TOPIC_NAME:" + Topics.FAILED_METADATA_CHANGE_PROPOSAL + "}")
   private String fmcpTopicName;
@@ -84,6 +86,7 @@ public class MetadataChangeProposalsProcessor {
   }
 
   private void sendFailedMCP(@Nonnull MetadataChangeProposal event, @Nonnull Throwable throwable) {
+    failedMCPCounter.inc();
     final FailedMetadataChangeProposal failedMetadataChangeProposal = createFailedMCPEvent(event, throwable);
     try {
       final GenericRecord genericFailedMCERecord = EventUtils.pegasusToAvroFailedMCP(failedMetadataChangeProposal);
