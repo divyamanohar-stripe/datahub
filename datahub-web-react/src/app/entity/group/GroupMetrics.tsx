@@ -1,7 +1,7 @@
 import React, { FC, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag, DatePicker } from 'antd';
+import { PageHeader, Table, Tag, DatePicker, Radio } from 'antd';
 import { orderBy } from 'lodash';
 import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
@@ -473,6 +473,20 @@ function renderHeader(teamSLAPercent: number, logicalBeginningDate, logicalEndDa
                 defaultValue={[moment.utc(logicalBeginningDate), moment.utc(logicalEndDate)]}
                 onChange={setReportDates}
             />
+            <Radio.Button
+                onClick={() =>
+                    setReportDates([moment.utc().startOf('day').subtract(7, 'day'), moment.utc().startOf('day')])
+                }
+            >
+                View Past Week
+            </Radio.Button>
+            <Radio.Button
+                onClick={() =>
+                    setReportDates([moment.utc().startOf('day').subtract(30, 'day'), moment.utc().startOf('day')])
+                }
+            >
+                View Past 30 Days
+            </Radio.Button>
         </PageHeader>
     );
 }
@@ -485,7 +499,7 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     const maxEntityCount = 1000;
     const maxRunCount = 1000;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
-    const initialBeginningDate = moment.utc().startOf('day').subtract(30, 'day').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('month').toDate().getTime();
     const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
     const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
 
