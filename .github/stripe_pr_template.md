@@ -3,7 +3,7 @@
 -->
 
 ### Notify
-cc @stripe-private-oss-forks/schema-and-query
+cc @stripe-private-oss-forks/data-governance
 
 <!--
   Assign a reviewer by commenting `r? <TEAM>` once your PR has built successfully. See go/code-review for more guidance on the code review process.
