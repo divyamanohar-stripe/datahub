@@ -95,7 +95,7 @@ fragment groupSearchResultFields on Entity {
                 value
             }
         }
-        runs: runs(input: {start: 0, count: $runCount}, direction: OUTGOING) {
+        runs: runs(input: $runInput, direction: OUTGOING) {
             ...groupRunResults
         }
         downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
@@ -118,7 +118,7 @@ fragment groupSearchResults on SearchResults {
     }
 }
 
-query getGroupMetrics($input: SearchAcrossEntitiesInput!, $runCount: Int!) {
+query getGroupMetrics($input: SearchAcrossEntitiesInput!, $runInput: DataProcessInstanceInput!) {
     searchAcrossEntities(input: $input) {
         ...groupSearchResults
     }

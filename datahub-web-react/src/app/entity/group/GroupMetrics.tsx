@@ -1,14 +1,16 @@
-import React, { FC } from 'react';
+import React, { FC, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag } from 'antd';
+import { PageHeader, Table, Tag, DatePicker } from 'antd';
 import { orderBy } from 'lodash';
 import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
 import { convertSecsToHumanReadable } from '../shared/stripe-utils';
 import { ExternalUrlLink, loadingPage } from '../userDefinedReport/profile/SharedContent';
 import { useGetGroupMetricsQuery } from '../../../graphql/groupMetrics.generated';
-import { EntityType, CorpGroup } from '../../../types.generated';
+import { EntityType, CorpGroup, DataProcessInstanceFilterInputType } from '../../../types.generated';
+
+const { RangePicker } = DatePicker;
 
 interface SLAMissData {
     executionDate: string;
@@ -457,11 +459,22 @@ function renderDownstreamTeamsTable(downstreamTeams: DownstreamTeam[]) {
     );
 }
 
-function renderHeader(teamSLAPercent: number) {
+function renderHeader(teamSLAPercent: number, logicalBeginningDate, logicalEndDate, setReportDates) {
     const color = teamSLAPercent < 95 ? 'red' : 'green';
     const tag = <Tag color={color}>{teamSLAPercent.toString(10)} %</Tag>;
-    const subtitle = <>{tag} over the past 30 days</>;
-    return <PageHeader title="How often did my team meet SLA?" subTitle={subtitle} />;
+    const subtitle = <>{tag} over the selected time range</>;
+    return (
+        <PageHeader title="How often did my team meet SLA?" subTitle={subtitle}>
+            <RangePicker
+                format="YYYY-MM-DD HH:mm"
+                showTime={{
+                    format: 'HH:mm',
+                }}
+                defaultValue={[moment.utc(logicalBeginningDate), moment.utc(logicalEndDate)]}
+                onChange={setReportDates}
+            />
+        </PageHeader>
+    );
 }
 
 interface GroupMetricsProps {
@@ -469,6 +482,18 @@ interface GroupMetricsProps {
 }
 
 export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
+    const maxEntityCount = 1000;
+    const maxRunCount = 1000;
+    const initialEndDate = moment.utc().startOf('day').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('day').subtract(30, 'day').toDate().getTime();
+    const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
+    const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
+
+    const setReportDates = (dates) => {
+        setLogicalBeginningDate(dates[0].toDate().getTime());
+        setLogicalEndDate(dates[1].toDate().getTime());
+    };
+
     const { data, loading } = useGetGroupMetricsQuery({
         variables: {
             input: {
@@ -476,9 +501,22 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
                 filters: [{ field: 'owners', value: urn }],
                 types: [EntityType.Dataset],
                 start: 0,
-                count: 1000,
+                count: maxEntityCount,
             },
-            runCount: 30,
+            runInput: {
+                filters: [
+                    {
+                        type: DataProcessInstanceFilterInputType.AfterLogicalDate,
+                        value: logicalBeginningDate.toString(10),
+                    },
+                    {
+                        type: DataProcessInstanceFilterInputType.BeforeLogicalDate,
+                        value: logicalEndDate.toString(10),
+                    },
+                ],
+                start: 0,
+                count: maxRunCount,
+            },
         },
     });
 
@@ -522,7 +560,7 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     console.log('downstream teams', downstreamTeams);
     return (
         <>
-            {renderHeader(teamSLAPercent)}
+            {renderHeader(teamSLAPercent, logicalBeginningDate, logicalEndDate, setReportDates)}
             {renderSLAChart(chartData)}
             <PageHeader title="Recent SLA Misses" />
             {renderSLAMissTable(missedSLADatasets)}
