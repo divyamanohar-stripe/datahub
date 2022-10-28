@@ -70,15 +70,6 @@ fragment groupRunResults on DataProcessInstanceResult {
                 value
             }
         }
-        state(startTimeMillis: null, endTimeMillis: null, limit: 1) {
-            status
-            attempt
-            result {
-                resultType
-                nativeResultType
-            }
-            timestampMillis
-        }
         externalUrl
     }
 }

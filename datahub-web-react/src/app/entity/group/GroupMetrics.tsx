@@ -499,7 +499,7 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     const maxEntityCount = 1000;
     const maxRunCount = 1000;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
-    const initialBeginningDate = moment.utc().startOf('month').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('day').subtract(7, 'day').toDate().getTime();
     const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
     const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
 
