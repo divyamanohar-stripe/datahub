@@ -215,11 +215,11 @@ function calculateDelay(runtime?: number, slo?: number) {
 
 function isEntityDelayed(entity?: DataJobEntity) {
     if (entity === undefined || entity === null) return false;
-    const slo = entity.properties?.customProperties?.filter((e) => e.key === 'runtime_slo')[0]?.value || undefined;
+    const slo = entity.runtimeSLO?.runtimeSLO || undefined;
     const runtime = entity.runtime || addRuntimeToDataJob(entity).runtime;
     // eslint-disable-next-line eqeqeq
     if (slo == undefined || runtime == undefined) return false;
-    return runtime > parseInt(slo, 10);
+    return runtime > slo;
 }
 
 function useGetJobs(urn, entityType) {
