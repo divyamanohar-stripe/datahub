@@ -1,3 +1,57 @@
+
+
+fragment groupRunResults on DataProcessInstanceResult {
+    count
+    total
+    runs {
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        externalUrl
+    }
+}
+
+fragment groupSearchResultFields on Entity {
+    urn
+    ... on Dataset {
+        type
+        urn
+        name
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        runs: runs(input: $runInput, direction: OUTGOING) {
+            ...groupRunResults
+        }
+
+    }
+
+}
+
+
+fragment groupSearchResults on SearchResults {
+    count
+    total
+    searchResults {
+        entity {
+            ...groupSearchResultFields
+        }
+    }
+}
+
+query getGroupRunMetrics($input: SearchAcrossEntitiesInput!, $runInput: DataProcessInstanceInput!) {
+    searchAcrossEntities(input: $input) {
+        ...groupSearchResults
+    }
+}
+
+
 fragment groupOwnershipFields on Ownership {
     owners {
         owner {
@@ -19,8 +73,6 @@ fragment groupOwnershipFields on Ownership {
 }
 
 fragment groupRelationshipFields on EntityWithRelationships {
-    urn
-    type
     ... on DataJob {
         urn
         type
@@ -46,9 +98,6 @@ fragment groupRelationshipFields on EntityWithRelationships {
 }
 
 fragment groupFullLineageResults on EntityLineageResult {
-    start
-    count
-    total
     relationships {
         type
         entity {
@@ -58,37 +107,9 @@ fragment groupFullLineageResults on EntityLineageResult {
 }
 
 
-fragment groupRunResults on DataProcessInstanceResult {
-    count
-    start
-    total
-    runs {
-        urn
-        properties {
-            customProperties {
-                key
-                value
-            }
-        }
-        externalUrl
-    }
-}
-
-fragment groupSearchResultFields on Entity {
+fragment teamSearchResultFields on Entity {
     urn
-    type
     ... on Dataset {
-        name
-        properties {
-            name
-            customProperties {
-                key
-                value
-            }
-        }
-        runs: runs(input: $runInput, direction: OUTGOING) {
-            ...groupRunResults
-        }
         downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
             ...groupFullLineageResults
         }
@@ -98,19 +119,18 @@ fragment groupSearchResultFields on Entity {
 }
 
 
-fragment groupSearchResults on SearchResults {
-    start
+fragment teamSearchResults on SearchResults {
     count
     total
     searchResults {
         entity {
-            ...groupSearchResultFields
+            ...teamSearchResultFields
         }
     }
 }
 
-query getGroupMetrics($input: SearchAcrossEntitiesInput!, $runInput: DataProcessInstanceInput!) {
+query getDownstreamTeams($input: SearchAcrossEntitiesInput!) {
     searchAcrossEntities(input: $input) {
-        ...groupSearchResults
+        ...teamSearchResults
     }
 }

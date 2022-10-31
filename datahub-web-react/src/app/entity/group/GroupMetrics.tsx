@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { ErrorInfo, FC, ReactNode, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
 import { PageHeader, Table, Tag, DatePicker, Radio } from 'antd';
@@ -7,7 +7,7 @@ import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
 import { convertSecsToHumanReadable } from '../shared/stripe-utils';
 import { ExternalUrlLink, loadingPage } from '../userDefinedReport/profile/SharedContent';
-import { useGetGroupMetricsQuery } from '../../../graphql/groupMetrics.generated';
+import { useGetGroupRunMetricsQuery, useGetDownstreamTeamsQuery } from '../../../graphql/groupMetrics.generated';
 import { EntityType, CorpGroup, DataProcessInstanceFilterInputType } from '../../../types.generated';
 
 const { RangePicker } = DatePicker;
@@ -66,12 +66,14 @@ type DatasetEntity = {
     };
     runs?: {
         count: number;
-        start: number;
         total: number;
         runs: DatasetRunEntity[];
     };
     totalRuns?: RunCustomProperties[];
     slaProps?: DatasetCustomPropertiesWithSla;
+};
+
+type DownstreamTeamEntity = {
     downstream: { relationships: any[] };
 };
 
@@ -360,7 +362,7 @@ function getOwnerName(ownership) {
     return ['No Team Defined', undefined, idx, undefined];
 }
 
-function getDownstreamTeams(datasetEntities: DatasetEntity[], urn) {
+function getDownstreamTeams(datasetEntities: DownstreamTeamEntity[], urn) {
     let teamMap: DownstreamTeam[] = [];
     for (let i = 0; i < datasetEntities.length; i++) {
         const downstreams = datasetEntities[i].downstream.relationships;
@@ -491,11 +493,69 @@ function renderHeader(teamSLAPercent: number, logicalBeginningDate, logicalEndDa
     );
 }
 
-interface GroupMetricsProps {
+class ErrorBoundary extends React.Component<{ children: ReactNode }, { errorInfo: ErrorInfo } | { errorInfo: null }> {
+    constructor(props) {
+        super(props);
+        this.state = { errorInfo: null };
+    }
+
+    componentDidCatch(_error, errorInfo) {
+        this.setState({ errorInfo });
+    }
+
+    render() {
+        if (this.state.errorInfo) {
+            return (
+                <>
+                    Error:
+                    <pre>
+                        <code>{this.state.errorInfo}</code>
+                    </pre>
+                </>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+interface TopDownstreamTeamsProps {
     urn: string;
 }
 
-export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
+const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
+    const maxEntityCount = 1000;
+    const { data, loading } = useGetDownstreamTeamsQuery({
+        variables: {
+            input: {
+                query: '*',
+                filters: [{ field: 'owners', value: urn }],
+                types: [EntityType.Dataset],
+                start: 0,
+                count: maxEntityCount,
+            },
+        },
+    });
+
+    if (loading) {
+        return loadingPage;
+    }
+    const datasetEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as DownstreamTeamEntity[];
+    const downstreamTeams = getDownstreamTeams(datasetEntities, urn);
+    console.log('downstream teams', downstreamTeams);
+
+    return (
+        <ErrorBoundary>
+            <PageHeader title="Top Downstream Teams" />
+            {renderDownstreamTeamsTable(downstreamTeams)}
+        </ErrorBoundary>
+    );
+};
+
+interface GroupRunMetricsProps {
+    urn: string;
+}
+
+const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
     const maxEntityCount = 1000;
     const maxRunCount = 1000;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
@@ -508,7 +568,7 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
         setLogicalEndDate(dates[1].toDate().getTime());
     };
 
-    const { data, loading } = useGetGroupMetricsQuery({
+    const { data, loading } = useGetGroupRunMetricsQuery({
         variables: {
             input: {
                 query: '*',
@@ -570,16 +630,25 @@ export const GroupMetrics: FC<GroupMetricsProps> = ({ urn }) => {
     const teamSLAPercent = metSLAData[1];
     const missedSLADatasets = metSLAData[2];
     console.log(missedSLADatasets);
-    const downstreamTeams = getDownstreamTeams(datasetEntities, urn);
-    console.log('downstream teams', downstreamTeams);
+
     return (
-        <>
+        <ErrorBoundary>
             {renderHeader(teamSLAPercent, logicalBeginningDate, logicalEndDate, setReportDates)}
             {renderSLAChart(chartData)}
             <PageHeader title="Recent SLA Misses" />
             {renderSLAMissTable(missedSLADatasets)}
-            <PageHeader title="Top Downstream Teams" />
-            {renderDownstreamTeamsTable(downstreamTeams)}
+        </ErrorBoundary>
+    );
+};
+
+interface GroupMetricsPageProps {
+    urn: string;
+}
+
+export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
+    return (
+        <>
+            <GroupRunMetrics urn={urn} /> <TopDownstreamTeams urn={urn} />
         </>
     );
 };

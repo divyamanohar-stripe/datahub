@@ -10,7 +10,7 @@ import { decodeUrn } from '../shared/utils';
 import { RoutedTabs } from '../../shared/RoutedTabs';
 import GroupInfoSidebar from './GroupInfoSideBar';
 import { GroupAssets } from './GroupAssets';
-import { GroupMetrics } from './GroupMetrics';
+import { GroupMetricsPage } from './GroupMetrics';
 
 const messageStyle = { marginTop: '10%' };
 
@@ -61,7 +61,7 @@ export default function GroupProfile() {
             {
                 name: TabType.Metrics,
                 path: TabType.Metrics.toLocaleLowerCase(),
-                content: <GroupMetrics urn={urn} />,
+                content: <GroupMetricsPage urn={urn} />,
                 display: {
                     enabled: () => true,
                 },
