@@ -7,7 +7,7 @@ from confluent_kafka.schema_registry.avro import AvroSerializer
 from confluent_kafka.serialization import SerializationContext, StringSerializer
 from pydantic import Field, root_validator
 
-from datahub.configuration.common import ConfigModel, ConfigurationError
+from datahub.configuration.common import ConfigModel, ConfigurationError, OperationalError
 from datahub.configuration.kafka import KafkaProducerConnectionConfig
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.metadata.com.linkedin.pegasus2avro.mxe import (
@@ -67,18 +67,6 @@ class DatahubKafkaEmitter:
         }
         schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 
-        def convert_mce_to_dict(
-            mce: MetadataChangeEvent, ctx: SerializationContext
-        ) -> dict:
-            tuple_encoding = mce.to_obj(tuples=True)
-            return tuple_encoding
-
-        mce_avro_serializer = AvroSerializer(
-            schema_str=getMetadataChangeEventSchema(),
-            schema_registry_client=schema_registry_client,
-            to_dict=convert_mce_to_dict,
-        )
-
         def convert_mcp_to_dict(
             mcp: Union[MetadataChangeProposal, MetadataChangeProposalWrapper],
             ctx: SerializationContext,
@@ -94,12 +82,6 @@ class DatahubKafkaEmitter:
 
         # We maintain a map of producers for each kind of event
         producers_config = {
-            MCE_KEY: {
-                "bootstrap.servers": self.config.connection.bootstrap,
-                "key.serializer": StringSerializer("utf_8"),
-                "value.serializer": mce_avro_serializer,
-                **self.config.connection.producer_config,
-            },
             MCP_KEY: {
                 "bootstrap.servers": self.config.connection.bootstrap,
                 "key.serializer": StringSerializer("utf_8"),
@@ -124,22 +106,12 @@ class DatahubKafkaEmitter:
         if isinstance(item, (MetadataChangeProposal, MetadataChangeProposalWrapper)):
             return self.emit_mcp_async(item, callback)
         else:
-            return self.emit_mce_async(item, callback)
-
-    def emit_mce_async(
-        self,
-        mce: MetadataChangeEvent,
-        callback: Callable[[Exception, str], None],
-    ) -> None:
-        # Call poll to trigger any callbacks on success / failure of previous writes
-        producer: SerializingProducer = self.producers[MCE_KEY]
-        producer.poll(0)
-        producer.produce(
-            topic=self.config.topic_routes[MCE_KEY],
-            key=mce.proposedSnapshot.urn,
-            value=mce,
-            on_delivery=callback,
-        )
+            logger.error(
+                "MCE is not supported by emitter at the moment, please change to MCP."
+            )
+            raise OperationalError(
+                "MCE is not supported by emitter at the moment, please change to MCP."
+            )
 
     def emit_mcp_async(
         self,
