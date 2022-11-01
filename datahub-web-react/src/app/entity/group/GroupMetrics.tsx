@@ -544,10 +544,10 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
     console.log('downstream teams', downstreamTeams);
 
     return (
-        <ErrorBoundary>
+        <>
             <PageHeader title="Top Downstream Teams" />
             {renderDownstreamTeamsTable(downstreamTeams)}
-        </ErrorBoundary>
+        </>
     );
 };
 
@@ -632,12 +632,12 @@ const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
     console.log(missedSLADatasets);
 
     return (
-        <ErrorBoundary>
+        <>
             {renderHeader(teamSLAPercent, logicalBeginningDate, logicalEndDate, setReportDates)}
             {renderSLAChart(chartData)}
             <PageHeader title="Recent SLA Misses" />
             {renderSLAMissTable(missedSLADatasets)}
-        </ErrorBoundary>
+        </>
     );
 };
 
@@ -648,7 +648,12 @@ interface GroupMetricsPageProps {
 export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
     return (
         <>
-            <GroupRunMetrics urn={urn} /> <TopDownstreamTeams urn={urn} />
+            <ErrorBoundary>
+                <GroupRunMetrics urn={urn} />
+            </ErrorBoundary>
+            <ErrorBoundary>
+                <TopDownstreamTeams urn={urn} />
+            </ErrorBoundary>
         </>
     );
 };
