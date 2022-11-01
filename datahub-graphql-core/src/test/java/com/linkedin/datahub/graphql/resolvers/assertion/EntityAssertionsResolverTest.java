@@ -19,6 +19,7 @@ import com.linkedin.common.EntityRelationshipArray;
 import com.linkedin.common.EntityRelationships;
 import com.linkedin.common.UrnArray;
 import com.linkedin.common.urn.Urn;
+import com.linkedin.data.template.StringMap;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.Dataset;
 import com.linkedin.datahub.graphql.generated.EntityAssertionsResult;
@@ -93,7 +94,9 @@ public class EntityAssertionsResolverTest {
                       .setValue("10")
                       .setType(
                       AssertionStdParameterType.NUMBER)))
-              ).data()
+              )
+              .setCustomProperties(new StringMap(ImmutableMap.of("testKey", "testValue")))
+              .data()
         ))
     );
     assertionAspects.put(
@@ -167,5 +170,7 @@ public class EntityAssertionsResolverTest {
     assertEquals(assertion.getInfo().getDatasetAssertion().getParameters().getValue().getType(),
         com.linkedin.datahub.graphql.generated.AssertionStdParameterType.NUMBER);
     assertEquals(assertion.getInfo().getDatasetAssertion().getParameters().getValue().getValue(), "10");
+    assertEquals(assertion.getInfo().getCustomProperties().get(0).getKey(), "testKey");
+    assertEquals(assertion.getInfo().getCustomProperties().get(0).getValue(), "testValue");
   }
 }

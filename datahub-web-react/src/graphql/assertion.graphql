@@ -43,6 +43,10 @@ fragment assertionDetails on Assertion {
             }
             logic
         }
+        customProperties {
+            key
+            value
+        }
     }
 }
 

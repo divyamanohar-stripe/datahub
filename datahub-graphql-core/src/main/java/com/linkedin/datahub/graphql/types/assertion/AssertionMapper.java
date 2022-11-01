@@ -59,6 +59,9 @@ public class AssertionMapper {
       DatasetAssertionInfo datasetAssertion = mapDatasetAssertionInfo(gmsAssertionInfo.getDatasetAssertion());
       assertionInfo.setDatasetAssertion(datasetAssertion);
     }
+    if (gmsAssertionInfo.hasCustomProperties()) {
+      assertionInfo.setCustomProperties(StringMapMapper.map(gmsAssertionInfo.getCustomProperties()));
+    }
     return assertionInfo;
   }
 

@@ -5160,6 +5160,11 @@ type AssertionInfo {
     Dataset-specific assertion information
     """
     datasetAssertion: DatasetAssertionInfo
+
+    """
+    Custom properties of the assertion
+    """
+    customProperties: [StringMapEntry!]
 }
 
 """

@@ -342,7 +342,13 @@ export const DatasetAssertionDescription = ({ assertionInfo }: Props) => {
                 </>
             }
         >
-            <div>{(logic && <SqlText>{logic}</SqlText>) || description}</div>
+            {description}
+            {logic && (
+                <details>
+                    <summary onClick={(e) => e.stopPropagation()}>Show query logic</summary>
+                    <SqlText>{logic}</SqlText>
+                </details>
+            )}
         </Popover>
     );
 };

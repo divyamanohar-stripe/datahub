@@ -1,11 +1,20 @@
 import { Button, Empty, Image, message, Modal, Tag, Tooltip, Typography } from 'antd';
 import React from 'react';
 import styled from 'styled-components';
-import { DeleteOutlined, DownOutlined, RightOutlined, StopOutlined } from '@ant-design/icons';
+import {
+    AlertOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    IssuesCloseOutlined,
+    LinkOutlined,
+    RightCircleOutlined,
+    RightOutlined,
+    StopOutlined,
+} from '@ant-design/icons';
 import { DatasetAssertionDescription } from './DatasetAssertionDescription';
 import { StyledTable } from '../../../components/styled/StyledTable';
 import { DatasetAssertionDetails } from './DatasetAssertionDetails';
-import { Assertion, AssertionRunStatus } from '../../../../../../types.generated';
+import { Assertion, AssertionInfo, AssertionRunStatus } from '../../../../../../types.generated';
 import { getResultColor, getResultIcon, getResultText } from './assertionUtils';
 import { useDeleteAssertionMutation } from '../../../../../../graphql/assertion.generated';
 
@@ -29,9 +38,41 @@ const PlatformContainer = styled.div`
     margin-right: 8px;
 `;
 
+const HideContainer = styled.div`
+    display: none;
+`;
+
 type Props = {
     assertions: Array<Assertion>;
     onDelete?: (urn: string) => void;
+};
+
+const consequencesFromValidationFailure = {
+    raise: {
+        icon: AlertOutlined,
+        text: 'Fails task on failure',
+    },
+    none: {
+        icon: RightCircleOutlined,
+        text: 'No action on failure',
+    },
+    cancel_task: {
+        icon: IssuesCloseOutlined,
+        text: 'Cancels task on failure preventing retries',
+    },
+};
+
+const Consequence = ({ assertionInfo }: { assertionInfo: AssertionInfo }) => {
+    const maybeRaiseAction = assertionInfo?.customProperties?.find(({ key }) => key === 'raise_action')?.value;
+    if (!maybeRaiseAction) {
+        return <></>;
+    }
+    const consequence = consequencesFromValidationFailure[maybeRaiseAction];
+    return (
+        <Tooltip title={consequence.text}>
+            <consequence.icon style={{ fontSize: '16px' }} />
+        </Tooltip>
+    );
 };
 
 /**
@@ -76,12 +117,15 @@ export const DatasetAssertionsList = ({ assertions, onDelete }: Props) => {
         urn: assertion.urn,
         type: assertion.info?.type,
         platform: assertion.platform,
+        assertionInfo: assertion.info,
         datasetAssertionInfo: assertion.info?.datasetAssertion,
         lastExecTime: assertion.runEvents?.runEvents.length && assertion.runEvents.runEvents[0].timestampMillis,
         lastExecResult:
             assertion.runEvents?.runEvents.length &&
             assertion.runEvents.runEvents[0].status === AssertionRunStatus.Complete &&
             assertion.runEvents.runEvents[0].result?.type,
+        lastExecResultLink:
+            assertion.runEvents?.runEvents.length && assertion.runEvents.runEvents[0].result?.externalUrl,
     }));
 
     const assertionsTableCols = [
@@ -116,21 +160,37 @@ export const DatasetAssertionsList = ({ assertions, onDelete }: Props) => {
             key: '',
             render: (_, record: any) => (
                 <ActionButtonContainer>
-                    <Tooltip title={record.platform.properties?.displayName}>
-                        <PlatformContainer>
-                            {(record.platform.properties?.logoUrl && (
-                                <Image
-                                    preview={false}
-                                    height={20}
-                                    width={20}
-                                    src={record.platform.properties?.logoUrl}
-                                />
-                            )) || <Typography.Text>{record.platform.properties?.displayName}</Typography.Text>}
-                        </PlatformContainer>
+                    <HideContainer>
+                        <Tooltip title={record.platform.properties?.displayName}>
+                            <PlatformContainer>
+                                {(record.platform.properties?.logoUrl && (
+                                    <Image
+                                        preview={false}
+                                        height={20}
+                                        width={20}
+                                        src={record.platform.properties?.logoUrl}
+                                    />
+                                )) || <Typography.Text>{record.platform.properties?.displayName}</Typography.Text>}
+                            </PlatformContainer>
+                        </Tooltip>
+                        {/* Hide delete button since we use DataHub as a read-only Data Catalog */}
+                        <Button onClick={() => onDeleteAssertion(record.urn)} type="text" shape="circle" danger>
+                            <DeleteOutlined />
+                        </Button>
+                    </HideContainer>
+                    <Consequence assertionInfo={record.assertionInfo} />
+                    <Tooltip title="View logs">
+                        <Button
+                            href={record.lastExecResultLink}
+                            disabled={!record.lastExecResultLink}
+                            type="link"
+                            shape="circle"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <LinkOutlined />
+                        </Button>
                     </Tooltip>
-                    <Button onClick={() => onDeleteAssertion(record.urn)} type="text" shape="circle" danger>
-                        <DeleteOutlined />
-                    </Button>
                 </ActionButtonContainer>
             ),
         },
