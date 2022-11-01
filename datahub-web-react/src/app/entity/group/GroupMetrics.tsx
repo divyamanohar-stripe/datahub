@@ -1,7 +1,7 @@
 import React, { ErrorInfo, FC, ReactNode, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag, DatePicker, Radio } from 'antd';
+import { PageHeader, Table, Tag, DatePicker, Radio, Typography } from 'antd';
 import { orderBy } from 'lodash';
 import { DeliveredProcedureOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
@@ -11,6 +11,7 @@ import { useGetGroupRunMetricsQuery, useGetDownstreamTeamsQuery } from '../../..
 import { EntityType, CorpGroup, DataProcessInstanceFilterInputType } from '../../../types.generated';
 
 const { RangePicker } = DatePicker;
+const { Title } = Typography;
 
 interface SLAMissData {
     executionDate: string;
@@ -499,19 +500,27 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { errorInfo
         this.state = { errorInfo: null };
     }
 
-    componentDidCatch(_error, errorInfo) {
+    componentDidCatch(error, errorInfo) {
+        console.warn('Uncaught error in ErrorBoundary', { error, errorInfo });
         this.setState({ errorInfo });
     }
 
     render() {
         if (this.state.errorInfo) {
             return (
-                <>
-                    Error:
-                    <pre>
-                        <code>{this.state.errorInfo}</code>
-                    </pre>
-                </>
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%',
+                        padding: '20px',
+                    }}
+                >
+                    <Title level={3} type="danger">
+                        Error: Data could not be loaded
+                    </Title>
+                </div>
             );
         }
         return this.props.children;
