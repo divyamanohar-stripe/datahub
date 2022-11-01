@@ -891,6 +891,11 @@ type Dataset implements EntityWithRelationships & Entity {
     History of datajob runs that either produced or consumed this dataset
     """
     runs(input: DataProcessInstanceInput, direction: RelationshipDirection!): DataProcessInstanceResult
+
+    """
+    user defined SLA info set on the corresponding data job
+    """
+    slaInfo: SLAInfo
 }
 
 """
@@ -4444,6 +4449,11 @@ type DataJob implements EntityWithRelationships & Entity {
     runtimeSLO: DataJobRuntimeSLO
 
     """
+    user defined SLA info set on the corresponding data job
+    """
+    slaInfo: SLAInfo
+
+    """
     version information of a data job
     """
     versionInfo(input: VersionInfosInput): DataJobVersionInfosResult
@@ -4492,6 +4502,18 @@ type DataJobVersionInfo {
     versionType: String
     externalUrl: String
     customProperties: [StringMapEntry!]
+}
+
+
+type SLAInfo {
+    """
+    user defined SLAs set on DataJobs/Datasets
+    """
+    slaDefined: String!
+    errorStartedBy: Float
+    errorFinishedBy: Float
+    warnStartedBy: Float
+    warnFinishedBy: Float
 }
 
 """

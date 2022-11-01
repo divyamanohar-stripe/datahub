@@ -72,7 +72,8 @@ public class DatasetType implements SearchableEntityType<Dataset>, BrowsableEnti
         GLOSSARY_TERMS_ASPECT_NAME,
         STATUS_ASPECT_NAME,
         CONTAINER_ASPECT_NAME,
-        DOMAINS_ASPECT_NAME
+        DOMAINS_ASPECT_NAME,
+        SLA_INFO_ASPECT_NAME
     );
 
     private static final Set<String> FACET_FIELDS = ImmutableSet.of("origin", "platform");

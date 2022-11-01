@@ -14,6 +14,7 @@ import com.linkedin.datahub.graphql.generated.DatasetEditableProperties;
 import com.linkedin.datahub.graphql.generated.Domain;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.FabricType;
+import com.linkedin.datahub.graphql.generated.SLAInfo;
 import com.linkedin.datahub.graphql.types.common.mappers.DeprecationMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.InstitutionalMemoryMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.OwnershipMapper;
@@ -84,6 +85,7 @@ public class DatasetMapper implements ModelMapper<EntityResponse, Dataset> {
         mappingHelper.mapToResult(DOMAINS_ASPECT_NAME, this::mapDomains);
         mappingHelper.mapToResult(DEPRECATION_ASPECT_NAME, (dataset, dataMap) ->
             dataset.setDeprecation(DeprecationMapper.map(new Deprecation(dataMap))));
+        mappingHelper.mapToResult(SLA_INFO_ASPECT_NAME, this::mapSLAInfo);
 
         return mappingHelper.getResult();
     }
@@ -162,4 +164,16 @@ public class DatasetMapper implements ModelMapper<EntityResponse, Dataset> {
                 .setUrn(domains.getDomains().get(0).toString()).build());
         }
     }
+
+    private void mapSLAInfo(@Nonnull Dataset dataset, @Nonnull DataMap dataMap){
+        final com.linkedin.datajob.SLAInfo gmsSLAInfo = new com.linkedin.datajob.SLAInfo(dataMap);
+        final SLAInfo slaInfo = new SLAInfo();
+        slaInfo.setSlaDefined(gmsSLAInfo.getSlaDefined());
+        slaInfo.setErrorStartedBy(gmsSLAInfo.getErrorStartedBy());
+        slaInfo.setWarnStartedBy(gmsSLAInfo.getWarnStartedBy());
+        slaInfo.setErrorFinishedBy(gmsSLAInfo.getErrorFinishedBy());
+        slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
+        dataset.setSlaInfo(slaInfo);
+    }
+
 }

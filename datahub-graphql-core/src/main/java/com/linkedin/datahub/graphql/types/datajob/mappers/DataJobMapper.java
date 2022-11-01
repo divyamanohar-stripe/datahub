@@ -13,6 +13,7 @@ import com.linkedin.datahub.graphql.generated.DataJob;
 import com.linkedin.datahub.graphql.generated.DataJobEditableProperties;
 import com.linkedin.datahub.graphql.generated.DataJobInfo;
 import com.linkedin.datahub.graphql.generated.DataJobRuntimeSLO;
+import com.linkedin.datahub.graphql.generated.SLAInfo;
 import com.linkedin.datahub.graphql.generated.DataJobInputOutput;
 import com.linkedin.datahub.graphql.generated.DataJobProperties;
 import com.linkedin.datahub.graphql.generated.Dataset;
@@ -63,6 +64,15 @@ public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
                 final DataJobRuntimeSLO dataJobRuntimeSLO = new DataJobRuntimeSLO();
                 dataJobRuntimeSLO.setRuntimeSLO(gmsDataJobRuntimeSLO.getRuntimeSLO());
                 result.setRuntimeSLO(dataJobRuntimeSLO);
+            }  else if (SLA_INFO_ASPECT_NAME.equals(name)) {
+                final com.linkedin.datajob.SLAInfo gmsSLAInfo = new com.linkedin.datajob.SLAInfo(data);
+                final SLAInfo slaInfo = new SLAInfo();
+                slaInfo.setSlaDefined(gmsSLAInfo.getSlaDefined());
+                slaInfo.setErrorStartedBy(gmsSLAInfo.getErrorStartedBy());
+                slaInfo.setWarnStartedBy(gmsSLAInfo.getWarnStartedBy());
+                slaInfo.setErrorFinishedBy(gmsSLAInfo.getErrorFinishedBy());
+                slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
+                result.setSlaInfo(slaInfo);
             } else if (DATA_JOB_INFO_ASPECT_NAME.equals(name)) {
                 final com.linkedin.datajob.DataJobInfo gmsDataJobInfo = new com.linkedin.datajob.DataJobInfo(data);
                 result.setInfo(mapDataJobInfo(gmsDataJobInfo));

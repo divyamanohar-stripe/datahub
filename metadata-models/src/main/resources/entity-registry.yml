@@ -19,6 +19,7 @@ entities:
       - status
       - container
       - deprecation
+      - slaInfo
   - name: dataHubPolicy
     doc: DataHub Policies represent access policies granted to users or groups on metadata operations like edit, view etc.
     category: internal
@@ -35,6 +36,7 @@ entities:
       - versionInfo
       - userDefinedReports
       - dataJobRuntimeSLO
+      - slaInfo
   - name: dataFlow
     category: core
     keyAspect: dataFlowKey
