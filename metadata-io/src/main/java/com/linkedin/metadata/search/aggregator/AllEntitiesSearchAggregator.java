@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -116,6 +117,11 @@ public class AllEntitiesSearchAggregator {
 
     // 4. Rank results across entities
     List<SearchEntity> rankedResult = _searchRanker.rank(matchedResults);
+    // Extract the corp group entities and put them to the front
+    Stream<SearchEntity> corpGroupResult = rankedResult.stream().filter(s -> s.getEntity().toString().startsWith("urn:li:corpGroup"));
+    Stream<SearchEntity> nonCorpGroupResult = rankedResult.stream().filter(s -> !s.getEntity().toString().startsWith("urn:li:corpGroup"));
+    rankedResult = Stream.concat(corpGroupResult, nonCorpGroupResult).collect(Collectors.toList());
+    log.info("rankedResult is {}", rankedResult);
     SearchResultMetadata finalMetadata =
         new SearchResultMetadata().setAggregations(new AggregationMetadataArray(rankFilterGroups(aggregations)));
 
