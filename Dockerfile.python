@@ -1,28 +1,11 @@
 FROM containers.global.prod.stripe.io/third-party/manylinux
-
-# Hack: use this when building on a laptop (for now)
-# FROM quay.io/pypa/manylinux2014_x86_64:2022-08-15-b8e2ce4
-
 ENV \
     PATH=/venv/bin:$PATH \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_INDEX_URL=https://artifactory-content.stripe.build/artifactory/api/pypi/pypi-safe/simple \
     PIP_NO_CACHE_DIR=1
+RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel setuptools==57.5.0
 
-# This is needed for MSP
-RUN : \
-    && groupadd -g 3001 stripe-service \
-    && useradd -u 3001 -g 3001 -G cgred stripe-service
-
-RUN \
-    /opt/python/cp37-cp37m/bin/python -m venv /venv \
-    && pip install wheel setuptools==57.5.0 twine
-
-COPY / /src
 WORKDIR /src
 
-# Build the Python wheels. This is *not* hermetic!
-RUN /src/jenkins-python-build.sh
-
-# CI wants a CMD
-CMD /bin/bash
+CMD /src/jenkins-python-build.sh

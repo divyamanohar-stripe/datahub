@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 set -ex
@@ -14,3 +15,6 @@ echo ""
 
 cp -r dist /build
 popd
+
+mkdir /build/henson
+cp henson/restart /build/henson/

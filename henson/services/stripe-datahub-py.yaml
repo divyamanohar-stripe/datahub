@@ -1,25 +1,22 @@
-service_name: datahub-wheel-pypi-pkg
+service_name: stripe-datahub-py
 description: Python client for datahub metadata ingestion
 repo: stripe-private-oss-forks/datahub
 contact:
   responsible_team: schema-and-query
   slack_channel: schema-and-query
 deploy:
-  clusters:
-    - northwest
+  host_types:
+    - pypipusherbox
   autodeploy:
     enabled: true
     triggers:
       merges:
-        commits_have_labels: [ "service-datahub-wheel-pypi-pkg" ]
+        commits_have_labels: [ "service-datahub-py" ]
       schedule:
         cron: "20 TUE" # Deploy Tuesdays at 20:00 UTC
-kubernetes:
-  template: henson/kube/datahub-wheel-pypi-pkg.sky
-jenkins:
-  job_name: stripe-private-oss-forks-datahub-py
-container_images:
-  - artifact_name: datahub-py-wheel-image
+restart:
+  script:
+    user: pypipusher
 # TODO: Once we're confident of the stability of the service we should update the announce to cc the relevant runner
 # in case of errors during deploys
 announce:
@@ -36,3 +33,6 @@ announce:
       enable_autodeploy_scheduled_deployment: ENABLED
       # Autodeploys are not able to deploy, needs attention
       enable_autodeploy_not_deploying: ENABLED
+jenkins:
+  job_name: stripe-private-oss-forks-datahub
+  artifact_name: build
