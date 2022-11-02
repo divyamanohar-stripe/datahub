@@ -15,6 +15,7 @@ from datahub.emitter.mcp import MetadataChangeProposalWrapper
 from datahub.metadata.schema_classes import ChangeTypeClass, DatasetPropertiesClass, OwnershipClass, OwnerClass, OwnershipTypeClass, AuditStampClass, OwnershipSourceTypeClass, OwnershipSourceClass
 from datahub.utilities.urns.dataset_urn import DatasetUrn
 import datahub.emitter.mce_builder as builder
+from datahub.metadata.com.linkedin.pegasus2avro.datajob import SLAInfo
 
 if TYPE_CHECKING:
     from datahub.emitter.kafka_emitter import DatahubKafkaEmitter
@@ -29,6 +30,15 @@ class Dataset:
     urn: DatasetUrn = field(init=False)
     description: Optional[str] = None
     properties: Dict[str, str] = field(default_factory=dict)
+
+    # NOTE: [FORK_CHANGE]
+    # We added the following 4 properties to the Dataset to create the SLAInfo aspect
+    sla_defined: str = "false"
+    error_started_by: Optional[float] = None
+    warn_started_by: Optional[float] = None
+    error_finished_by: Optional[float] = None
+    warn_finished_by: Optional[float] = None
+
     owners: Set[str] = field(default_factory=set)
     group_owners: Set[str] = field(default_factory=set)
 
@@ -53,6 +63,24 @@ class Dataset:
         )
         return [ownership]
 
+    # NOTE: [FORK_CHANGE]
+    # Function to return the SLAInfo MCP for SLA information on each Dataset
+    def generate_sla_info_mcp(self):
+        mcp = MetadataChangeProposalWrapper(
+            entityType="dataset",
+            entityUrn=str(self.urn),
+            aspectName="slaInfo",
+            aspect=SLAInfo(
+                slaDefined=self.sla_defined,
+                errorStartedBy=self.error_started_by,
+                warnStartedBy=self.warn_started_by,
+                errorFinishedBy=self.error_finished_by,
+                warnFinishedBy=self.warn_finished_by,
+            ),
+            changeType=ChangeTypeClass.UPSERT,
+        )
+        yield mcp
+
     def generate_mcp(self) -> Iterable[MetadataChangeProposalWrapper]:
         mcp = MetadataChangeProposalWrapper(
             entityType="dataset",
@@ -75,6 +103,10 @@ class Dataset:
                 changeType=ChangeTypeClass.UPSERT,
             )
             yield mcp
+
+        # NOTE: [FORK_CHANGE]
+        # We are calling generate_sla_info_mcp to yield the SLAInfo aspect
+        yield from self.generate_sla_info_mcp()
 
     def emit(
         self,

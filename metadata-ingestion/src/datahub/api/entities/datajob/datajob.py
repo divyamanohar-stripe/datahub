@@ -34,6 +34,7 @@ from datahub.metadata.schema_classes import (
 from datahub.utilities.urns.data_flow_urn import DataFlowUrn
 from datahub.utilities.urns.data_job_urn import DataJobUrn
 from datahub.utilities.urns.dataset_urn import DatasetUrn
+from datahub.metadata.com.linkedin.pegasus2avro.datajob import SLAInfo
 
 if TYPE_CHECKING:
     from datahub.emitter.kafka_emitter import DatahubKafkaEmitter
@@ -65,6 +66,15 @@ class DataJob:
     name: Optional[str] = None
     description: Optional[str] = None
     properties: Dict[str, str] = field(default_factory=dict)
+
+    # NOTE: [FORK_CHANGE]
+    # We added the following 4 properties to the DataJob to create the SLAInfo aspect
+    sla_defined: str = "false"
+    error_started_by: Optional[float] = None
+    warn_started_by: Optional[float] = None
+    error_finished_by: Optional[float] = None
+    warn_finished_by: Optional[float] = None
+
     url: Optional[str] = None
     tags: Set[str] = field(default_factory=set)
     owners: Set[str] = field(default_factory=set)
@@ -105,6 +115,24 @@ class DataJob:
             ),
         )
         return [ownership]
+
+    # NOTE: [FORK_CHANGE]
+    # Function to return the SLAInfo MCP for SLA information on each DataJob
+    def generate_sla_info_mcp(self):
+        mcp = MetadataChangeProposalWrapper(
+            entityType="dataJob",
+            entityUrn=str(self.urn),
+            aspectName="slaInfo",
+            aspect=SLAInfo(
+                slaDefined=self.sla_defined,
+                errorStartedBy=self.error_started_by,
+                warnStartedBy=self.warn_started_by,
+                errorFinishedBy=self.error_finished_by,
+                warnFinishedBy=self.warn_finished_by,
+            ),
+            changeType=ChangeTypeClass.UPSERT,
+        )
+        yield mcp
 
     # NOTE: [FORK_CHANGE]
     # We override the generate_tags_aspect from OSS DataHub in order to avoid DataJob tags
@@ -183,6 +211,10 @@ class DataJob:
                 changeType=ChangeTypeClass.UPSERT,
             )
             yield mcp
+
+        # NOTE: [FORK_CHANGE]
+        # We are calling generate_sla_info_mcp to yield the SLAInfo aspect
+        yield from self.generate_sla_info_mcp()
 
     def emit(
         self,
