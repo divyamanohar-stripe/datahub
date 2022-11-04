@@ -1,9 +1,9 @@
 import React, { ErrorInfo, FC, ReactNode, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag, DatePicker, Radio, Typography } from 'antd';
+import { PageHeader, Table, Tag, DatePicker, Radio, Typography, Tooltip } from 'antd';
 import { orderBy } from 'lodash';
-import { DeliveredProcedureOutlined } from '@ant-design/icons';
+import { DeliveredProcedureOutlined, InfoCircleTwoTone } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
 import { convertSecsToHumanReadable } from '../shared/stripe-utils';
 import { ExternalUrlLink, loadingPage } from '../userDefinedReport/profile/SharedContent';
@@ -466,8 +466,16 @@ function renderHeader(teamSLAPercent: number, logicalBeginningDate, logicalEndDa
     const color = teamSLAPercent < 95 ? 'red' : 'green';
     const tag = <Tag color={color}>{teamSLAPercent.toString(10)} %</Tag>;
     const subtitle = <>{tag} over the selected time range</>;
+    const toolTip = (
+        <>
+            {"How often did my team's datasets meet SLA? "}
+            <Tooltip title="This metric only displays datasets with SLAs defined">
+                <InfoCircleTwoTone />
+            </Tooltip>
+        </>
+    );
     return (
-        <PageHeader title="How often did my team meet SLA?" subTitle={subtitle}>
+        <PageHeader title={toolTip} subTitle={subtitle}>
             <RangePicker
                 format="YYYY-MM-DD HH:mm"
                 showTime={{
