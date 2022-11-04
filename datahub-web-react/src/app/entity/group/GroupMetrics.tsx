@@ -537,7 +537,10 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
         variables: {
             input: {
                 query: '*',
-                filters: [{ field: 'owners', value: urn }],
+                filters: [
+                    { field: 'owners', value: urn },
+                    { field: 'slaDefined', value: 'true' },
+                ],
                 types: [EntityType.Dataset],
                 start: 0,
                 count: maxEntityCount,
@@ -554,7 +557,7 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
 
     return (
         <>
-            <PageHeader title="Top Downstream Teams" />
+            <PageHeader title="Top Downstream Teams for Datasets with SLAs Defined" />
             {renderDownstreamTeamsTable(downstreamTeams)}
         </>
     );
@@ -581,7 +584,10 @@ const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
         variables: {
             input: {
                 query: '*',
-                filters: [{ field: 'owners', value: urn }],
+                filters: [
+                    { field: 'owners', value: urn },
+                    { field: 'slaDefined', value: 'true' },
+                ],
                 types: [EntityType.Dataset],
                 start: 0,
                 count: maxEntityCount,
