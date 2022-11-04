@@ -34,7 +34,7 @@ export class GroupEntity implements Entity<CorpGroup> {
 
     isSearchEnabled = () => true;
 
-    isBrowseEnabled = () => false;
+    isBrowseEnabled = () => true;
 
     isLineageEnabled = () => false;
 

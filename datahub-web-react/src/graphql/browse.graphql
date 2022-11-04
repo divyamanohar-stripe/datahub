@@ -9,6 +9,56 @@ query getBrowseResults($input: BrowseInput!) {
         entities {
             urn
             type
+                         ... on CorpGroup {
+                             urn
+                             type
+                             name
+                             properties {
+                                 displayName
+                                 email
+                             }
+                             info {
+                                 displayName
+                                 email
+                                 admins {
+                                     urn
+                                     username
+                                     info {
+                                         active
+                                         displayName
+                                         title
+                                         email
+                                         firstName
+                                         lastName
+                                         fullName
+                                     }
+                                     editableInfo {
+                                         pictureLink
+                                         teams
+                                         skills
+                                     }
+                                 }
+                                 members {
+                                     urn
+                                     username
+                                     info {
+                                         active
+                                         displayName
+                                         title
+                                         email
+                                         firstName
+                                         lastName
+                                         fullName
+                                     }
+                                     editableInfo {
+                                         pictureLink
+                                         teams
+                                         skills
+                                     }
+                                 }
+                                 groups
+                             }
+                         }
             ... on Dataset {
                 name
                 origin

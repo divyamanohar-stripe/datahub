@@ -11,6 +11,7 @@ import com.linkedin.metadata.key.DataJobKey;
 import com.linkedin.metadata.key.DataPlatformKey;
 import com.linkedin.metadata.key.DatasetKey;
 import com.linkedin.metadata.key.GlossaryTermKey;
+import com.linkedin.metadata.key.CorpGroupKey;
 import com.linkedin.metadata.models.AspectSpec;
 import com.linkedin.metadata.models.EntitySpec;
 import com.linkedin.metadata.models.registry.EntityRegistry;
@@ -64,6 +65,9 @@ public class BrowsePathUtils {
         // TODO: Is this the best way to represent glossary term key?
         GlossaryTermKey glossaryTermKey = (GlossaryTermKey) EntityKeyUtils.convertUrnToEntityKey(urn, getKeySchema(urn.getEntityType(), entityRegistry));
         return "/" + glossaryTermKey.getName().replace('.', '/').toLowerCase();
+      case "corpGroup":
+        CorpGroupKey corpGroupKey = (CorpGroupKey) EntityKeyUtils.convertUrnToEntityKey(urn, getKeySchema(urn.getEntityType(), entityRegistry));
+        return "/" + corpGroupKey.getName().replace('.', '/').toLowerCase();
       default:
         return "";
     }

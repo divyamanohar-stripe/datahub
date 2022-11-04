@@ -101,6 +101,7 @@ entities:
       - globalTags
       - ownership
       - status
+      - browsePaths
   - name: domain
     doc: A data domain within an organization.
     keyAspect: domainKey

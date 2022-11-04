@@ -5,27 +5,35 @@ import com.google.common.collect.ImmutableSet;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.data.template.RecordTemplate;
+import com.linkedin.data.template.StringArray;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.authorization.AuthorizationUtils;
 import com.linkedin.datahub.graphql.authorization.ConjunctivePrivilegeGroup;
 import com.linkedin.datahub.graphql.authorization.DisjunctivePrivilegeGroup;
 import com.linkedin.datahub.graphql.exception.AuthorizationException;
 import com.linkedin.datahub.graphql.generated.AutoCompleteResults;
+import com.linkedin.datahub.graphql.generated.BrowsePath;
+import com.linkedin.datahub.graphql.generated.BrowseResults;
 import com.linkedin.datahub.graphql.generated.CorpGroup;
 import com.linkedin.datahub.graphql.generated.CorpGroupUpdateInput;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.FacetFilterInput;
 import com.linkedin.datahub.graphql.generated.SearchResults;
+import com.linkedin.datahub.graphql.resolvers.ResolverUtils;
+import com.linkedin.datahub.graphql.types.BrowsableEntityType;
 import com.linkedin.datahub.graphql.types.MutableType;
 import com.linkedin.datahub.graphql.types.SearchableEntityType;
 import com.linkedin.datahub.graphql.types.corpgroup.mappers.CorpGroupMapper;
 import com.linkedin.datahub.graphql.types.mappers.AutoCompleteResultsMapper;
+import com.linkedin.datahub.graphql.types.mappers.BrowsePathsMapper;
+import com.linkedin.datahub.graphql.types.mappers.BrowseResultMapper;
 import com.linkedin.datahub.graphql.types.mappers.UrnSearchResultsMapper;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.entity.client.EntityClient;
 import com.linkedin.events.metadata.ChangeType;
 import com.linkedin.identity.CorpGroupEditableInfo;
 import com.linkedin.metadata.authorization.PoliciesConfig;
+import com.linkedin.metadata.browse.BrowseResult;
 import com.linkedin.metadata.query.AutoCompleteResult;
 import com.linkedin.metadata.search.SearchResult;
 import com.linkedin.metadata.utils.GenericRecordUtils;
@@ -36,15 +44,18 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import static com.linkedin.datahub.graphql.Constants.BROWSE_PATH_DELIMITER;
 import static com.linkedin.metadata.Constants.*;
 
-public class CorpGroupType implements SearchableEntityType<CorpGroup>, MutableType<CorpGroupUpdateInput, CorpGroup> {
+public class CorpGroupType implements SearchableEntityType<CorpGroup>, BrowsableEntityType<CorpGroup>, MutableType<CorpGroupUpdateInput, CorpGroup> {
 
     private final EntityClient _entityClient;
+    private static final Set<String> FACET_FIELDS = ImmutableSet.of("");
 
     public CorpGroupType(final EntityClient entityClient) {
         _entityClient = entityClient;
@@ -109,6 +120,27 @@ public class CorpGroupType implements SearchableEntityType<CorpGroup>, MutableTy
         final AutoCompleteResult result = _entityClient.autoComplete("corpGroup", query, Collections.emptyMap(), limit,
             context.getAuthentication());
         return AutoCompleteResultsMapper.map(result);
+    }
+
+    @Override
+    public BrowseResults browse(@Nonnull List<String> path, @Nullable List<FacetFilterInput> filters, int start,
+                                int count, @Nonnull QueryContext context) throws Exception {
+        final Map<String, String> facetFilters = ResolverUtils.buildFacetFilters(filters, FACET_FIELDS);
+        final String pathStr = path.size() > 0 ? BROWSE_PATH_DELIMITER + String.join(BROWSE_PATH_DELIMITER, path) : "";
+        final BrowseResult result = _entityClient.browse(
+            "corpGroup",
+            pathStr,
+            facetFilters,
+            start,
+            count,
+            context.getAuthentication());
+        return BrowseResultMapper.map(result);
+    }
+
+    @Override
+    public List<BrowsePath> browsePaths(@Nonnull String urn, @Nonnull QueryContext context) throws Exception {
+        final StringArray result = _entityClient.getBrowsePaths(CorpGroupUtils.getCorpGroupUrn(urn), context.getAuthentication());
+        return BrowsePathsMapper.map(result);
     }
 
     @Override
