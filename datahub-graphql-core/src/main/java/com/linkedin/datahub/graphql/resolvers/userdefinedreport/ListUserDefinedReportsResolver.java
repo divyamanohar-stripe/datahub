@@ -1,5 +1,6 @@
 package com.linkedin.datahub.graphql.resolvers.userdefinedreport;
 
+import com.codahale.metrics.Timer;
 import com.linkedin.common.UrnArray;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
@@ -12,6 +13,8 @@ import com.linkedin.datahub.graphql.generated.UserDefinedReport;
 import com.linkedin.entity.client.EntityClient;
 import com.linkedin.metadata.Constants;
 import com.linkedin.metadata.query.ListResult;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
+
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import java.util.ArrayList;
@@ -48,7 +51,7 @@ public class ListUserDefinedReportsResolver implements DataFetcher<CompletableFu
                 final Integer start = input.getStart() == null ? DEFAULT_START : input.getStart();
                 final Integer count = input.getCount() == null ? DEFAULT_COUNT : input.getCount();
 
-                try {
+                try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
                     // First, get all group Urns.
                     final ListResult gmsResult = _entityClient.list(
                             Constants.USER_DEFINED_REPORT_ENTITY_NAME,

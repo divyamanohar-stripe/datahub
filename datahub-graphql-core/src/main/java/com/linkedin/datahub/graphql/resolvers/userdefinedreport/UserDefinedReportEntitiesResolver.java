@@ -3,6 +3,7 @@ package com.linkedin.datahub.graphql.resolvers.userdefinedreport;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
+import com.codahale.metrics.Timer;
 import com.google.common.collect.ImmutableList;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.UserDefinedReport;
@@ -16,6 +17,7 @@ import com.linkedin.metadata.query.filter.ConjunctiveCriterionArray;
 import com.linkedin.metadata.query.filter.Criterion;
 import com.linkedin.metadata.query.filter.CriterionArray;
 import com.linkedin.metadata.query.filter.Filter;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
 
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -55,7 +57,7 @@ public class UserDefinedReportEntitiesResolver implements DataFetcher<Completabl
         final int count = input.getCount() != null ? input.getCount() : DEFAULT_COUNT;
 
         return CompletableFuture.supplyAsync(() -> {
-            try {
+            try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
 
                 final Criterion filterCriterion = new Criterion()
                         .setField(USER_DEFINED_REPORTS_FIELD_NAME + ".keyword")

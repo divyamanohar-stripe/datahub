@@ -1,5 +1,6 @@
 package com.linkedin.datahub.graphql.resolvers.search;
 
+import com.codahale.metrics.Timer;
 import com.linkedin.datahub.graphql.generated.EntityType;
 import com.linkedin.datahub.graphql.generated.SearchAcrossEntitiesInput;
 import com.linkedin.datahub.graphql.generated.SearchResults;
@@ -7,6 +8,8 @@ import com.linkedin.datahub.graphql.resolvers.EntityTypeMapper;
 import com.linkedin.datahub.graphql.resolvers.ResolverUtils;
 import com.linkedin.datahub.graphql.types.mappers.UrnSearchResultsMapper;
 import com.linkedin.entity.client.EntityClient;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
+
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import java.util.List;
@@ -47,7 +50,7 @@ public class SearchAcrossEntitiesResolver implements DataFetcher<CompletableFutu
     final int count = input.getCount() != null ? input.getCount() : DEFAULT_COUNT;
 
     return CompletableFuture.supplyAsync(() -> {
-      try {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
         log.debug(
             "Executing search for multiple entities: entity types {}, query {}, filters: {}, start: {}, count: {}",
             input.getTypes(), input.getQuery(), input.getFilters(), start, count);

@@ -1,5 +1,6 @@
 package com.linkedin.datahub.graphql.resolvers.search;
 
+import com.codahale.metrics.Timer;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.EntityType;
@@ -10,6 +11,7 @@ import com.linkedin.datahub.graphql.resolvers.EntityTypeMapper;
 import com.linkedin.datahub.graphql.resolvers.ResolverUtils;
 import com.linkedin.datahub.graphql.types.mappers.UrnSearchAcrossLineageResultsMapper;
 import com.linkedin.entity.client.EntityClient;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
 import com.linkedin.r2.RemoteInvocationException;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -61,7 +63,7 @@ public class SearchAcrossLineageResolver
     com.linkedin.metadata.graph.LineageDirection resolvedDirection =
         com.linkedin.metadata.graph.LineageDirection.valueOf(lineageDirection.toString());
     return CompletableFuture.supplyAsync(() -> {
-      try {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
         log.debug(
             "Executing search across relationships: source urn {}, direction {}, entity types {}, query {}, filters: {}, start: {}, count: {}",
             urn, resolvedDirection, input.getTypes(), input.getQuery(), input.getFilters(), start, count);

@@ -1,5 +1,6 @@
 package com.linkedin.datahub.graphql.resolvers.jobs;
 
+import com.codahale.metrics.Timer;
 import com.google.common.collect.ImmutableList;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
@@ -23,6 +24,7 @@ import com.linkedin.metadata.query.filter.SortCriterion;
 import com.linkedin.metadata.query.filter.SortOrder;
 import com.linkedin.metadata.search.SearchEntity;
 import com.linkedin.metadata.search.SearchResult;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
 import com.linkedin.r2.RemoteInvocationException;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -76,7 +78,7 @@ public class EntityRunsResolver implements DataFetcher<CompletableFuture<DataPro
       final List<DataProcessInstanceFilterInput> filters = input.getFilters() != null ? input.getFilters()
           : DEFAULT_FILTER;
 
-      try {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
         // Step 1: Fetch set of task runs associated with the target entity from the Search Index!
         // We use the search index so that we can easily sort by the last updated time.
         final Filter filter = buildTaskRunsEntityFilter(entityUrn, filters, direction);
