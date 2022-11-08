@@ -72,6 +72,7 @@ public class DataJobMapper implements ModelMapper<EntityResponse, DataJob> {
                 slaInfo.setWarnStartedBy(gmsSLAInfo.getWarnStartedBy());
                 slaInfo.setErrorFinishedBy(gmsSLAInfo.getErrorFinishedBy());
                 slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
+                slaInfo.setUpdateSLA(gmsSLAInfo.getUpdateSLA());
                 result.setSlaInfo(slaInfo);
             } else if (DATA_JOB_INFO_ASPECT_NAME.equals(name)) {
                 final com.linkedin.datajob.DataJobInfo gmsDataJobInfo = new com.linkedin.datajob.DataJobInfo(data);

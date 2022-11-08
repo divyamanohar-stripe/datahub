@@ -35,4 +35,9 @@ record SLAInfo {
     "fieldType": "COUNT"
   }
   warnFinishedBy: optional float
+
+  @Searchable = {
+    "fieldType": "TEXT"
+  }
+  updateSLA: optional string
 }

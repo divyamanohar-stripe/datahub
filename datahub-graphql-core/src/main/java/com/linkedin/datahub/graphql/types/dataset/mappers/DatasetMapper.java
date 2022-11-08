@@ -173,6 +173,7 @@ public class DatasetMapper implements ModelMapper<EntityResponse, Dataset> {
         slaInfo.setWarnStartedBy(gmsSLAInfo.getWarnStartedBy());
         slaInfo.setErrorFinishedBy(gmsSLAInfo.getErrorFinishedBy());
         slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
+        slaInfo.setUpdateSLA(gmsSLAInfo.getUpdateSLA());
         dataset.setSlaInfo(slaInfo);
     }
 

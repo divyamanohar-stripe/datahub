@@ -68,12 +68,13 @@ class DataJob:
     properties: Dict[str, str] = field(default_factory=dict)
 
     # NOTE: [FORK_CHANGE]
-    # We added the following 4 properties to the DataJob to create the SLAInfo aspect
+    # We added the following 5 properties to the DataJob to create the SLAInfo aspect
     sla_defined: str = "false"
     error_started_by: Optional[float] = None
     warn_started_by: Optional[float] = None
     error_finished_by: Optional[float] = None
     warn_finished_by: Optional[float] = None
+    update_sla: Optional[str] = None
 
     url: Optional[str] = None
     tags: Set[str] = field(default_factory=set)
@@ -129,6 +130,7 @@ class DataJob:
                 warnStartedBy=self.warn_started_by,
                 errorFinishedBy=self.error_finished_by,
                 warnFinishedBy=self.warn_finished_by,
+                updateSLA=self.update_sla,
             ),
             changeType=ChangeTypeClass.UPSERT,
         )

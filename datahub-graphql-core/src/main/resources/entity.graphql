@@ -4514,6 +4514,7 @@ type SLAInfo {
     errorFinishedBy: Float
     warnStartedBy: Float
     warnFinishedBy: Float
+    updateSLA: String
 }
 
 """
