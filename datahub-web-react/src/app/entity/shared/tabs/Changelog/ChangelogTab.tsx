@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
-import { Switch, Typography } from 'antd';
+import { Switch, Typography, Descriptions, Tooltip, Table } from 'antd';
 import styled from 'styled-components';
+import { InfoCircleTwoTone } from '@ant-design/icons';
 import { EntityType, LineageDirection } from '../../../../../types.generated';
-
+import TabToolbar from '../../components/styled/TabToolbar';
 import { ANTD_GRAY } from '../../constants';
-import { CurrentStyledTable, UpstreamStyledTable } from '../../components/styled/StyledTable';
 import { useEntityData } from '../../EntityContext';
 import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
 import { DataJobEntityWithVersions } from '../../types';
 import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
 /* eslint eqeqeq: 0 */
-const NameText = styled(Typography.Text)`
-    font-family: 'Roboto Mono', monospace;
-    font-weight: 600;
-    font-size: 12px;
-    color: ${ANTD_GRAY[9]};
-`;
 
 const ValueText = styled(Typography.Text)`
     font-family: 'Roboto Mono', monospace;
@@ -49,20 +43,6 @@ function getCustomProperty(customProperties, fieldName) {
     const field = customProperties?.filter((e) => e.key === fieldName)[0]?.value;
     return field;
 }
-
-const propertyTableColumns = [
-    {
-        width: 210,
-        title: 'Name',
-        dataIndex: 'key',
-        render: (name: string) => <NameText>{name}</NameText>,
-    },
-    {
-        title: 'Value',
-        dataIndex: 'value',
-        render: (value: string) => <ValueText>{value}</ValueText>,
-    },
-];
 
 function convertEpochToISO(epoch?: string) {
     if (epoch == null) return undefined;
@@ -153,39 +133,58 @@ function parseSummary(summary?: string): string | undefined {
     return summaryItems.join('\r\n');
 }
 
-function returnUIContent(entity: VersionEntity) {
+const columns = [
+    {
+        title: 'Task id',
+        dataIndex: 'task_id',
+        key: 'task_id',
+        render: renderTaskIds,
+    },
+    {
+        title: 'Author',
+        dataIndex: 'author',
+        key: 'author',
+        render: (value: string) => <ValueText>{value}</ValueText>,
+    },
+    {
+        title: 'Title',
+        dataIndex: 'title',
+        key: 'title',
+    },
+    {
+        title: 'Timestamp',
+        dataIndex: 'timestamp',
+        key: 'timestamp',
+        render: convertEpochToISO,
+    },
+    {
+        title: 'Summary',
+        dataIndex: 'summary',
+        key: 'summary',
+        render: parseSummary,
+    },
+    {
+        title: 'Affects direct upstreams only',
+        dataIndex: 'includeCurrent',
+        key: 'includeCurrent',
+        render: (includeCurrent: boolean) => (includeCurrent ? <div>No</div> : <div>Yes</div>),
+    },
+];
+
+function returnDataSource(entity: VersionEntity) {
     const { externalUrl } = entity;
     const { customProperties } = entity;
-
-    if (customProperties == null || customProperties.length === 0) return <div />;
-    const taskMeta = [
-        {
-            key: 'task id',
-            value: renderTaskIds(entity.datajobEntities),
-            __typename: 'StringMapEntry',
-        },
-        { key: 'author', value: getCustomProperty(customProperties, 'author'), __typename: 'StringMapEntry' },
-        {
-            key: 'title',
-            value: renderTitleWithExternalURL(customProperties, externalUrl),
-            __typename: 'StringMapEntry',
-        },
-        {
-            key: 'timestamp',
-            value: convertEpochToISO(getCustomProperty(customProperties, 'createdAt')),
-            __typename: 'StringMapEntry',
-        },
-        {
-            key: 'summary',
-            value: parseSummary(getCustomProperty(customProperties, 'summary')),
-            __typename: 'StringMapEntry',
-        },
-    ].filter((e) => !(e.value == null));
-    if (!entity.includeCurrentTask)
-        return (
-            <UpstreamStyledTable pagination={false} columns={propertyTableColumns} dataSource={taskMeta || undefined} />
-        );
-    return <CurrentStyledTable pagination={false} columns={propertyTableColumns} dataSource={taskMeta || undefined} />;
+    const title = renderTitleWithExternalURL(customProperties, externalUrl);
+    if (customProperties == null || customProperties.length === 0) return {};
+    const dataSource = {
+        task_id: entity.datajobEntities,
+        author: getCustomProperty(customProperties, 'author'),
+        title,
+        timestamp: getCustomProperty(customProperties, 'createdAt'),
+        summary: getCustomProperty(customProperties, 'summary'),
+        includeCurrent: entity.includeCurrentTask,
+    };
+    return dataSource;
 }
 
 export const ChangelogTab = ({
@@ -318,7 +317,7 @@ export const ChangelogTab = ({
 
     const versionArr: VersionEntity[] = versionArrMapper(versionsWithDataJobArr, versionsArr);
 
-    const UIcomponent = versionArr
+    const dataSource = versionArr
         .filter((e) => {
             return displayUpstream || e.includeCurrentTask;
         })
@@ -331,15 +330,50 @@ export const ChangelogTab = ({
                 : 0;
             return bCreatedAt - aCreatedAt;
         })
-        .map(returnUIContent);
+        .map(returnDataSource)
+        .filter((ele) => !(Object.keys(ele).length === 0));
+
+    const UIcomponent = <Table dataSource={dataSource} columns={columns} />;
+
+    const toolTip = (
+        <>
+            {'Recent Pull Requests That Affects Current Task  '}
+            <Tooltip title="The PRs listed below include those that impact the current task and its upstreams, please use the toggle to hide changes to upstream tasks">
+                <InfoCircleTwoTone />
+            </Tooltip>
+        </>
+    );
     return (
         <div>
-            <Switch
-                checkedChildren="Show Upstream"
-                unCheckedChildren="Hide Upstream"
-                checked={displayUpstream === true}
-                onChange={() => setDisplayUpstream(!displayUpstream)}
-            />
+            <TabToolbar>
+                <Descriptions
+                    title={toolTip}
+                    style={{
+                        width: '50%',
+                        marginTop: '5px',
+                        marginLeft: '20px',
+                        marginRight: '200px',
+                        display: 'inline-block',
+                    }}
+                    size="small"
+                    column={{ md: 10 }}
+                />
+                <div style={{ display: 'flex', zIndex: 1, width: '300px', padding: '7px 16px' }}>
+                    <Descriptions
+                        title="Show Upstream"
+                        size="small"
+                        column={{ md: 10 }}
+                        style={{ width: '120px', display: 'inline-block' }}
+                    />
+                    <Switch
+                        checkedChildren="On"
+                        unCheckedChildren="Off"
+                        checked={displayUpstream === true}
+                        onChange={() => setDisplayUpstream(!displayUpstream)}
+                        style={{ marginRight: '20px', display: 'inline-block' }}
+                    />
+                </div>
+            </TabToolbar>
             {UIcomponent}
         </div>
     );
