@@ -8,6 +8,7 @@ import {
     UsergroupAddOutlined,
     FolderOutlined,
     DashboardOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { Button } from 'antd';
@@ -27,6 +28,11 @@ export function AdminHeaderLinks() {
     const isIdentityManagementEnabled = config?.identityManagementConfig.enabled;
     const isIngestionEnabled = config?.managedIngestionConfig.enabled;
 
+    /* The user seems to be missing a place for teams. 
+        I thought this info was emitted but for now using just the edittable properties
+    */
+    const showTeamLink = (me && me?.corpUser.editableProperties?.teams) || false;
+    const team = me?.corpUser.editableProperties?.teams?.at(0)?.toLowerCase().split(' ').join('_');
     const showAnalytics = (isAnalyticsEnabled && me && me.platformPrivileges.viewAnalytics) || false;
     const showPolicyBuilder = (isPoliciesEnabled && me && me.platformPrivileges.managePolicies) || false;
     const showIdentityManagement =
@@ -39,6 +45,15 @@ export function AdminHeaderLinks() {
 
     return (
         <>
+            {showTeamLink && (
+                <AdminLink>
+                    <Link to={`/group/urn:li:corpGroup:${team}`}>
+                        <Button type="text">
+                            <TeamOutlined /> My Team
+                        </Button>
+                    </Link>
+                </AdminLink>
+            )}
             {showAnalytics && (
                 <AdminLink>
                     <Link to="/analytics">
