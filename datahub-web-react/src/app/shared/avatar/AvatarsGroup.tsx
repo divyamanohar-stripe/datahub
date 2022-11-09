@@ -1,8 +1,19 @@
 import React from 'react';
+import styled from 'styled-components';
+import { Link } from 'react-router-dom';
+import { Tag } from 'antd';
 import { EntityType, Owner } from '../../../types.generated';
 import CustomAvatar from './CustomAvatar';
 import EntityRegistry from '../../entity/EntityRegistry';
 import { SpacedAvatarGroup } from './SpaceAvatarGroup';
+
+const OwnerTag = styled(Tag)`
+    padding: 2px;
+    padding-right: 6px;
+    margin-bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+`;
 
 type Props = {
     owners?: Array<Owner> | null;
@@ -34,14 +45,14 @@ export default function AvatarsGroup({ owners, entityRegistry, maxCount = 6, siz
                         />
                     ) : (
                         owner.owner.__typename === 'CorpGroup' && (
-                            <CustomAvatar
-                                size={size || 28}
-                                name={entityRegistry.getDisplayName(EntityType.CorpGroup, owner.owner)}
-                                url={`/${entityRegistry.getPathName(owner.owner.type || EntityType.CorpGroup)}/${
-                                    owner.owner.urn
-                                }`}
-                                isGroup
-                            />
+                            <OwnerTag>
+                                <Link to={`/${entityRegistry.getPathName(owner.owner.type)}/${owner.owner.urn}`}>
+                                    <CustomAvatar
+                                        name={entityRegistry.getDisplayName(EntityType.CorpGroup, owner.owner)}
+                                    />
+                                    <>{entityRegistry.getDisplayName(EntityType.CorpGroup, owner.owner)}</>
+                                </Link>
+                            </OwnerTag>
                         )
                     )}
                 </div>
