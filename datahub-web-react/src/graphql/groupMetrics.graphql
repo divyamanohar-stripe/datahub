@@ -1,4 +1,10 @@
-
+fragment dataflowIconFields on DataPlatform {
+    properties {
+        type
+        displayName
+        logoUrl
+    }
+}
 
 fragment groupRunResults on DataProcessInstanceResult {
     count
@@ -27,6 +33,26 @@ fragment groupSearchResultFields on Entity {
             }
         }
         runs: runs(input: $runInput, direction: OUTGOING) {
+            ...groupRunResults
+        }
+
+    }
+    ... on DataJob {
+        type
+        urn
+        jobId
+        properties {
+            customProperties {
+                key
+                value
+            }
+        }
+        dataFlow {
+            platform {
+                ...dataflowIconFields
+            }
+        }
+        runs: runs(input: $runInput) {
             ...groupRunResults
         }
 
@@ -81,7 +107,7 @@ fragment groupRelationshipFields on EntityWithRelationships {
         }
         dataFlow {
             platform {
-                ...platformFields
+                ...dataflowIconFields
             }
         }
         ownership {
@@ -113,9 +139,12 @@ fragment teamSearchResultFields on Entity {
         downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
             ...groupFullLineageResults
         }
-
     }
-
+    ... on DataJob {
+        downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
+            ...groupFullLineageResults
+        }
+    }
 }
 
 

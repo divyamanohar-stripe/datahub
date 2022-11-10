@@ -1,7 +1,7 @@
 import React, { ErrorInfo, FC, ReactNode, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag, DatePicker, Radio, Typography, Tooltip } from 'antd';
+import { PageHeader, Table, Tag, DatePicker, Radio, Typography, Tooltip, Switch } from 'antd';
 import { orderBy } from 'lodash';
 import { DeliveredProcedureOutlined, InfoCircleTwoTone } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
@@ -19,7 +19,7 @@ interface SLAMissData {
     sla: number;
     missedBy: number;
     externalUrl: string;
-    dataset: DatasetEntity;
+    dataEnt: DataEntity;
 }
 
 enum SLAMissTypes {
@@ -29,7 +29,7 @@ enum SLAMissTypes {
     finishedBy = '[error] finished by',
 }
 
-type DatasetCustomPropertiesWithSla = {
+type DataCustomPropertiesWithSla = {
     finishedBySla?: string;
     startedBySla?: string;
     warnFinishedBySla?: string;
@@ -44,7 +44,7 @@ type RunCustomProperties = {
     externalUrl: string;
 };
 
-type DatasetRunEntity = {
+type DataRunEntity = {
     properties: {
         customProperties: {
             key: string;
@@ -54,10 +54,11 @@ type DatasetRunEntity = {
     externalUrl: string;
 };
 
-type DatasetEntity = {
-    type: 'DATASET';
+type DataEntity = {
+    type: string;
     urn: string;
-    name: string;
+    name?: string;
+    jobId?: string;
     properties?: {
         customProperties: {
             key: string;
@@ -68,10 +69,10 @@ type DatasetEntity = {
     runs?: {
         count: number;
         total: number;
-        runs: DatasetRunEntity[];
+        runs: DataRunEntity[];
     };
     totalRuns?: RunCustomProperties[];
-    slaProps?: DatasetCustomPropertiesWithSla;
+    slaProps?: DataCustomPropertiesWithSla;
 };
 
 type DownstreamTeamEntity = {
@@ -91,10 +92,10 @@ interface DownstreamTeam {
 /**
  * Check if current run has missed any of its SLAs
  * @param run the current run to examine
- * @param slaInfo SLA info set on the dataset
+ * @param slaInfo SLA info set on the data entity
  * @return a list of information about whether we missed SLA, 1=did not miss, -1=missed
  */
-function checkMetSLA(run: RunCustomProperties, slaInfo?: DatasetCustomPropertiesWithSla) {
+function checkMetSLA(run: RunCustomProperties, slaInfo?: DataCustomPropertiesWithSla) {
     // if no SLA is set, return 1 (meaning not missed)
     if (slaInfo === undefined) {
         return [1];
@@ -162,16 +163,16 @@ function formatRuns(runs: RunCustomProperties[]) {
 
 /**
  * Gather run and SLA metrics to create chart and table
- * @param datasetEntities
+ * @param dataEntities
  * @return list of [percent met SLA per day (execution date truncated to day), total percent met over all runs, list of SLAMissData objects to generate SLA miss table]
  */
-function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
+function getRunMetrics(dataEntities: DataEntity[]): [any, number, any] {
     const metSLAMetrics = new Map();
-    let missedSLADatasets: any[] = [];
-    for (let d = 0; d < datasetEntities.length; d++) {
-        const currDataset = datasetEntities[d];
-        let runs = currDataset?.totalRuns;
-        const slaInfo = currDataset?.slaProps;
+    let missedSLADataEnts: any[] = [];
+    for (let d = 0; d < dataEntities.length; d++) {
+        const currDataEnt = dataEntities[d];
+        let runs = currDataEnt?.totalRuns;
+        const slaInfo = currDataEnt?.slaProps;
         if (runs !== undefined) {
             runs = formatRuns(runs);
             for (let r = 0; r < runs.length; r++) {
@@ -196,10 +197,10 @@ function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
                         sla: convertSecsToHumanReadable(+metSLAInfo[2]),
                         missedBy: convertSecsToHumanReadable(+metSLAInfo[3]),
                         externalUrl: currRun.externalUrl,
-                        dataset: currDataset,
+                        dataEnt: currDataEnt,
                         state: currRun.state,
                     };
-                    missedSLADatasets.push(missedSLAData);
+                    missedSLADataEnts.push(missedSLAData);
                 } else if (metSLA > 0) {
                     if (metSLAMetrics.has(execDateTruncated)) {
                         metSLAMetrics.set(execDateTruncated, [
@@ -225,8 +226,8 @@ function getRunMetrics(datasetEntities: DatasetEntity[]): [any, number, any] {
     percentMetData = orderBy(percentMetData, 'date');
     // get total percentage of met SLA runs over all runs
     const percentMetVal = +((metSLANumber / (metSLANumber + missedSLANumber)) * 100.0).toFixed(2);
-    missedSLADatasets = orderBy(missedSLADatasets, 'executionDate', 'desc');
-    return [percentMetData, percentMetVal, missedSLADatasets];
+    missedSLADataEnts = orderBy(missedSLADataEnts, 'executionDate', 'desc');
+    return [percentMetData, percentMetVal, missedSLADataEnts];
 }
 
 /**
@@ -291,16 +292,18 @@ function renderSLAChart(data) {
     return <Line style={{ marginLeft: '20px', marginRight: '30px' }} {...config} />;
 }
 
-function renderSLAMissTable(data: SLAMissData[]) {
+function renderSLAMissTable(data: SLAMissData[], useDatasetType: boolean) {
+    const dataTitle = useDatasetType ? 'Dataset' : 'Data Job';
+    console.log(dataTitle);
     const columns = [
         {
             title: 'Execution Date',
             dataIndex: 'executionDate',
         },
         {
-            title: 'Dataset',
-            dataIndex: 'dataset',
-            render: (dataset) => <CompactEntityNameList entities={[dataset]} />,
+            title: `${dataTitle}`,
+            dataIndex: 'dataEnt',
+            render: (dataEnt) => <CompactEntityNameList entities={[dataEnt]} />,
         },
         {
             title: 'State',
@@ -363,10 +366,10 @@ function getOwnerName(ownership) {
     return ['No Team Defined', undefined, idx, undefined];
 }
 
-function getDownstreamTeams(datasetEntities: DownstreamTeamEntity[], urn) {
+function getDownstreamTeams(dataEntities: DownstreamTeamEntity[], urn) {
     let teamMap: DownstreamTeam[] = [];
-    for (let i = 0; i < datasetEntities.length; i++) {
-        const downstreams = datasetEntities[i].downstream.relationships;
+    for (let i = 0; i < dataEntities.length; i++) {
+        const downstreams = dataEntities[i].downstream.relationships;
         for (let d = 0; d < downstreams.length; d++) {
             const currDownstream = downstreams[d].entity;
             const teamInfo = getOwnerName(currDownstream.ownership);
@@ -462,14 +465,21 @@ function renderDownstreamTeamsTable(downstreamTeams: DownstreamTeam[]) {
     );
 }
 
-function renderHeader(teamSLAPercent: number, logicalBeginningDate, logicalEndDate, setReportDates) {
+function renderHeader(
+    teamSLAPercent: number,
+    logicalBeginningDate,
+    logicalEndDate,
+    setReportDates,
+    useDatasetType: boolean,
+) {
     const color = teamSLAPercent < 95 ? 'red' : 'green';
     const tag = <Tag color={color}>{teamSLAPercent.toString(10)} %</Tag>;
     const subtitle = <>{tag} over the selected time range</>;
+    const dataType = useDatasetType ? 'Datasets' : 'Data Jobs';
     const toolTip = (
         <>
-            {"How often did my team's datasets meet SLA? "}
-            <Tooltip title="This metric only displays datasets with SLAs defined">
+            {`How often did my team's ${dataType} meet SLA? `}
+            <Tooltip title={`This metric only uses ${dataType} with SLAs defined`}>
                 <InfoCircleTwoTone />
             </Tooltip>
         </>
@@ -537,10 +547,12 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { errorInfo
 
 interface TopDownstreamTeamsProps {
     urn: string;
+    useDatasetType: boolean;
 }
 
-const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
+const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn, useDatasetType }) => {
     const maxEntityCount = 1000;
+    const types = useDatasetType ? [EntityType.Dataset] : [EntityType.DataJob];
     const { data, loading } = useGetDownstreamTeamsQuery({
         variables: {
             input: {
@@ -549,7 +561,7 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
                     { field: 'owners', value: urn },
                     { field: 'slaDefined', value: 'true' },
                 ],
-                types: [EntityType.Dataset],
+                types,
                 start: 0,
                 count: maxEntityCount,
             },
@@ -559,13 +571,14 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
     if (loading) {
         return loadingPage;
     }
-    const datasetEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as DownstreamTeamEntity[];
-    const downstreamTeams = getDownstreamTeams(datasetEntities, urn);
+    const dataEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as DownstreamTeamEntity[];
+    const downstreamTeams = getDownstreamTeams(dataEntities, urn);
     console.log('downstream teams', downstreamTeams);
 
+    const dataType = useDatasetType ? 'Datasets' : 'Data Jobs';
     return (
         <>
-            <PageHeader title="Top Downstream Teams for Datasets with SLAs Defined" />
+            <PageHeader title={`Top Downstream Teams for ${dataType} with SLAs Defined`} />
             {renderDownstreamTeamsTable(downstreamTeams)}
         </>
     );
@@ -573,9 +586,10 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn }) => {
 
 interface GroupRunMetricsProps {
     urn: string;
+    useDatasetType: boolean;
 }
 
-const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
+const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn, useDatasetType }) => {
     const maxEntityCount = 1000;
     const maxRunCount = 1000;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
@@ -587,6 +601,7 @@ const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
         setLogicalBeginningDate(dates[0].toDate().getTime());
         setLogicalEndDate(dates[1].toDate().getTime());
     };
+    const types = useDatasetType ? [EntityType.Dataset] : [EntityType.DataJob];
 
     const { data, loading } = useGetGroupRunMetricsQuery({
         variables: {
@@ -596,7 +611,7 @@ const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
                     { field: 'owners', value: urn },
                     { field: 'slaDefined', value: 'true' },
                 ],
-                types: [EntityType.Dataset],
+                types,
                 start: 0,
                 count: maxEntityCount,
             },
@@ -621,45 +636,45 @@ const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn }) => {
         return loadingPage;
     }
 
-    const datasetEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as DatasetEntity[];
+    const dataEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as DataEntity[];
 
-    datasetEntities.map((dataset) => {
-        const customProps = dataset.properties?.customProperties?.reduce(
+    dataEntities.map((dataEnt) => {
+        const customProps = dataEnt.properties?.customProperties?.reduce(
             (acc, e) => ({ ...acc, [e.key]: e.value }),
             {},
-        ) as DatasetCustomPropertiesWithSla;
-        const currDataset = dataset;
-        currDataset.slaProps = customProps;
-        return currDataset;
+        ) as DataCustomPropertiesWithSla;
+        const currDataEnt = dataEnt;
+        currDataEnt.slaProps = customProps;
+        return currDataEnt;
     });
 
-    datasetEntities.map((dataset) => {
-        const runInfo = dataset.runs?.runs.map((datasetRunEntity) => {
-            const currRun = datasetRunEntity.properties?.customProperties?.reduce(
+    dataEntities.map((dataEnt) => {
+        const runInfo = dataEnt.runs?.runs.map((dataRunEntity) => {
+            const currRun = dataRunEntity.properties?.customProperties?.reduce(
                 (acc, e) => ({ ...acc, [e.key]: e.value }),
                 {},
             ) as RunCustomProperties;
-            currRun.externalUrl = datasetRunEntity.externalUrl;
+            currRun.externalUrl = dataRunEntity.externalUrl;
             return currRun;
         });
-        const currDataset = dataset;
-        currDataset.totalRuns = runInfo;
-        return currDataset;
+        const currDataEnt = dataEnt;
+        currDataEnt.totalRuns = runInfo;
+        return currDataEnt;
     });
 
-    console.log('DATA', urn, datasetEntities);
-    const metSLAData = getRunMetrics(datasetEntities);
+    console.log('DATA', urn, dataEntities);
+    const metSLAData = getRunMetrics(dataEntities);
     const chartData = metSLAData[0];
     const teamSLAPercent = metSLAData[1];
-    const missedSLADatasets = metSLAData[2];
-    console.log(missedSLADatasets);
+    const missedSLADataEnts = metSLAData[2];
+    console.log(missedSLADataEnts);
 
     return (
         <>
-            {renderHeader(teamSLAPercent, logicalBeginningDate, logicalEndDate, setReportDates)}
+            {renderHeader(teamSLAPercent, logicalBeginningDate, logicalEndDate, setReportDates, useDatasetType)}
             {renderSLAChart(chartData)}
             <PageHeader title="Recent SLA Misses" />
-            {renderSLAMissTable(missedSLADatasets)}
+            {renderSLAMissTable(missedSLADataEnts, useDatasetType)}
         </>
     );
 };
@@ -669,13 +684,44 @@ interface GroupMetricsPageProps {
 }
 
 export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
+    // const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
+    const [useDatasetType, setDataType] = useState(true);
+    const onSwitchChange = (checked: boolean) => {
+        setDataType(checked);
+    };
+
     return (
         <>
             <ErrorBoundary>
-                <GroupRunMetrics urn={urn} />
+                <span
+                    style={{
+                        marginLeft: '20px',
+                        marginTop: '20px',
+                        color: useDatasetType ? 'gray' : 'cornflowerblue',
+                        display: 'inline-block',
+                    }}
+                >
+                    Data Job View
+                </span>
+                <Switch
+                    defaultChecked
+                    onChange={onSwitchChange}
+                    style={{ marginLeft: '20px', backgroundColor: 'cornflowerblue' }}
+                />
+                <span
+                    style={{
+                        marginLeft: '20px',
+                        marginTop: '20px',
+                        color: useDatasetType ? 'cornflowerblue' : 'gray',
+                        display: 'inline-block',
+                    }}
+                >
+                    Dataset View
+                </span>
+                <GroupRunMetrics urn={urn} useDatasetType={useDatasetType} />
             </ErrorBoundary>
             <ErrorBoundary>
-                <TopDownstreamTeams urn={urn} />
+                <TopDownstreamTeams urn={urn} useDatasetType={useDatasetType} />
             </ErrorBoundary>
         </>
     );
