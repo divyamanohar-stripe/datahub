@@ -685,7 +685,7 @@ interface GroupMetricsPageProps {
 
 export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
     // const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
-    const [useDatasetType, setDataType] = useState(true);
+    const [useDatasetType, setDataType] = useState(false);
     const onSwitchChange = (checked: boolean) => {
         setDataType(checked);
     };
@@ -703,11 +703,7 @@ export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
                 >
                     Data Job View
                 </span>
-                <Switch
-                    defaultChecked
-                    onChange={onSwitchChange}
-                    style={{ marginLeft: '20px', backgroundColor: 'cornflowerblue' }}
-                />
+                <Switch onChange={onSwitchChange} style={{ marginLeft: '20px', backgroundColor: 'cornflowerblue' }} />
                 <span
                     style={{
                         marginLeft: '20px',

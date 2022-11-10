@@ -42,6 +42,7 @@ fragment groupSearchResultFields on Entity {
         urn
         jobId
         properties {
+            name
             customProperties {
                 key
                 value
