@@ -17,7 +17,7 @@ jenkins_jobs:
         push:
           enabled: true
           repo: stripe/stripe-private-oss-forks/datahub
-          responsible_team: schema-and-query
+          responsible_team: data-governance
     network:
       http_proxy_verbose: true
       http_proxy_report_only: true

@@ -3,8 +3,8 @@ availability_tier: A300
 repo: stripe-private-oss-forks/datahub
 description: "DataHub Frontend service"
 contact:
-  responsible_team: schema-and-query
-  slack_channel: data-platform
+  responsible_team: data-governance
+  slack_channel: data-governance-run
 kubernetes:
   template: "henson/kube/datahub-frontend.sky"
 container_images:
