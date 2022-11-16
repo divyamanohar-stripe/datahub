@@ -40,6 +40,7 @@ class Incident:
     id: str
     urn: str = field(init=False)
     group_owners: Set[str] = field(default_factory=set)
+    name: Optional[str] = None
     description: Optional[str] = None
     summary: Optional[str] = None
     resolution: Optional[str] = None
@@ -76,6 +77,7 @@ class Incident:
             entityUrn=str(self.urn),
             aspectName="incidentProperties",
             aspect=IncidentProperties(
+                name=self.name,
                 description=self.description,
                 summary=self.summary,
                 resolution=self.resolution,
@@ -113,11 +115,11 @@ class Incident:
         :param emitter: Datahub Emitter to emit the proccess event
         :param callback: The callback method for KafkaEmitter if it is used
         """
-    for mcp in self.generate_mcp():
-        if type(emitter).__name__ == "DatahubKafkaEmitter":
-            assert callback is not None
-            kafka_emitter = cast("DatahubKafkaEmitter", emitter)
-            kafka_emitter.emit(mcp, callback)
-        else:
-            rest_emitter = cast("DatahubRestEmitter", emitter)
-            rest_emitter.emit(mcp)
+        for mcp in self.generate_mcp():
+            if type(emitter).__name__ == "DatahubKafkaEmitter":
+                assert callback is not None
+                kafka_emitter = cast("DatahubKafkaEmitter", emitter)
+                kafka_emitter.emit(mcp, callback)
+            else:
+                rest_emitter = cast("DatahubRestEmitter", emitter)
+                rest_emitter.emit(mcp)
