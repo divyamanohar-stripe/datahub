@@ -1,0 +1,22 @@
+query getIncident($urn: String!) {
+    incident(urn: $urn) {
+        id
+        urn
+        ownership {
+            ...ownershipFields
+        }
+        properties {
+            name
+            description
+            summary
+            resolution
+            reporter
+            severity
+            state
+            reportLink
+            openedAt
+            resolvedAt
+            closedAt
+        }
+    }
+}

@@ -42,6 +42,7 @@ public class Constants {
   public static final String SECRETS_ENTITY_NAME = "dataHubSecret";
   public static final String EXECUTION_REQUEST_ENTITY_NAME = "dataHubExecutionRequest";
   public static final String NOTEBOOK_ENTITY_NAME = "notebook";
+  public static final String INCIDENT_ENTITY_NAME = "incident";
 
 
   /**
@@ -197,6 +198,10 @@ public class Constants {
   public static final String EXECUTION_REQUEST_INPUT_ASPECT_NAME = "dataHubExecutionRequestInput";
   public static final String EXECUTION_REQUEST_SIGNAL_ASPECT_NAME = "dataHubExecutionRequestSignal";
   public static final String EXECUTION_REQUEST_RESULT_ASPECT_NAME = "dataHubExecutionRequestResult";
+
+  // Incident
+  public static final String INCIDENT_KEY_ASPECT_NAME = "incidentKey";
+  public static final String INCIDENT_PROPERTIES_ASPECT_NAME = "incidentProperties";
 
   /**
    * User Status

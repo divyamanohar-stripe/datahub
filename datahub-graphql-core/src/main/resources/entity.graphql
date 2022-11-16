@@ -85,6 +85,11 @@ type Query {
     userDefinedReport(urn: String!): UserDefinedReport
 
     """
+    Fetch an Incident by primary key (urn)
+    """
+    incident(urn: String!): Incident
+
+    """
     Fetch an Assertion by primary key (urn)
     """
     assertion(urn: String!): Assertion
@@ -482,6 +487,11 @@ enum EntityType {
     An instance of an individual run of a data job or data flow
     """
     DATA_PROCESS_INSTANCE
+
+    """
+    A DataHub Incident
+    """
+    INCIDENT
 }
 
 """
@@ -7727,6 +7737,103 @@ type ListUserDefinedReportsResult {
   The user defined reports themselves
   """
   userDefinedReports: [UserDefinedReport!]!
+}
+
+"""
+An incident entity providing metadata about incidents
+"""
+type Incident implements Entity {
+    """
+    The primary key of the Incident
+    """
+    urn: String!
+
+    """
+    A standard Entity Type
+    """
+    type: EntityType!
+
+    """
+    Id of the user defined report
+    """
+    id: String!
+
+    """
+    Properties about a user defined report
+    """
+    properties: IncidentProperties
+
+    """
+    Ownership metadata of the Incident
+    """
+    ownership: Ownership
+
+    """
+    Edges extending from this entity
+    """
+    relationships(input: RelationshipsInput!): EntityRelationshipsResult
+}
+
+
+"""
+Properties about an Incident
+"""
+type IncidentProperties {
+  """
+  Display name of the Incident
+  """
+  name: String!
+
+  """
+  Description of the Incident
+  """
+  description: String
+
+  """
+  Summary of the Incident
+  """
+  summary: String
+
+  """
+  Resolution of the Incident
+  """
+  resolution: String
+
+  """
+  Reporter of the Incident
+  """
+  reporter: String
+
+  """
+  Severity of the Incident
+  """
+  severity: String
+
+  """
+  State of the Incident
+  """
+  state: String
+
+  """
+  Report link of the Incident
+  """
+  reportLink: String
+
+  """
+  Time the Incident was opened
+  """
+  openedAt: Long
+
+  """
+  Time the Incident was resolved
+  """
+  resolvedAt: Long
+
+  """
+  Time the Incident was closed
+  """
+  closedAt: Long
+
 }
 
 enum HealthStatus {

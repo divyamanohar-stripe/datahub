@@ -1,0 +1,82 @@
+namespace com.linkedin.incident
+
+import com.linkedin.common.Time
+
+/**
+ * Information about an Incident
+ */
+@Aspect = {
+  "name": "incidentProperties"
+}
+record IncidentProperties {
+
+  /**
+   * Display name of the Incident
+   */
+  @Searchable = {
+    "fieldType": "TEXT_PARTIAL",
+    "enableAutocomplete": true,
+    "boostScore": 10.0
+  }
+  name: string
+
+  /**
+   * Description of the Incident
+   */
+  description: optional string
+
+  /**
+   * Summary of the Incident
+   */
+  summary: optional string
+
+  /**
+   * Resolution of the Incident
+   */
+  resolution: optional string
+
+  /**
+   * Reporter of the Incident
+   */
+  reporter: optional string
+
+  /**
+   * Severity of the Incident
+   */
+  severity: optional string
+
+  /**
+   * state of the Incident
+   */
+  state: optional string
+
+  /**
+   * report link of the Incident
+   */
+  reportLink: optional string
+
+  /**
+   * The time the Incident was opened
+   */
+  @Searchable = {
+    "fieldType": "COUNT"
+  }
+  openedAt: optional Time
+
+  /**
+   * The time the Incident was resolved
+   */
+  @Searchable = {
+    "fieldType": "COUNT"
+  }
+  resolvedAt: optional Time
+
+  /**
+   * The time the Incident was closed
+   */
+  @Searchable = {
+    "fieldType": "COUNT"
+  }
+  closedAt: optional Time
+
+}

@@ -221,4 +221,10 @@ entities:
     aspects:
       - userDefinedReportProperties
       - ownership
+  - name: incident
+    doc: An incident that occured.
+    keyAspect: incidentKey
+    aspects:
+      - incidentProperties
+      - ownership
 events:

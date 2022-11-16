@@ -31,6 +31,7 @@ public class SearchUtils {
           EntityType.CONTAINER,
           EntityType.DOMAIN,
           EntityType.USER_DEFINED_REPORT,
+          EntityType.INCIDENT,
           EntityType.NOTEBOOK);
 
   /**

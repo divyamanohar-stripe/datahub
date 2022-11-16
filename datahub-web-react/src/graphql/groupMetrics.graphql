@@ -164,3 +164,42 @@ query getDownstreamTeams($input: SearchAcrossEntitiesInput!) {
         ...teamSearchResults
     }
 }
+
+fragment groupSearchResultFieldsIncidents on Entity {
+    urn
+    ... on Incident {
+        id
+        urn
+        properties {
+            name
+            description
+            summary
+            resolution
+            reporter
+            severity
+            state
+            reportLink
+            openedAt
+            resolvedAt
+            closedAt
+        }
+
+    }
+}
+
+
+fragment groupSearchResultsIncidents on SearchResults {
+    count
+    total
+    searchResults {
+        entity {
+            ...groupSearchResultFieldsIncidents
+        }
+    }
+}
+
+query getGroupIncidents($input: SearchAcrossEntitiesInput!) {
+    searchAcrossEntities(input: $input) {
+        ...groupSearchResultsIncidents
+    }
+}

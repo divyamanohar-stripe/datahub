@@ -1,0 +1,14 @@
+namespace com.linkedin.metadata.key
+
+/**
+ * Key for incident.
+ */
+@Aspect = {
+  "name": "incidentKey"
+}
+record IncidentKey {
+  /**
+  * A unique id for the incident. Should be separate from the name used for displaying an Incident.
+  */
+  id: string
+}

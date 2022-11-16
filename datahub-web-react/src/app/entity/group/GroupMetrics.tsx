@@ -1,14 +1,20 @@
 import React, { ErrorInfo, FC, ReactNode, useState } from 'react';
 import moment from 'moment-timezone';
 import { Line } from '@ant-design/plots';
-import { PageHeader, Table, Tag, DatePicker, Radio, Typography, Tooltip, Switch } from 'antd';
+import { DatePicker, PageHeader, Radio, Switch, Table, Tag, Tooltip, Typography } from 'antd';
 import { orderBy } from 'lodash';
-import { DeliveredProcedureOutlined, InfoCircleTwoTone } from '@ant-design/icons';
+import { DeliveredProcedureOutlined, InfoCircleTwoTone, AlertOutlined } from '@ant-design/icons';
 import { CompactEntityNameList } from '../../recommendations/renderer/component/CompactEntityNameList';
 import { convertSecsToHumanReadable } from '../shared/stripe-utils';
 import { ExternalUrlLink, loadingPage } from '../userDefinedReport/profile/SharedContent';
-import { useGetGroupRunMetricsQuery, useGetDownstreamTeamsQuery } from '../../../graphql/groupMetrics.generated';
-import { EntityType, CorpGroup, DataProcessInstanceFilterInputType } from '../../../types.generated';
+import {
+    useGetDownstreamTeamsQuery,
+    useGetGroupIncidentsQuery,
+    useGetGroupRunMetricsQuery,
+} from '../../../graphql/groupMetrics.generated';
+import { CorpGroup, DataProcessInstanceFilterInputType, EntityType } from '../../../types.generated';
+import { EntityPreviewTag } from '../../recommendations/renderer/component/EntityPreviewTag';
+import { urlEncodeUrn } from '../shared/utils';
 
 const { RangePicker } = DatePicker;
 const { Title } = Typography;
@@ -77,6 +83,26 @@ type DataEntity = {
 
 type DownstreamTeamEntity = {
     downstream: { relationships: any[] };
+};
+
+type IncidentEntity = {
+    id: string;
+    urn: string;
+    ownership?: any[];
+    properties?: {
+        name?: string;
+        description?: string;
+        summary?: string;
+        severity?: string;
+        state?: string;
+        openedAt?: number;
+    };
+    name?: string;
+    description?: string;
+    summary?: string;
+    severity?: string;
+    state?: string;
+    openedAt?: number;
 };
 
 interface DownstreamTeam {
@@ -545,6 +571,99 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { errorInfo
     }
 }
 
+function renderIncidentTable(incidents: IncidentEntity[]) {
+    const columns = [
+        {
+            title: 'Date Opened',
+            dataIndex: 'openedAt',
+            render: (openedAt) => {
+                return openedAt !== undefined && openedAt !== null ? new Date(openedAt).toDateString() : '';
+            },
+        },
+        {
+            title: 'Name',
+            render: (incidentEntity) => {
+                return (
+                    <EntityPreviewTag
+                        displayName={incidentEntity?.name}
+                        url={`/incident/${urlEncodeUrn(incidentEntity.urn)}`}
+                        platformLogoUrl={undefined}
+                        logoComponent={<AlertOutlined />}
+                    />
+                );
+            },
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+        },
+        {
+            title: 'Summary',
+            dataIndex: 'summary',
+        },
+        {
+            title: 'State',
+            dataIndex: 'state',
+        },
+        {
+            title: 'Severity',
+            dataIndex: 'severity',
+        },
+    ];
+    return (
+        <Table
+            style={{ marginLeft: '20px', marginRight: '30px' }}
+            rowKey="teamName"
+            columns={columns}
+            dataSource={incidents}
+            size="small"
+        />
+    );
+}
+
+interface IncidentProps {
+    urn: string;
+}
+
+const TeamIncidents: FC<IncidentProps> = ({ urn }) => {
+    const maxEntityCount = 50;
+    const { data, loading } = useGetGroupIncidentsQuery({
+        variables: {
+            input: {
+                query: '*',
+                filters: [{ field: 'owners', value: urn }],
+                types: [EntityType.Incident],
+                start: 0,
+                count: maxEntityCount,
+            },
+        },
+    });
+
+    if (loading) {
+        return loadingPage;
+    }
+    let incidentEntities = data?.searchAcrossEntities?.searchResults?.map((e) => e.entity) as IncidentEntity[];
+    incidentEntities.map((incident) => {
+        const currIncident = incident;
+        currIncident.name = currIncident?.properties?.name;
+        currIncident.description = currIncident?.properties?.description;
+        currIncident.state = currIncident?.properties?.state;
+        currIncident.openedAt = currIncident?.properties?.openedAt;
+        currIncident.summary = currIncident?.properties?.summary;
+        currIncident.severity = currIncident?.properties?.severity;
+        return currIncident;
+    });
+    incidentEntities = orderBy(incidentEntities, 'openedAt', 'desc');
+    console.log('incidents', incidentEntities);
+
+    return (
+        <>
+            <PageHeader title="Recent Incidents" />
+            {renderIncidentTable(incidentEntities)}
+        </>
+    );
+};
+
 interface TopDownstreamTeamsProps {
     urn: string;
     useDatasetType: boolean;
@@ -715,6 +834,9 @@ export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
                     Dataset View
                 </span>
                 <GroupRunMetrics urn={urn} useDatasetType={useDatasetType} />
+            </ErrorBoundary>
+            <ErrorBoundary>
+                <TeamIncidents urn={urn} />
             </ErrorBoundary>
             <ErrorBoundary>
                 <TopDownstreamTeams urn={urn} useDatasetType={useDatasetType} />

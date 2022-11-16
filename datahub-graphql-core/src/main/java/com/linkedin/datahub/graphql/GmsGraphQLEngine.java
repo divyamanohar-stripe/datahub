@@ -37,6 +37,7 @@ import com.linkedin.datahub.graphql.generated.InstitutionalMemoryMetadata;
 import com.linkedin.datahub.graphql.generated.LineageRelationship;
 import com.linkedin.datahub.graphql.generated.ListDomainsResult;
 import com.linkedin.datahub.graphql.generated.ListUserDefinedReportsResult;
+import com.linkedin.datahub.graphql.generated.Incident;
 import com.linkedin.datahub.graphql.generated.MLFeature;
 import com.linkedin.datahub.graphql.generated.MLFeatureProperties;
 import com.linkedin.datahub.graphql.generated.MLFeatureTable;
@@ -160,6 +161,7 @@ import com.linkedin.datahub.graphql.types.dataset.DatasetType;
 import com.linkedin.datahub.graphql.types.dataset.mappers.DatasetProfileMapper;
 import com.linkedin.datahub.graphql.types.domain.DomainType;
 import com.linkedin.datahub.graphql.types.glossary.GlossaryTermType;
+import com.linkedin.datahub.graphql.types.incident.IncidentType;
 import com.linkedin.datahub.graphql.types.mlmodel.MLFeatureTableType;
 import com.linkedin.datahub.graphql.types.mlmodel.MLFeatureType;
 import com.linkedin.datahub.graphql.types.mlmodel.MLModelGroupType;
@@ -256,6 +258,7 @@ public class GmsGraphQLEngine {
     private final UserDefinedReportType userDefinedReportType;
     private final NotebookType notebookType;
     private final AssertionType assertionType;
+    private final IncidentType incidentType;
 
 
     /**
@@ -361,6 +364,7 @@ public class GmsGraphQLEngine {
         this.userDefinedReportType = new UserDefinedReportType(entityClient);
         this.notebookType = new NotebookType(entityClient);
         this.assertionType = new AssertionType(entityClient);
+        this.incidentType = new IncidentType(entityClient);
 
         // Init Lists
         this.entityTypes = ImmutableList.of(
@@ -383,7 +387,8 @@ public class GmsGraphQLEngine {
             notebookType,
             domainType,
             userDefinedReportType,
-            assertionType
+            assertionType,
+            incidentType
         );
         this.loadableTypes = new ArrayList<>(entityTypes);
         this.ownerTypes = ImmutableList.of(corpUserType, corpGroupType);
@@ -518,6 +523,7 @@ public class GmsGraphQLEngine {
         configureDomainResolvers(builder);
         configureUserDefinedReportResolvers(builder);
         configureAssertionResolvers(builder);
+        configureIncidentResolvers(builder);
         configurePolicyResolvers(builder);
         configureDataProcessInstanceResolvers(builder);
     }
@@ -651,6 +657,9 @@ public class GmsGraphQLEngine {
                             (env) -> env.getArgument(URN_FIELD_NAME))))
             .dataFetcher("assertion", new AuthenticatedResolver<>(
                 new LoadableTypeResolver<>(assertionType,
+                    (env) -> env.getArgument(URN_FIELD_NAME))))
+            .dataFetcher("incident", new AuthenticatedResolver<>(
+                new LoadableTypeResolver<>(incidentType,
                     (env) -> env.getArgument(URN_FIELD_NAME))))
             .dataFetcher("listPolicies",
                 new ListPoliciesResolver(this.entityClient))
@@ -1371,6 +1380,11 @@ public class GmsGraphQLEngine {
                 new EntityRelationshipsResultResolver(graphClient)
             ))
         );
+    }
+
+    private void configureIncidentResolvers(final RuntimeWiring.Builder builder) {
+        builder.type("Incident", typeWiring -> typeWiring.dataFetcher("relationships",
+            new AuthenticatedResolver<>(new EntityRelationshipsResultResolver(graphClient))));
     }
 
     private void configureAssertionResolvers(final RuntimeWiring.Builder builder) {

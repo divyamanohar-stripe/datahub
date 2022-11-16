@@ -32,6 +32,7 @@ public class EntityTypeMapper {
           .put(EntityType.CONTAINER, "container")
           .put(EntityType.DOMAIN, "domain")
           .put(EntityType.USER_DEFINED_REPORT, "userDefinedReport")
+          .put(EntityType.INCIDENT, "incident")
           .put(EntityType.NOTEBOOK, "notebook")
           .build();
 

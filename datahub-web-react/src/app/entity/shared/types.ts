@@ -26,6 +26,7 @@ import {
     StringMapEntry,
     SubTypes,
     UserDefinedReport,
+    Incident,
 } from '../../../types.generated';
 import { FetchedEntity } from '../../lineage/types';
 
@@ -59,6 +60,7 @@ export type GenericEntityProperties = {
     ownership?: Maybe<Ownership>;
     domain?: Maybe<Domain>;
     userDefinedReports?: Maybe<UserDefinedReport[]>;
+    incident?: Maybe<Incident>;
     platform?: Maybe<DataPlatform>;
     customProperties?: Maybe<StringMapEntry[]>;
     institutionalMemory?: Maybe<InstitutionalMemory>;

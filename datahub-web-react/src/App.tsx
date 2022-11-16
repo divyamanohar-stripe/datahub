@@ -31,6 +31,7 @@ import { MLModelGroupEntity } from './app/entity/mlModelGroup/MLModelGroupEntity
 import { DomainEntity } from './app/entity/domain/DomainEntity';
 import { ContainerEntity } from './app/entity/container/ContainerEntity';
 import { UserDefinedReportEntity } from './app/entity/userDefinedReport/UserDefinedReportEntity';
+import { IncidentEntity } from './app/entity/incident/IncidentEntity';
 import { loadLocalMockGraphQL } from './utils/local-dev-utils/loadLocalMockGraphQL';
 import { LocalDevLink } from './utils/local-dev-utils/LocalDevLink';
 
@@ -105,6 +106,7 @@ const App: React.VFC = () => {
         register.register(new MLModelGroupEntity());
         register.register(new DomainEntity());
         register.register(new UserDefinedReportEntity());
+        register.register(new IncidentEntity());
         register.register(new ContainerEntity());
         return register;
     }, []);

@@ -284,6 +284,17 @@ fragment searchResultFields on Entity {
             ...ownershipFields
         }
     }
+    ... on Incident {
+        urn
+        properties {
+            name
+            description
+            state
+        }
+        ownership {
+            ...ownershipFields
+        }
+    }
     ... on Container {
         urn
         properties {
