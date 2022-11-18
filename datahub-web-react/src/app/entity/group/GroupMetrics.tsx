@@ -623,9 +623,11 @@ function renderIncidentTable(incidents: IncidentEntity[]) {
 
 interface IncidentProps {
     urn: string;
+    logicalBeginningDate: number;
+    logicalEndDate: number;
 }
 
-const TeamIncidents: FC<IncidentProps> = ({ urn }) => {
+const TeamIncidents: FC<IncidentProps> = ({ urn, logicalBeginningDate, logicalEndDate }) => {
     const maxEntityCount = 50;
     const { data, loading } = useGetGroupIncidentsQuery({
         variables: {
@@ -658,6 +660,9 @@ const TeamIncidents: FC<IncidentProps> = ({ urn }) => {
         currIncident.severity = currIncident?.properties?.severity;
         return currIncident;
     });
+    incidentEntities = incidentEntities.filter(
+        (incident) => (incident.openedAt ?? 0) > logicalBeginningDate && (incident.openedAt ?? 0) < logicalEndDate,
+    );
     incidentEntities = orderBy(incidentEntities, 'openedAt', 'desc');
     console.log('incidents', incidentEntities);
 
@@ -711,15 +716,22 @@ const TopDownstreamTeams: FC<TopDownstreamTeamsProps> = ({ urn, useDatasetType }
 interface GroupRunMetricsProps {
     urn: string;
     useDatasetType: boolean;
+    logicalBeginningDate: number;
+    logicalEndDate: number;
+    setLogicalBeginningDate;
+    setLogicalEndDate;
 }
 
-const GroupRunMetrics: FC<GroupRunMetricsProps> = ({ urn, useDatasetType }) => {
+const GroupRunMetrics: FC<GroupRunMetricsProps> = ({
+    urn,
+    useDatasetType,
+    logicalBeginningDate,
+    logicalEndDate,
+    setLogicalBeginningDate,
+    setLogicalEndDate,
+}) => {
     const maxEntityCount = 1000;
     const maxRunCount = 1000;
-    const initialEndDate = moment.utc().startOf('day').toDate().getTime();
-    const initialBeginningDate = moment.utc().startOf('day').subtract(7, 'day').toDate().getTime();
-    const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
-    const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
 
     const setReportDates = (dates) => {
         setLogicalBeginningDate(dates[0].toDate().getTime());
@@ -813,6 +825,10 @@ export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
     const onSwitchChange = (checked: boolean) => {
         setDataType(checked);
     };
+    const initialEndDate = moment.utc().startOf('day').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('day').subtract(7, 'day').toDate().getTime();
+    const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
+    const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
 
     return (
         <>
@@ -838,10 +854,17 @@ export const GroupMetricsPage: FC<GroupMetricsPageProps> = ({ urn }) => {
                 >
                     Dataset View
                 </span>
-                <GroupRunMetrics urn={urn} useDatasetType={useDatasetType} />
+                <GroupRunMetrics
+                    urn={urn}
+                    useDatasetType={useDatasetType}
+                    logicalBeginningDate={logicalBeginningDate}
+                    logicalEndDate={logicalEndDate}
+                    setLogicalBeginningDate={setLogicalBeginningDate}
+                    setLogicalEndDate={setLogicalEndDate}
+                />
             </ErrorBoundary>
             <ErrorBoundary>
-                <TeamIncidents urn={urn} />
+                <TeamIncidents urn={urn} logicalBeginningDate={logicalBeginningDate} logicalEndDate={logicalEndDate} />
             </ErrorBoundary>
             <ErrorBoundary>
                 <TopDownstreamTeams urn={urn} useDatasetType={useDatasetType} />
