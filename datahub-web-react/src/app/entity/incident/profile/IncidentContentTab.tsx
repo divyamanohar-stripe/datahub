@@ -24,24 +24,29 @@ const loadingPage = (
     </LoadingContainer>
 );
 
+function isFieldValid(field: any) {
+    return !(field === undefined || field === null || field === 'nan');
+}
+
+function isTimeValid(timestamp: any) {
+    return !(timestamp === undefined || timestamp === null || (Number.isFinite(timestamp) && timestamp === 0));
+}
+
 function renderIncidentSteps(incidentProperties) {
-    const openedAtText =
-        incidentProperties?.openedAt !== null && incidentProperties?.openedAt !== undefined
-            ? new Date(incidentProperties.openedAt).toUTCString()
-            : '';
-    const resolvedAtText =
-        incidentProperties?.resolvedAt !== null && incidentProperties?.resolvedAt !== undefined
-            ? new Date(incidentProperties.resolvedAt).toUTCString()
-            : '';
-    const closedAtText =
-        incidentProperties?.closedAt !== null && incidentProperties?.closedAt !== undefined
-            ? new Date(incidentProperties.closedAt).toUTCString()
-            : '';
+    const openedAtText = isTimeValid(incidentProperties?.openedAt)
+        ? new Date(incidentProperties.openedAt).toUTCString()
+        : '';
+    const resolvedAtText = isTimeValid(incidentProperties?.resolvedAt)
+        ? new Date(incidentProperties.resolvedAt).toUTCString()
+        : '';
+    const closedAtText = isTimeValid(incidentProperties?.closedAt)
+        ? new Date(incidentProperties.closedAt).toUTCString()
+        : '';
     let currentStep = 0;
-    if (incidentProperties?.resolvedAt !== undefined && incidentProperties?.resolvedAt !== null) {
+    if (isTimeValid(incidentProperties?.resolvedAt)) {
         currentStep = 1;
     }
-    if (incidentProperties?.closedAt !== undefined && incidentProperties?.closedAt !== null) {
+    if (isTimeValid(incidentProperties?.closedAt)) {
         currentStep = 2;
     }
 
@@ -65,6 +70,15 @@ export const IncidentContentTab = () => {
 
     const incidentName = data?.incident?.properties?.name;
     console.log(data);
+    let reportLink: any;
+    const reportLinkValue = data?.incident?.properties?.reportLink;
+    if (isFieldValid(reportLinkValue)) {
+        reportLink = (
+            <a href={reportLinkValue ?? ''} target="_blank" rel="noreferrer">
+                {reportLinkValue}
+            </a>
+        );
+    }
 
     return (
         <div style={{ marginTop: '10px' }}>
@@ -72,7 +86,7 @@ export const IncidentContentTab = () => {
                 href={`https://incident-reporting.corp.stripe.com/wf/incidents/${incidentName}`}
                 rel="noreferrer"
                 target="_blank"
-                style={{ marginLeft: '20px' }}
+                style={{ marginLeft: '20px', fontSize: 'medium', fontWeight: 'bold' }}
             >
                 View Incident Page in BRB
             </a>
@@ -83,14 +97,22 @@ export const IncidentContentTab = () => {
                 <Descriptions.Item label="Description">
                     {data?.incident?.properties?.description ?? ''}
                 </Descriptions.Item>
-                <Descriptions.Item label="Summary">{data?.incident?.properties?.summary ?? ''}</Descriptions.Item>
-                <Descriptions.Item label="Resolution">{data?.incident?.properties?.resolution ?? ''}</Descriptions.Item>
-                <Descriptions.Item label="Reporter">{data?.incident?.properties?.reporter ?? ''}</Descriptions.Item>
-                <Descriptions.Item label="Severity">{data?.incident?.properties?.severity ?? ''}</Descriptions.Item>
-                <Descriptions.Item label="State">{data?.incident?.properties?.state ?? ''}</Descriptions.Item>
-                <Descriptions.Item label="Report Link">
-                    {data?.incident?.properties?.reportLink ?? ''}
+                <Descriptions.Item label="Summary">
+                    {isFieldValid(data?.incident?.properties?.summary) ? data?.incident?.properties?.summary : ''}
                 </Descriptions.Item>
+                <Descriptions.Item label="Resolution">
+                    {isFieldValid(data?.incident?.properties?.resolution) ? data?.incident?.properties?.resolution : ''}
+                </Descriptions.Item>
+                <Descriptions.Item label="Reporter">
+                    {isFieldValid(data?.incident?.properties?.reporter) ? data?.incident?.properties?.reporter : ''}
+                </Descriptions.Item>
+                <Descriptions.Item label="Severity">
+                    {isFieldValid(data?.incident?.properties?.severity) ? data?.incident?.properties?.severity : ''}
+                </Descriptions.Item>
+                <Descriptions.Item label="State">
+                    {isFieldValid(data?.incident?.properties?.state) ? data?.incident?.properties?.state : ''}
+                </Descriptions.Item>
+                <Descriptions.Item label="Report Link">{reportLink ?? ''}</Descriptions.Item>
             </Descriptions>
         </div>
     );

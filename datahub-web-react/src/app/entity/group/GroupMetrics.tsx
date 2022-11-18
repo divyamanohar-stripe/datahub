@@ -594,12 +594,12 @@ function renderIncidentTable(incidents: IncidentEntity[]) {
             },
         },
         {
-            title: 'Description',
-            dataIndex: 'description',
-        },
-        {
             title: 'Summary',
             dataIndex: 'summary',
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
         },
         {
             title: 'State',
@@ -646,7 +646,12 @@ const TeamIncidents: FC<IncidentProps> = ({ urn }) => {
     incidentEntities.map((incident) => {
         const currIncident = incident;
         currIncident.name = currIncident?.properties?.name;
-        currIncident.description = currIncident?.properties?.description;
+        const description = currIncident?.properties?.description;
+        if (description === undefined || description === null || description === 'nan') {
+            currIncident.description = '';
+        } else {
+            currIncident.description = description;
+        }
         currIncident.state = currIncident?.properties?.state;
         currIncident.openedAt = currIncident?.properties?.openedAt;
         currIncident.summary = currIncident?.properties?.summary;
