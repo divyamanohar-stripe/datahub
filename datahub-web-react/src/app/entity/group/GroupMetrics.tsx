@@ -577,7 +577,9 @@ function renderIncidentTable(incidents: IncidentEntity[]) {
             title: 'Date Opened',
             dataIndex: 'openedAt',
             render: (openedAt) => {
-                return openedAt !== undefined && openedAt !== null ? new Date(openedAt).toDateString() : '';
+                return openedAt !== undefined && openedAt !== null && openedAt !== 0
+                    ? moment.utc(new Date(openedAt)).format('MMMM Do YYYY')
+                    : '';
             },
         },
         {

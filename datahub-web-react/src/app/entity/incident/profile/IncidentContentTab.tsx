@@ -95,7 +95,9 @@ export const IncidentContentTab = () => {
                     {renderIncidentSteps(data?.incident?.properties)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Description">
-                    {data?.incident?.properties?.description ?? ''}
+                    {isFieldValid(data?.incident?.properties?.description)
+                        ? data?.incident?.properties?.description
+                        : ''}
                 </Descriptions.Item>
                 <Descriptions.Item label="Summary">
                     {isFieldValid(data?.incident?.properties?.summary) ? data?.incident?.properties?.summary : ''}
