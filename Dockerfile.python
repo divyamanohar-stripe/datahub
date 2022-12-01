@@ -1,11 +1,32 @@
-FROM containers.global.prod.stripe.io/third-party/manylinux
+FROM stripe/veneur:6.0.0 AS veneur
+
+FROM containers.global.prod.stripe.io/stripe/build/ubuntu-20.04:latest
+
+RUN apt-get update && apt-get install -y gradle && rm -rf /var/lib/apt/lists/*
+RUN add-apt-repository ppa:openjdk-r/ppa && apt-get update && apt-get install -y openjdk-8-jdk-headless zip jq && update-java-alternatives -s java-1.8.0-openjdk-amd64
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+ENV PATH $JAVA_HOME/bin:$PATH
+RUN export JAVA_HOME
+
 ENV \
     PATH=/venv/bin:$PATH \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_INDEX_URL=https://artifactory-content.stripe.build/artifactory/api/pypi/pypi-safe/simple \
     PIP_NO_CACHE_DIR=1
-RUN /opt/python/cp37-cp37m/bin/python -m venv /venv && pip install wheel setuptools==57.5.0
 
+# This is needed for MSP
+RUN : \
+    && groupadd -g 998 ssl-cert \
+    && groupadd -g 3001 stripe-service \
+    && useradd -u 3001 -g 3001 -G 998 stripe-service
+
+RUN python3 -m venv /venv && pip install wheel setuptools==57.5.0 twine
+
+COPY / /src
 WORKDIR /src
 
-CMD /src/jenkins-python-build.sh
+# Build the Python wheel. This is *not* hermetic!
+RUN /src/jenkins-build.sh
+
+# CI wants a CMD
+CMD /bin/bash

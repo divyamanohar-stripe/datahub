@@ -22,9 +22,17 @@ jenkins_jobs:
       http_proxy_verbose: true
       http_proxy_report_only: true
   - name: "stripe-private-oss-forks-datahub-py"
-    henson_tarball:
-      docker:
-        dockerfile: Dockerfile.python
+    container_images:
+      - artifact_name: datahub-py-wheel-image
+        docker:
+          dockerfile: Dockerfile.python
+        push:
+          enabled: true
+          repo: stripe/stripe-private-oss-forks/datahub-py-wheel-image
+          responsible_team: data-governance
+    network:
+      http_proxy_verbose: true
+      http_proxy_report_only: true
 publisher_settings:
   run_test_publisher: true
   run_cache_publisher: true

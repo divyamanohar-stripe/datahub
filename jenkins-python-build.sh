@@ -1,7 +1,8 @@
-
 #!/usr/bin/env bash
 
 set -ex
+
+./gradlew :metadata-ingestion:codegen
 
 pushd metadata-ingestion
 
@@ -13,8 +14,4 @@ echo ""
 echo "@@ Build completed"
 echo ""
 
-cp -r dist /build
 popd
-
-mkdir /build/henson
-cp henson/restart /build/henson/

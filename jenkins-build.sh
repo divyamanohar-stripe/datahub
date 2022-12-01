@@ -82,8 +82,4 @@ echo ""
 echo "@@ Build completed"
 echo ""
 
-cp -r dist /build
 popd
-
-mkdir /build/henson
-cp henson/restart /build/henson/
