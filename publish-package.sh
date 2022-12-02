@@ -12,6 +12,8 @@ else
     base="qa-artifactory"
 fi
 
+ls -lR /build/dist
+
 # do not loop if there are no files
 shopt -s nullglob
 for f in /build/dist/*; do

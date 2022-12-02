@@ -82,4 +82,6 @@ echo ""
 echo "@@ Build completed"
 echo ""
 
+cp -rv dist /build
+
 popd
