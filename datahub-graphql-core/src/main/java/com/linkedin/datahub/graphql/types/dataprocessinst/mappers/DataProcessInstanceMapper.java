@@ -4,6 +4,7 @@ import com.linkedin.data.DataMap;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.datahub.graphql.generated.DataProcessInstance;
 import com.linkedin.datahub.graphql.generated.EntityType;
+import com.linkedin.datahub.graphql.generated.SLAInfo;
 import com.linkedin.datahub.graphql.types.common.mappers.AuditStampMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.StringMapMapper;
 import com.linkedin.datahub.graphql.types.common.mappers.util.MappingHelper;
@@ -40,6 +41,7 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
         MappingHelper<DataProcessInstance> mappingHelper = new MappingHelper<>(aspectMap, result);
         mappingHelper.mapToResult(DATA_PROCESS_INSTANCE_PROPERTIES_ASPECT_NAME, this::mapDataProcessProperties);
         mappingHelper.mapToResult(DATA_PROCESS_INSTANCE_EXECUTION_ASPECT_NAME, this::mapDataProcessExecution);
+        mappingHelper.mapToResult(SLA_INFO_ASPECT_NAME, this::mapSLAInfo);
 
         return mappingHelper.getResult();
     }
@@ -71,5 +73,17 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
             executionGQL.setEndDate(executionPegasus.getEndDate());
         }
         dpi.setExecution(executionGQL);
+    }
+
+    private void mapSLAInfo(@Nonnull DataProcessInstance dpi, @Nonnull DataMap dataMap){
+        final com.linkedin.datajob.SLAInfo gmsSLAInfo = new com.linkedin.datajob.SLAInfo(dataMap);
+        final SLAInfo slaInfo = new SLAInfo();
+        slaInfo.setSlaDefined(gmsSLAInfo.getSlaDefined());
+        slaInfo.setErrorStartedBy(gmsSLAInfo.getErrorStartedBy());
+        slaInfo.setWarnStartedBy(gmsSLAInfo.getWarnStartedBy());
+        slaInfo.setErrorFinishedBy(gmsSLAInfo.getErrorFinishedBy());
+        slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
+        slaInfo.setUpdateSLA(gmsSLAInfo.getUpdateSLA());
+        dpi.setSlaInfo(slaInfo);
     }
 }

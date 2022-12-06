@@ -4609,6 +4609,11 @@ type DataProcessInstance implements EntityWithRelationships & Entity {
     The information about the execution details of a data process instance.
     """
     execution: DataProcessInstanceExecution
+
+    """
+    user defined SLA info set on the corresponding data process instance
+    """
+    slaInfo: SLAInfo
 }
 
 """
