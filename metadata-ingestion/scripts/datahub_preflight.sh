@@ -19,16 +19,9 @@ arm64_darwin_preflight() {
   	printf "✅ Scipy already installed\n"
   else
   	printf "Scipy not installed\n"
-  	printf "⛅ Installing prerequisities for scipy"
-  	brew install openblas
-  	OPENBLAS="$(brew --prefix openblas)"
-  	export OPENBLAS
-  	##preinstall numpy and pythran from source
-  	pip3 uninstall -y numpy pythran
-  	pip3 install cython pybind11
-  	pip3 install --no-binary :all: --no-use-pep517 numpy
-  	pip3 install pythran
-  	pip3 install --no-binary :all: --no-use-pep517 scipy
+  	printf "⛅ Installing scipy"
+    # Stripe: Install the scipy wheel instead of installing from source.
+  	pip3 install scipy
   fi
 
   printf "✨ Setting up librdkafka prerequisities\n"
