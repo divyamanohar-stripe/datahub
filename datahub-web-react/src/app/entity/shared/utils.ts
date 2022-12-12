@@ -1,3 +1,4 @@
+/* eslint eqeqeq: 0 */
 export function urlEncodeUrn(urn: string) {
     return (
         urn &&
@@ -57,5 +58,11 @@ export const singularizeCollectionName = (collectionName: string): string => {
 
     return collectionName;
 };
+
+export function getCustomProperty(customProperties, fieldName) {
+    if (customProperties == null) return undefined;
+    const field = customProperties?.filter((e) => e.key === fieldName)[0]?.value;
+    return field;
+}
 
 export const EDITED_DESCRIPTIONS_CACHE_NAME = 'editedDescriptions';

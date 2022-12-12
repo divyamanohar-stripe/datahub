@@ -296,7 +296,7 @@ query getDelays($input: SearchAcrossLineageInput!, $exec_date: String!) {
             }
             __typename
           }
-          runs(input: {start: 0, count: 6, filters: {type: ON_LOGICAL_DATE, value: $exec_date}} ) {
+          runs(input: {start: 0, count: 500, filters: {type: ON_LOGICAL_DATE, value: $exec_date}} ) {
             count
             runs {
               urn

@@ -9,6 +9,7 @@ import { useEntityData } from '../../EntityContext';
 import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
 import { DataJobEntityWithVersions } from '../../types';
 import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
+import { getCustomProperty } from '../../utils';
 /* eslint eqeqeq: 0 */
 
 const ValueText = styled(Typography.Text)`
@@ -36,12 +37,6 @@ function DataJobEntityWithRelationMapper(entity: DataJobEntityWithVersions, isCu
         isCurrent,
     };
     return obj;
-}
-
-function getCustomProperty(customProperties, fieldName) {
-    if (customProperties == null) return undefined;
-    const field = customProperties?.filter((e) => e.key === fieldName)[0]?.value;
-    return field;
 }
 
 function convertEpochToISO(epoch?: string) {

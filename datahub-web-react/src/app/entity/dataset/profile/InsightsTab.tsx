@@ -16,7 +16,9 @@ import { TimePredictionComponent } from './PredictLandingTime';
 import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
 import { useGetDataJobVersionQuery } from '../../../../graphql/getVersions.generated';
 import { DataJobEntityWithVersions } from '../../shared/types';
+import { getCustomProperty } from '../../shared/utils';
 
+/* eslint eqeqeq: 0 */
 const StyledList = styled(List)`
     margin-top: -1px;
     box-shadow: ${(props) => props.theme.styles['box-shadow']};
@@ -191,19 +193,31 @@ type DataJobEntity = {
     };
 };
 
+// field can be either 'startDate' or 'endDate', depends on the usage
+function getRunDate(run: RunEntity, field) {
+    const { customProperties } = run.properties;
+    const date = getCustomProperty(customProperties, field);
+    return new Date(date).valueOf();
+}
+
 function addRuntimeToDataJob(dataJob: DataJobEntity) {
-    if (dataJob.runs?.runs?.length === 0) return { ...dataJob, runtime: undefined };
-    const firstRun = dataJob?.runs?.runs[0];
-    const startTimestamp =
-        firstRun?.state.filter((s) => {
-            return s?.status === DataProcessRunStatus.Started;
-        })[0]?.timestampMillis || 10;
-    const finalRun = dataJob.runs?.runs[dataJob.runs?.runs?.length - 1];
-    const endTimestamp =
-        finalRun?.state.filter((s) => {
-            return s?.status === DataProcessRunStatus.Complete;
-        })[0]?.timestampMillis || 0;
-    const runtime = endTimestamp - startTimestamp;
+    // find the run that has the latest start timestamp
+    const runs = dataJob?.runs?.runs?.filter(
+        (r) =>
+            !(
+                getCustomProperty(r.properties.customProperties, 'startDate') == null ||
+                getCustomProperty(r.properties.customProperties, 'endDate') == null ||
+                getCustomProperty(r.properties.customProperties, 'startDate') == 'None' ||
+                getCustomProperty(r.properties.customProperties, 'endDate') == 'None'
+            ),
+    ); // all the runs that have a start date and an end date
+    if (runs == null || runs.length === 0) return { ...dataJob, runtime: undefined }; // if there is no runs, then runtime is 0, it would not be shown as delayed
+    const sortedRun: RunEntity[] = runs.sort((a, b) => {
+        return getRunDate(b, 'startDate') - getRunDate(a, 'startDate');
+    }); // the run with the largest start timestamp would be in the front
+    const lastRun: RunEntity = sortedRun[0];
+    const firstRun: RunEntity = sortedRun[sortedRun.length - 1];
+    const runtime = getRunDate(lastRun, 'endDate') - getRunDate(firstRun, 'startDate');
     return { ...dataJob, runtime: runtime / 1000 };
 }
 
