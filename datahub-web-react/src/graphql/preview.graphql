@@ -1,6 +1,12 @@
 fragment entityPreview on Entity {
     urn
     type
+    ... on UserDefinedReport {
+        properties {
+            name
+            description
+        }
+    }
     ... on Dataset {
         name
         origin
