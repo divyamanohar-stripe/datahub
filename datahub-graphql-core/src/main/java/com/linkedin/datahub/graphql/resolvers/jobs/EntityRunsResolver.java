@@ -125,7 +125,10 @@ public class EntityRunsResolver implements DataFetcher<CompletableFuture<DataPro
     });
   }
 
-  private Filter buildTaskRunsEntityFilter(final String entityUrn, @Nullable final List<DataProcessInstanceFilterInput> filters, final RelationshipDirection direction) {
+  private Filter buildTaskRunsEntityFilter(
+    final String entityUrn, 
+    @Nullable final List<DataProcessInstanceFilterInput> filters, 
+    final RelationshipDirection direction) {
     ImmutableList.Builder<Criterion> criterionBuilder = ImmutableList.builder();
     Criterion directionCriterion = new Criterion()
       .setField(direction.equals(RelationshipDirection.INCOMING) ? INPUT_FIELD_NAME : OUTPUT_FIELD_NAME)

@@ -11,8 +11,10 @@ import com.linkedin.datahub.graphql.types.common.mappers.util.MappingHelper;
 import com.linkedin.datahub.graphql.types.mappers.ModelMapper;
 import com.linkedin.dataprocess.DataProcessInstanceExecution;
 import com.linkedin.dataprocess.DataProcessInstanceProperties;
+import com.linkedin.dataprocess.DataProcessInstanceInsights;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.entity.EnvelopedAspectMap;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import static com.linkedin.metadata.Constants.*;
@@ -42,7 +44,7 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
         mappingHelper.mapToResult(DATA_PROCESS_INSTANCE_PROPERTIES_ASPECT_NAME, this::mapDataProcessProperties);
         mappingHelper.mapToResult(DATA_PROCESS_INSTANCE_EXECUTION_ASPECT_NAME, this::mapDataProcessExecution);
         mappingHelper.mapToResult(SLA_INFO_ASPECT_NAME, this::mapSLAInfo);
-
+        mappingHelper.mapToResult("dataProcessInstanceInsights", this::mapDataProcessInsights);
         return mappingHelper.getResult();
     }
 
@@ -75,7 +77,7 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
         dpi.setExecution(executionGQL);
     }
 
-    private void mapSLAInfo(@Nonnull DataProcessInstance dpi, @Nonnull DataMap dataMap){
+    private void mapSLAInfo(@Nonnull DataProcessInstance dpi, @Nonnull DataMap dataMap) {
         final com.linkedin.datajob.SLAInfo gmsSLAInfo = new com.linkedin.datajob.SLAInfo(dataMap);
         final SLAInfo slaInfo = new SLAInfo();
         slaInfo.setSlaDefined(gmsSLAInfo.getSlaDefined());
@@ -85,5 +87,13 @@ public class DataProcessInstanceMapper implements ModelMapper<EntityResponse, Da
         slaInfo.setWarnFinishedBy(gmsSLAInfo.getWarnFinishedBy());
         slaInfo.setUpdateSLA(gmsSLAInfo.getUpdateSLA());
         dpi.setSlaInfo(slaInfo);
+    }
+
+    private void mapDataProcessInsights(@Nonnull DataProcessInstance dpi, @Nonnull DataMap dataMap) {
+        final DataProcessInstanceInsights insightsPegasus = new DataProcessInstanceInsights(dataMap);
+        dpi.setDPIinsights(insightsPegasus.getInsights()
+            .stream()
+            .map(InsightMapper::map)
+            .collect(Collectors.toList()));
     }
 }

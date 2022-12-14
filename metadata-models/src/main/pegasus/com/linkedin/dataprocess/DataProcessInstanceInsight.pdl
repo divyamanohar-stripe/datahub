@@ -1,0 +1,49 @@
+namespace com.linkedin.dataprocess
+
+import com.linkedin.common.Owner
+
+/**
+ * Insight into DataProcessInstance problems
+ */
+@Aspect = {
+  "name": "dataProcessInstanceInsight",
+}
+record DataProcessInstanceInsight {
+  /**
+   * Type of data process instance insight
+   */  
+  type: enum DataProcessInstanceInsightType {
+    FAILURE_INSIGHT,
+    SLA_MISS_INSIGHT
+  }
+  
+  /**
+   * Data Process Instance insight message
+   */
+  @Searchable = {
+    "fieldType": "TEXT",
+  }
+  message: string
+
+  /**
+   * Data Process Instance insight link
+   */
+  @Searchable = {
+    "fieldType": "TEXT",
+  }
+  link: optional string
+
+  /**
+   * Data Process Instance insight responsible team
+   */
+  owner: optional Owner
+
+  /**
+   * Data Process Instance insight root cause to problem
+   */
+  @Searchable = {
+    "fieldType": "TEXT",
+  }
+  rootCause: optional string
+
+}

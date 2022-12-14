@@ -55,6 +55,7 @@ entities:
       - dataProcessInstanceRelationships
       - dataProcessInstanceRunEvent
       - slaInfo
+      - dataProcessInstanceInsights
   - name: chart
     keyAspect: chartKey
     aspects:

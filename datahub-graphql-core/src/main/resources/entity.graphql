@@ -4614,6 +4614,11 @@ type DataProcessInstance implements EntityWithRelationships & Entity {
     user defined SLA info set on the corresponding data process instance
     """
     slaInfo: SLAInfo
+
+    """
+    Insights into DataProcessInstance problems
+    """
+    DPIinsights: [DataProcessInsight]
 }
 
 """
@@ -4661,6 +4666,36 @@ type DataProcessInstanceProperties {
   External URL associated with the DataProcessInstance
   """
   externalUrl: String
+}
+
+"""
+Insight into data process problems
+"""
+type DataProcessInsight {
+    """
+    the type of the insight
+    """
+    type: DataProcessInsightType
+
+    """
+    Data process instance insight message
+    """
+    message: String!
+
+    """
+    Link to pages on how to remediate the problem
+    """
+    link: String
+
+    """
+    Team to contact for remediating the problem
+    """
+    owner: Owner
+
+    """
+    Possible root cause to the problem
+    """
+    rootCause: String
 }
 
 """
@@ -4974,6 +5009,21 @@ enum WindowDuration {
     A one year window
     """
     YEAR
+}
+
+"""
+The type of data process insights
+"""
+enum DataProcessInsightType {
+    """
+    Insight of why a Spark data process instance failed
+    """
+    FAILURE_INSIGHT
+
+    """
+    Insight of why a data process instance has missed SLA
+    """
+    SLA_MISS_INSIGHT
 }
 
 """

@@ -1,0 +1,11 @@
+namespace com.linkedin.dataprocess
+
+/**
+ * Insights into DataProcessInstance problems
+ */
+@Aspect = {
+  "name": "dataProcessInstanceInsights",
+}
+record DataProcessInstanceInsights {
+  insights: array[DataProcessInstanceInsight]
+}
