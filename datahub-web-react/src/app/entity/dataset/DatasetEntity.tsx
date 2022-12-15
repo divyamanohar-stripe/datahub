@@ -26,7 +26,7 @@ import { GenericEntityProperties } from '../shared/types';
 import { Preview } from './preview/Preview';
 import { InsightsTab } from './profile/InsightsTab';
 import { OperationsTab } from './profile/OperationsTab';
-import { DatasetTimelinessTab } from '../shared/tabs/Entity/TimelinessTab';
+import { TimelinessTab } from '../shared/tabs/Entity/TimelinessTab/TimelinessTab';
 import { FIELDS_TO_HIGHLIGHT } from './search/highlights';
 
 const SUBTYPES = {
@@ -111,7 +111,7 @@ export class DatasetEntity implements Entity<Dataset> {
                 },
                 {
                     name: 'Timeliness',
-                    component: DatasetTimelinessTab,
+                    component: TimelinessTab,
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataset: GetDatasetQuery) => {

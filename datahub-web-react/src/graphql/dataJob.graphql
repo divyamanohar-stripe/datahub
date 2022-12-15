@@ -61,17 +61,3 @@ query getDataJobHistoricalSLATracking($urn: String!) {
         }
     }
 }
-
-query getDataJobTimeliness($urn: String!) {
-    dataJob(urn: $urn) {
-        ...dataJobFieldsTimeliness
-    }
-}
-
-query getDataJobRunsTimeliness($urn: String!, $input: DataProcessInstanceInput) {
-    dataJob(urn: $urn) {
-        runs(input: $input) {
-            ...runResultsTimeliness
-        }
-    }
-}

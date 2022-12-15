@@ -24,7 +24,7 @@ import { capitalizeFirstLetter } from '../../shared/textUtil';
 import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
 import { SidebarUserDefinedReportSection } from '../shared/containers/profile/sidebar/UserDefinedReport/SidebarUserDefinedReportSection';
 import { RunsTab } from './tabs/RunsTab';
-import { DataJobTimelinessTab } from '../shared/tabs/Entity/TimelinessTab';
+import { TimelinessTab } from '../shared/tabs/Entity/TimelinessTab/TimelinessTab';
 import { InsightsTab } from '../dataset/profile/InsightsTab';
 
 /**
@@ -90,7 +90,7 @@ export class DataJobEntity implements Entity<DataJob> {
                 },
                 {
                     name: 'Timeliness',
-                    component: DataJobTimelinessTab,
+                    component: TimelinessTab,
                     display: {
                         visible: (_, _1) => true,
                         enabled: (_, dataJobRun: GetDataJobRunsQuery) => {
