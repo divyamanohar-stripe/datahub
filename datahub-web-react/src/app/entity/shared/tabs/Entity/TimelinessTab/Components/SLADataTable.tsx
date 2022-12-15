@@ -27,7 +27,7 @@ const SLAMissPercentTag = ({ missType, runs }: { missType: SLATypes; runs: DataR
         }
     });
     // SLA miss rate is number of misses / total number of runs
-    const rate = (missedSLACount / runs.length) * 100.0;
+    const rate = Math.round((missedSLACount / runs.length) * 10000.0) / 100;
     return <Tag color={getTagColor(rate, missType)}>{rate.toString()}%</Tag>;
 };
 

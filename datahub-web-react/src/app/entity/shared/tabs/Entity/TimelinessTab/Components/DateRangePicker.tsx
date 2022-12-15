@@ -1,7 +1,8 @@
 import React from 'react';
 import { PageHeader, Radio, DatePicker, Tooltip, Space } from 'antd';
+import { red } from '@ant-design/colors';
 import moment from 'moment-timezone';
-import { InfoCircleTwoTone } from '@ant-design/icons';
+import { WarningTwoTone } from '@ant-design/icons';
 
 const { RangePicker } = DatePicker;
 
@@ -41,9 +42,9 @@ export const DateRangePicker = ({
                 </Radio.Button>
                 <Tooltip
                     overlayStyle={{ whiteSpace: 'pre-line' }}
-                    title="This page only has data as recent as 12-07-2022"
+                    title="This page only has accurate data as recent as 12-08-2022"
                 >
-                    <InfoCircleTwoTone />
+                    <WarningTwoTone twoToneColor={red.primary} />
                 </Tooltip>
             </Space>
         </PageHeader>
