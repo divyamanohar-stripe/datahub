@@ -150,8 +150,8 @@ export const DatasetAssertionDetails = ({ urn, lastEvaluatedAtMillis }: Props) =
                     result: result?.type !== AssertionResultType.Failure,
                     title: (
                         <>
-                            <AssertionResultIcon>{getResultIcon(result!.type)}</AssertionResultIcon>
-                            <Typography.Text strong>{getResultText(result!.type)}</Typography.Text>
+                            <AssertionResultIcon>{getResultIcon(result?.type)}</AssertionResultIcon>
+                            <Typography.Text strong>{getResultText(result?.type)}</Typography.Text>
                         </>
                     ),
                     content: (

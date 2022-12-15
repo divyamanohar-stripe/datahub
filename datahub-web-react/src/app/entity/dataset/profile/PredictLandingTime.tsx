@@ -84,7 +84,7 @@ function getPredictedLandingTime(lineageData: TreeDataInfo, executionDate: momen
         } else if (parents.every((p) => p.startDate !== undefined)) {
             // if all parents have started, get max start date + runtime SLO
             const parentLandings = parents.map(
-                (p) => [p.urn, moment(p.startDate!).add(p.runtimeSLO, 's')] as [string, moment.Moment],
+                (p) => [p.urn, moment(p.startDate).add(p.runtimeSLO, 's')] as [string, moment.Moment],
             );
             setMaxParentLanding(node, parentLandings);
         } else {
@@ -253,6 +253,8 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
     }
     let predictedLandingTime;
     try {
+        /* eslint-disable @typescript-eslint/no-non-null-assertion */
+        // Type coercion is especially hard here, would need a deeper rewrite
         const rootRunInfo = dataJobPredictions?.dataJob?.runs ?? { runs: [] };
         const rootRuntimeSLO = dataJobPredictions?.dataJob?.runtimeSLO?.runtimeSLO ?? 0;
         const rootType = dataJobPredictions?.dataJob?.type ?? 'DATA_JOB';
@@ -270,6 +272,7 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
             }
             return <>{moment.utc(formattedProps.startDate).add(rootRuntimeSLO, 's').format('MM/DD/YYYY HH:mm:ss')}</>;
         }
+        /* eslint-enable @typescript-eslint/no-non-null-assertion */
         const lineageData = buildLineage(
             urn,
             lineageQueryData,

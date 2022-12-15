@@ -46,13 +46,16 @@ export const TimelinessTab = () => {
         return loadingPage;
     }
 
-    // get data type to index data response by
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
+    // Do not want to change rendering behavior at current time, would need rewrite.
     const dataIdx = entityType === EntityType.Dataset ? 'dataset' : 'dataJob';
     if (!data || !data[dataIdx] || !data[dataIdx]?.runs?.runs) {
         return <>No data to display!</>;
     }
     const runs = formatRuns(data[dataIdx]!.runs?.runs?.map((r) => r) as DataRunEntity[]);
     const latestSLAInfo: SlaInfo | undefined = data[dataIdx]?.slaInfo ?? undefined;
+
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
     if (runs.length === 0) {
         return <>No runs to display!</>;

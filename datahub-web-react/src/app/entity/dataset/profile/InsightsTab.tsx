@@ -6,7 +6,16 @@ import styled from 'styled-components';
 
 import moment from 'moment';
 import { useEntityData } from '../../shared/EntityContext';
-import { DataProcessRunEvent, DataProcessRunStatus, EntityType, LineageDirection } from '../../../../types.generated';
+import {
+    DataJob,
+    DataJobVersionInfo,
+    DataJobVersionInfosResult,
+    DataProcessRunEvent,
+    DataProcessRunStatus,
+    EntityType,
+    LineageDirection,
+    Maybe,
+} from '../../../../types.generated';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
 import { IconStyleType } from '../../Entity';
@@ -236,7 +245,33 @@ function isEntityDelayed(entity?: DataJobEntity) {
     return runtime > slo;
 }
 
-function useGetJobs(urn, entityType) {
+function parseVersionInfosFromResult(infosResult: DataJobVersionInfosResult): DataJobVersionInfo[] {
+    if (infosResult && infosResult?.versionInfos) {
+        switch (infosResult?.versionInfos) {
+            case null:
+                return [];
+            default:
+                return infosResult?.versionInfos.filter((x): x is DataJobVersionInfo => {
+                    return x !== null;
+                });
+        }
+    }
+    return [];
+}
+
+function getVersionInfos(currentDataJobInfo: DataJob | undefined): DataJobVersionInfo[] {
+    if (currentDataJobInfo && currentDataJobInfo?.versionInfo) {
+        switch (currentDataJobInfo.type) {
+            case null:
+                return [];
+            default:
+                return parseVersionInfosFromResult(currentDataJobInfo.versionInfo);
+        }
+    }
+    return [];
+}
+
+function useGetJobs(urn, entityType): DataJobVersionInfo[] {
     const maxVersionCount = 3;
     const currentDataJob = useGetDataJobVersionQuery({
         variables: {
@@ -251,11 +286,8 @@ function useGetJobs(urn, entityType) {
     if (currentDataJob?.data?.dataJob === undefined) {
         return [];
     }
-    const currentDataJobInfo: DataJobEntityWithVersions = currentDataJob.data.dataJob! as DataJobEntityWithVersions;
-    if (currentDataJobInfo?.versionInfo?.versionInfos === undefined) {
-        return [];
-    }
-    return currentDataJobInfo.versionInfo?.versionInfos;
+    const currentDataJobInfo: DataJob | undefined = currentDataJob.data.dataJob ?? undefined;
+    return getVersionInfos(currentDataJobInfo) ?? [];
 }
 
 export const InsightsTab = ({

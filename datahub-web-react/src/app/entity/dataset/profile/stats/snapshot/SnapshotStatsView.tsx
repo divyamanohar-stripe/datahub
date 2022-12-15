@@ -11,10 +11,6 @@ const ColumnStatsTable = styled(Table)`
     margin-top: 24px;
 `;
 
-const isPresent = (val: any) => {
-    return val !== undefined && val !== null;
-};
-
 const decimalToPercentStr = (decimal: number, precision: number): string => {
     return `${(decimal * 100).toFixed(precision)}%`;
 };
@@ -33,10 +29,10 @@ export default function DataProfileView({ profile }: Props) {
                 mean: doc.mean,
                 median: doc.median,
                 stdev: doc.stdev,
-                nullCount: isPresent(doc.nullCount) && doc.nullCount!.toString(),
-                nullPercentage: isPresent(doc.nullProportion) && decimalToPercentStr(doc.nullProportion!, 2),
-                distinctCount: isPresent(doc.uniqueCount) && doc.uniqueCount!.toString(),
-                distinctPercentage: isPresent(doc.uniqueProportion) && decimalToPercentStr(doc.uniqueProportion!, 2),
+                nullCount: doc.nullCount ? doc.nullCount.toString() : '0',
+                nullPercentage: doc.nullProportion ? decimalToPercentStr(doc.nullProportion, 2) : '0',
+                distinctCount: doc.uniqueCount ? doc.uniqueCount.toString() : '0',
+                distinctPercentage: doc.uniqueProportion ? decimalToPercentStr(doc.uniqueProportion, 2) : '0',
                 sampleValues: doc.sampleValues,
             })) || [],
         [profile],
@@ -151,10 +147,10 @@ export default function DataProfileView({ profile }: Props) {
 
     const columnStatsColumns = buildColumnStatsColumns(columnStatsTableData);
 
-    const rowCount = (isPresent(profile?.rowCount) ? profile?.rowCount : -1) as number;
+    const rowCount = (profile?.rowCount ? profile?.rowCount : -1) as number;
     const rowCountTitle = (rowCount >= 0 && 'Rows') || 'Row Count Unknown';
 
-    const columnCount = (isPresent(profile?.columnCount) ? profile?.columnCount : -1) as number;
+    const columnCount = (profile?.columnCount ? profile?.columnCount : -1) as number;
     const columnCountTitle = (columnCount >= 0 && 'Columns') || 'Column Count Unknown';
 
     return (

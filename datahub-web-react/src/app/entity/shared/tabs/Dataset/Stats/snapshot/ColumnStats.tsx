@@ -22,10 +22,6 @@ const NameText = styled(Typography.Text)`
     color: ${ANTD_GRAY[9]};
 `;
 
-const isPresent = (val: any) => {
-    return val !== undefined && val !== null;
-};
-
 const decimalToPercentStr = (decimal: number, precision: number): string => {
     return `${(decimal * 100).toFixed(precision)}%`;
 };
@@ -40,10 +36,10 @@ export default function ColumnStats({ columnStats }: Props) {
                 mean: doc.mean,
                 median: doc.median,
                 stdev: doc.stdev,
-                nullCount: isPresent(doc.nullCount) && doc.nullCount!.toString(),
-                nullPercentage: isPresent(doc.nullProportion) && decimalToPercentStr(doc.nullProportion!, 2),
-                distinctCount: isPresent(doc.uniqueCount) && doc.uniqueCount!.toString(),
-                distinctPercentage: isPresent(doc.uniqueProportion) && decimalToPercentStr(doc.uniqueProportion!, 2),
+                nullCount: doc.nullCount ? doc.nullCount.toString() : '0',
+                nullPercentage: doc.nullProportion ? decimalToPercentStr(doc.nullProportion ?? 0, 2) : '0',
+                distinctCount: doc.uniqueCount ? doc.uniqueCount.toString() : '0',
+                distinctPercentage: doc.uniqueProportion ? decimalToPercentStr(doc.uniqueProportion ?? 0, 2) : '0',
                 sampleValues: doc.sampleValues,
             })) || [],
         [columnStats],

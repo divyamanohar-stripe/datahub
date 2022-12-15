@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import {
     AssertionResultType,
     AssertionStdParameter,
@@ -24,14 +24,14 @@ export const sortAssertions = (a, b) => {
 /**
  * Returns the display text assoociated with an AssertionResultType
  */
-export const getResultText = (result: AssertionResultType) => {
+export const getResultText = (result: AssertionResultType | undefined) => {
     switch (result) {
         case AssertionResultType.Success:
             return 'Passed';
         case AssertionResultType.Failure:
             return 'Failed';
         default:
-            throw new Error(`Unsupported Assertion Result Type ${result} provided.`);
+            return 'Could not find result type!';
     }
 };
 
@@ -40,21 +40,21 @@ export const getResultText = (result: AssertionResultType) => {
  */
 const SUCCESS_COLOR_HEX = '#4db31b';
 const FAILURE_COLOR_HEX = '#F5222D';
-export const getResultColor = (result: AssertionResultType) => {
+export const getResultColor = (result: AssertionResultType | undefined) => {
     switch (result) {
         case AssertionResultType.Success:
             return SUCCESS_COLOR_HEX;
         case AssertionResultType.Failure:
             return FAILURE_COLOR_HEX;
         default:
-            throw new Error(`Unsupported Assertion Result Type ${result} provided.`);
+            return FAILURE_COLOR_HEX;
     }
 };
 
 /**
  * Returns the display icon assoociated with an AssertionResultType
  */
-export const getResultIcon = (result: AssertionResultType) => {
+export const getResultIcon = (result: AssertionResultType | undefined) => {
     const resultColor = getResultColor(result);
     switch (result) {
         case AssertionResultType.Success:
@@ -62,7 +62,7 @@ export const getResultIcon = (result: AssertionResultType) => {
         case AssertionResultType.Failure:
             return <CloseCircleOutlined style={{ color: resultColor }} />;
         default:
-            throw new Error(`Unsupported Assertion Result Type ${result} provided.`);
+            return <QuestionCircleOutlined style={{ color: resultColor }} />;
     }
 };
 

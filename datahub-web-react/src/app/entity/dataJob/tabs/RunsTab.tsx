@@ -142,13 +142,19 @@ export const RunsTab = () => {
 
     tableData?.sort(({ time: timeA }, { time: timeB }) => {
         const getStartTime = (time: Array<{ key: string; value: string }>) => {
-            const startEntry = time.find(({ key }) => key === 'startDate')!;
-            return new Date(startEntry.value).getTime();
+            const startEntry = time.find(({ key }) => key === 'startDate');
+            if (startEntry) {
+                return new Date(startEntry.value).getTime();
+            }
+            // This should not occur
+            return undefined;
         };
         const startA = getStartTime(timeA as Array<{ key: string; value: string }>);
         const startB = getStartTime(timeB as Array<{ key: string; value: string }>);
-
-        return startB - startA;
+        if (startA && startB) {
+            return startB - startA;
+        }
+        return 0;
     });
 
     if (loading) {
