@@ -12,6 +12,7 @@ import CustomAvatar from './avatar/CustomAvatar';
 import analytics, { EventType } from '../analytics';
 import { ANTD_GRAY } from '../entity/shared/constants';
 import { useAppConfig } from '../useAppConfig';
+import { DATAHUB_PREFIX } from '../useLocalStorage';
 
 const MenuItem = styled(Menu.Item)`
     && {
@@ -47,6 +48,9 @@ export const ManageAccount = ({ urn: _urn, pictureLink: _pictureLink, name }: Pr
     const themeConfig = useTheme();
     const { config } = useAppConfig();
     const handleLogout = () => {
+        Object.keys(localStorage)
+            .filter((x) => x.startsWith(DATAHUB_PREFIX))
+            .forEach((x) => localStorage.removeItem(x));
         analytics.event({ type: EventType.LogOutEvent });
         isLoggedInVar(false);
         Cookies.remove(GlobalCfg.CLIENT_AUTH_COOKIE);
