@@ -2,7 +2,6 @@ import * as React from 'react';
 import moment from 'moment-timezone';
 import { ComponentProps } from 'react';
 import { Line } from '@ant-design/charts';
-import * as lodash from 'lodash';
 import { extractDataJobFromEntity } from './data-conversion';
 import { nullthrows } from '../../../../utils/nullthrows';
 
@@ -29,10 +28,6 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
     if (!data.length) {
         return <></>;
     }
-
-    const ys = data.map((dataPoint) => dataPoint.percentMeetingSla);
-    const yMax = lodash.max(ys);
-    const yMin = lodash.min(ys);
 
     const lineDashForPoint = (point: Record<string, any>) => {
         const days = +nullthrows(/\d+/.exec(point.days))[0];
@@ -97,8 +92,8 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
             type: 'time',
         },
         yAxis: {
-            min: yMin !== undefined ? yMin : undefined,
-            max: yMax !== undefined ? yMax : undefined,
+            min: 0,
+            max: 1,
             tickCount: 3,
             label: {
                 formatter: (x) => `${(100 * +x).toFixed(0)}%`,

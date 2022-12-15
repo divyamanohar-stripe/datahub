@@ -355,7 +355,7 @@ export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ u
     const maxRunCount = 1000;
     const maxEntityCount = 50;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
-    const initialBeginningDate = moment.utc().startOf('day').subtract(30, 'day').toDate().getTime();
+    const initialBeginningDate = moment.utc().startOf('day').subtract(100, 'day').toDate().getTime();
     const [logicalEndDate, setLogicalEndDate] = useState(initialEndDate);
     const [logicalBeginningDate, setLogicalBeginningDate] = useState(initialBeginningDate);
 
