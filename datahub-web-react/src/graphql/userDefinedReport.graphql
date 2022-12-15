@@ -11,6 +11,11 @@ query getUserDefinedReport($urn: String!) {
                         type
                         username
                     }
+                    ... on CorpGroup {
+                        urn
+                        type
+                        name
+                    }
                 }
                 type
             }
