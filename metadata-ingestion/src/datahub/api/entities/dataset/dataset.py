@@ -38,7 +38,7 @@ class Dataset:
     warn_started_by: Optional[float] = None
     error_finished_by: Optional[float] = None
     warn_finished_by: Optional[float] = None
-    update_sla: Optional[string] = None
+    update_sla: Optional[str] = None
 
     owners: Set[str] = field(default_factory=set)
     group_owners: Set[str] = field(default_factory=set)

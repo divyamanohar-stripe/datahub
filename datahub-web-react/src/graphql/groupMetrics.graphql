@@ -7,16 +7,26 @@ fragment dataflowIconFields on DataPlatform {
 }
 
 fragment groupRunResults on DataProcessInstanceResult {
-    count
-    total
     runs {
-        properties {
-            customProperties {
-                key
-                value
+        execution {
+            logicalDate
+            startDate
+            endDate
+        }
+        state(limit: 1) {
+            status
+            result {
+                resultType
             }
         }
         externalUrl
+        slaInfo {
+            slaDefined
+            errorStartedBy
+            errorFinishedBy
+            warnStartedBy
+            warnFinishedBy
+        }
     }
 }
 
@@ -26,12 +36,6 @@ fragment groupSearchResultFields on Entity {
         type
         urn
         name
-        properties {
-            customProperties {
-                key
-                value
-            }
-        }
         runs: runs(input: $runInput, direction: OUTGOING) {
             ...groupRunResults
         }
@@ -40,13 +44,8 @@ fragment groupSearchResultFields on Entity {
     ... on DataJob {
         type
         urn
-        jobId
         properties {
             name
-            customProperties {
-                key
-                value
-            }
         }
         dataFlow {
             platform {
@@ -63,8 +62,6 @@ fragment groupSearchResultFields on Entity {
 
 
 fragment groupSearchResults on SearchResults {
-    count
-    total
     searchResults {
         entity {
             ...groupSearchResultFields
@@ -166,7 +163,6 @@ query getDownstreamTeams($input: SearchAcrossEntitiesInput!) {
 }
 
 fragment groupSearchResultFieldsIncidents on Entity {
-    urn
     ... on Incident {
         id
         urn
@@ -174,14 +170,9 @@ fragment groupSearchResultFieldsIncidents on Entity {
             name
             description
             summary
-            resolution
-            reporter
             severity
             state
-            reportLink
             openedAt
-            resolvedAt
-            closedAt
         }
 
     }
@@ -189,8 +180,6 @@ fragment groupSearchResultFieldsIncidents on Entity {
 
 
 fragment groupSearchResultsIncidents on SearchResults {
-    count
-    total
     searchResults {
         entity {
             ...groupSearchResultFieldsIncidents

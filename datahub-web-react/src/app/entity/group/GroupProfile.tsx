@@ -10,7 +10,7 @@ import { decodeUrn } from '../shared/utils';
 import { RoutedTabs } from '../../shared/RoutedTabs';
 import GroupInfoSidebar from './GroupInfoSideBar';
 import { GroupAssets } from './GroupAssets';
-import { GroupMetricsPage } from './GroupMetrics';
+import { GroupMetricsPage } from './GroupMetricsPage/GroupMetricsPage';
 
 const messageStyle = { marginTop: '10%' };
 
