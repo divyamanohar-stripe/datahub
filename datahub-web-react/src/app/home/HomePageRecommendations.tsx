@@ -1,38 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { Button, Divider, Empty, Typography } from 'antd';
+import { Button, Empty } from 'antd';
 import { RocketOutlined } from '@ant-design/icons';
-import { RecommendationModule as RecommendationModuleType, ScenarioType } from '../../types.generated';
 import { useListRecommendationsQuery } from '../../graphql/recommendations.generated';
-import { RecommendationModule } from '../recommendations/RecommendationModule';
 import { BrowseEntityCard } from '../search/BrowseEntityCard';
 import { useEntityRegistry } from '../useEntityRegistry';
 import { useGetEntityCountsQuery } from '../../graphql/app.generated';
 import { GettingStartedModal } from './GettingStartedModal';
 import { ANTD_GRAY } from '../entity/shared/constants';
-
-const RecommendationsContainer = styled.div`
-    margin-top: 32px;
-    padding-left: 12px;
-    padding-right: 12px;
-`;
-
-const RecommendationContainer = styled.div`
-    margin-bottom: 32px;
-    max-width: 1000px;
-    min-width: 750px;
-`;
-
-const RecommendationTitle = styled(Typography.Title)`
-    margin-top: 0px;
-    margin-bottom: 0px;
-    padding: 0px;
-`;
-
-const ThinDivider = styled(Divider)`
-    margin-top: 12px;
-    margin-bottom: 12px;
-`;
+import {
+    RecommendationContainer,
+    RecommendationGroup,
+    RecommendationsContainer,
+    RecommendationTitle,
+    ThinDivider,
+} from '../recommendations/RecommendationGroup';
+import { ScenarioType } from '../../types.generated';
 
 const BrowseCardContainer = styled.div`
     display: flex;
@@ -60,6 +43,13 @@ const NoMetadataContainer = styled.div`
 type Props = {
     userUrn: string;
 };
+
+const RECOMMENDATION_MODULE_SORT_ORDER = [
+    'ENTITY_NAME_LIST',
+    'PLATFORM_SEARCH_LIST',
+    'DOMAIN_SEARCH_LIST',
+    'TAG_SEARCH_LIST',
+];
 
 export const HomePageRecommendations = ({ userUrn }: Props) => {
     // Entity Types
@@ -94,6 +84,13 @@ export const HomePageRecommendations = ({ userUrn }: Props) => {
         fetchPolicy: 'no-cache',
     });
     const recommendationModules = data?.listRecommendations?.modules;
+    const groupedModules = recommendationModules?.reduce((r, a) => {
+        const newTitle = a.title;
+        const newGroup = [...(r[newTitle] || []), a];
+        // eslint-disable-next-line no-param-reassign
+        r[newTitle] = newGroup;
+        return r;
+    }, {});
 
     // Determine whether metadata has been ingested yet.
     const hasLoadedEntityCounts = orderedEntityCounts && orderedEntityCounts.length > 0;
@@ -136,19 +133,15 @@ export const HomePageRecommendations = ({ userUrn }: Props) => {
                     )}
                 </RecommendationContainer>
             )}
-            {recommendationModules &&
-                recommendationModules.map((module) => (
-                    <RecommendationContainer>
-                        <RecommendationTitle level={4}>{module.title}</RecommendationTitle>
-                        <ThinDivider />
-                        <RecommendationModule
-                            key={module.moduleId}
-                            module={module as RecommendationModuleType}
-                            scenarioType={scenario}
-                            showTitle={false}
-                        />
-                    </RecommendationContainer>
-                ))}
+            {groupedModules &&
+                Object.keys(groupedModules)
+                    .sort(
+                        (a, b) =>
+                            RECOMMENDATION_MODULE_SORT_ORDER.indexOf(a) - RECOMMENDATION_MODULE_SORT_ORDER.indexOf(b),
+                    )
+                    .map((recommendationGroupType) => (
+                        <RecommendationGroup modules={groupedModules[recommendationGroupType]} />
+                    ))}
             <GettingStartedModal onClose={() => setShowGettingStartedModal(false)} visible={showGettingStartedModal} />
         </RecommendationsContainer>
     );
