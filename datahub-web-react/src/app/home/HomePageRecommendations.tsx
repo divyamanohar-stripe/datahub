@@ -85,10 +85,10 @@ export const HomePageRecommendations = ({ userUrn }: Props) => {
     });
     const recommendationModules = data?.listRecommendations?.modules;
     const groupedModules = recommendationModules?.reduce((r, a) => {
-        const newTitle = a.title;
-        const newGroup = [...(r[newTitle] || []), a];
+        const newRenderType = a.renderType;
+        const newGroup = [...(r[newRenderType] || []), a];
         // eslint-disable-next-line no-param-reassign
-        r[newTitle] = newGroup;
+        r[newRenderType] = newGroup;
         return r;
     }, {});
 
