@@ -232,10 +232,7 @@ function renderTimelinessPlot(sla: moment.Duration, runs: readonly Run[], allExe
 
         runsPlotData.push(nullRun);
     });
-    runsPlotData = runsPlotData.sort(function (a, b) {
-        if (a.execDate > b.execDate) return 1;
-        return -1;
-    });
+    runsPlotData = runsPlotData.sort((a, b) => (a.execDate > b.execDate ? 1 : -1));
 
     const config: ComponentProps<typeof Column> = {
         data: runsPlotData,

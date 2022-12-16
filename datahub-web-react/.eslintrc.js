@@ -43,14 +43,13 @@ module.exports = {
         "@typescript-eslint/no-explicit-any": 'off',
         "import/no-extraneous-dependencies": 'off',
     },
-    "overrides": [
-        {
-          "files": ["src/app/entity/**/*.tsx"],
-          "rules": {
+    "overrides": [{
+        "files": ["src/app/entity/**/*.tsx", "src/app/entity/**/*.ts"],
+        "rules": {
             "@typescript-eslint/no-non-null-assertion": 2,
-          }
+            "func-names": 2,
         }
-      ],
+    }],
     settings: {
         react: {
             version: 'detect', // Tells eslint-plugin-react to automatically detect the version of React to use

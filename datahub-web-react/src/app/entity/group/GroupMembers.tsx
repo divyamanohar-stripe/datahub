@@ -107,11 +107,13 @@ export default function GroupMembers({ urn, pageSize, onChangeMembers }: Props) 
                 if (!errors) {
                     message.success({ content: 'Removed Group Member!', duration: 2 });
                     onChangeMembers?.();
+                    /* eslint-disable func-names */
                     // Hack to deal with eventual consistency
                     setTimeout(function () {
                         // Reload the page.
                         refetch();
                     }, 2000);
+                    /* eslint-enable func-names */
                 }
             })
             .catch((e) => {
@@ -126,10 +128,13 @@ export default function GroupMembers({ urn, pageSize, onChangeMembers }: Props) 
 
     const onAddMembers = () => {
         onChangeMembers?.();
+        /* eslint-disable func-names */
+        // Hack to deal with eventual consistency
         setTimeout(function () {
             // Reload the page.
             refetch();
         }, 2000);
+        /* eslint-enable func-names */
     };
 
     const onRemoveMember = (memberUrn: string) => {

@@ -18,12 +18,15 @@ export const stateToColorMapping = {
     UP_FOR_RETRY: orange.primary,
 };
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Valid useage of non-null coercion
 export const plotColorLegendMapping = {
     [red.primary!]: 'Error Level SLA Miss',
     [gold.primary!]: 'Warn Level SLA Miss',
     [grey.primary!]: 'Running',
     [blue.primary!]: 'Did Not Miss SLA',
 };
+/* eslint-enable @typescript-eslint/no-non-null-assertion */
 
 export enum SLATypes {
     warnStartedBy = 'warn started SLA',

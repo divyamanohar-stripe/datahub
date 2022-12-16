@@ -802,22 +802,20 @@ function renderSegmentTasks(
             );
         }
 
-        let similarTasksTableData = previousRuns.map(function (currentRun) {
-            return {
-                similarRunName: <Tag color={getStateColor(currentRun.state)}>{currentRun.state}</Tag>,
-                missedSLA: getSLAMissInfo(currentRun, finishedBySla),
-                executionDate: currentRun.executionDate,
-                landingTime:
-                    currentRun.landingTime !== undefined && currentRun.landingTime !== null
-                        ? `T+${convertSecsToHumanReadable(currentRun.landingTime)}`
-                        : '-',
-                duration:
-                    currentRun.duration !== undefined && currentRun.duration !== null
-                        ? convertSecsToHumanReadable(currentRun.duration)
-                        : '-',
-                airflowLink: getAirflowLinkFromRun(currentRun),
-            };
-        });
+        let similarTasksTableData = previousRuns.map((currentRun) => ({
+            similarRunName: <Tag color={getStateColor(currentRun.state)}>{currentRun.state}</Tag>,
+            missedSLA: getSLAMissInfo(currentRun, finishedBySla),
+            executionDate: currentRun.executionDate,
+            landingTime:
+                currentRun.landingTime !== undefined && currentRun.landingTime !== null
+                    ? `T+${convertSecsToHumanReadable(currentRun.landingTime)}`
+                    : '-',
+            duration:
+                currentRun.duration !== undefined && currentRun.duration !== null
+                    ? convertSecsToHumanReadable(currentRun.duration)
+                    : '-',
+            airflowLink: getAirflowLinkFromRun(currentRun),
+        }));
 
         const previousSameWeekdayRunRowData = [
             {
@@ -1042,9 +1040,7 @@ export const PipelineTimelinessComponent: FC<PipelineTimelinessProps> = ({ urn }
         return formatDataJob(reportDate, j, reportName);
     });
 
-    const dataJobsWithTimeliness = formattedDataJobs.map(function (j) {
-        return getDataJobWithTimeliness(j, currentMoment);
-    });
+    const dataJobsWithTimeliness = formattedDataJobs.map((j) => getDataJobWithTimeliness(j, currentMoment));
 
     const formattedSegments = formatSegments(dataJobsWithTimeliness);
 
