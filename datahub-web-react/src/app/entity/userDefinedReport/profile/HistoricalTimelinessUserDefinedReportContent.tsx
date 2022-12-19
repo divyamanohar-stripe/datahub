@@ -8,6 +8,7 @@ import { HistoricalTimelinessSlaTargetSummary } from './HistoricalTimelinessSlaT
 import { extractDataJobFromEntity, Run } from './data-conversion';
 import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../graphql/userDefinedReport.generated';
 import { DataProcessInstanceFilterInputType } from '../../../../types.generated';
+import { HistoricalTimelinessGoodDayMetric } from './HistoricalTimelinessGoodDayMetric';
 
 const { Header, Content, Sider } = Layout;
 const { RangePicker } = DatePicker;
@@ -410,6 +411,10 @@ export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ u
                     </Descriptions.Item>
                 </Descriptions>
             </Header>
+            <HistoricalTimelinessGoodDayMetric
+                dataJobOwnerGrouping={dataJobOwnerGrouping}
+                targetGoodDayPercentage={null}
+            />
             {Object.entries(dataJobOwnerGrouping).map(([teamName, dataJobEntitiesList]) => {
                 return (
                     <div style={{ marginBottom: '10px', marginTop: '10px' }}>
