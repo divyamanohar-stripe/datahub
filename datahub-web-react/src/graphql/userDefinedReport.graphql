@@ -216,3 +216,84 @@ query getUserDefinedReportContentFilterLogicalDate($urn: String!, $entityStart: 
         }
     }
 }
+
+fragment pipelineOwnershipFields on Ownership {
+    owners {
+        owner {
+            ... on CorpGroup {
+                urn
+                type
+                name
+                properties {
+                    displayName
+                    email
+                }
+                editableProperties {
+                    slack
+                }
+            }
+        }
+    }
+}
+
+query getPipelineTimelinessTabData($urn: String!, $input: DataProcessInstanceInput) {
+    userDefinedReport(urn: $urn) {
+        properties {
+            name
+        }
+        entities(input: {start: 0, count: 100}) {
+            searchResults {
+                entity {
+                    ... on DataJob {
+                        urn
+                        type
+                        jobId
+                      	dataFlow {
+                          platform {
+                            properties {
+                              logoUrl
+                            }
+                          }
+                        }
+                        ownership {
+                            ...pipelineOwnershipFields
+                        }
+                        properties {
+                            name
+                        }
+                        globalTags {
+                            tags {
+                              tag{
+                                name
+                              }
+                            }
+                        }
+                        runs(input: $input) {
+                            runs {
+                                execution {
+                                    logicalDate
+                                    startDate
+                                    endDate
+                                }
+                                state(limit: 1) {
+                                    status
+                                    result {
+                                        resultType
+                                    }
+                                }
+                                externalUrl
+                                slaInfo {
+                                    slaDefined
+                                    errorStartedBy
+                                    errorFinishedBy
+                                    warnStartedBy
+                                    warnFinishedBy
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
