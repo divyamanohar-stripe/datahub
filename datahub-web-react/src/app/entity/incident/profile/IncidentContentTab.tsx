@@ -69,7 +69,6 @@ export const IncidentContentTab = () => {
     if (loading) return loadingPage;
 
     const incidentName = data?.incident?.properties?.name;
-    console.log(data);
     let reportLink: any;
     const reportLinkValue = data?.incident?.properties?.reportLink;
     if (isFieldValid(reportLinkValue)) {

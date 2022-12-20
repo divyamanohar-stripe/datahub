@@ -47,6 +47,7 @@ module.exports = {
         "files": ["src/app/entity/**/*.tsx", "src/app/entity/**/*.ts"],
         "rules": {
             "@typescript-eslint/no-non-null-assertion": 2,
+            "no-console": 2,
             "func-names": 2,
         }
     }],

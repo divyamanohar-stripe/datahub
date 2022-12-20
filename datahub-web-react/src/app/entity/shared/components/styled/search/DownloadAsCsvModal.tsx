@@ -43,7 +43,6 @@ export default function DownloadAsCsvModal({
 
     const triggerCsvDownload = (filename) => {
         setIsDownloadingCsv(true);
-        console.log('preparing your csv');
 
         let downloadPage = 0;
         let accumulatedResults: string[][] = [];
@@ -56,7 +55,6 @@ export default function DownloadAsCsvModal({
         });
 
         function fetchNextPage() {
-            console.log('fetch page number ', downloadPage);
             callSearchOnVariables({
                 input: {
                     types: entityFilters,
@@ -66,7 +64,6 @@ export default function DownloadAsCsvModal({
                     filters,
                 },
             }).then((refetchData) => {
-                console.log('fetched data for page number ', downloadPage);
                 accumulatedResults = [
                     ...accumulatedResults,
                     ...transformResultsToCsvRow(refetchData?.searchResults || [], entityRegistry),

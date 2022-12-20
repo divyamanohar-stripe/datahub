@@ -177,6 +177,7 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
             case 90:
                 return undefined;
             default:
+                // eslint-disable-next-line
                 console.warn(`while determining what lineDash for a point, didn't know what to do with ${days} days`);
                 return undefined;
         }

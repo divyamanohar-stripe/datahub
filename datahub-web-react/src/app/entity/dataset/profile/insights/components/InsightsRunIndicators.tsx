@@ -60,7 +60,6 @@ export const InsightsRunIndicators = ({
             <rect
                 key={`run-indicator-${runUrn}`}
                 onMouseDown={() => {
-                    console.info(`Updating executionDate=${executionDate}`);
                     setCurrentExecutionDate(executionDate);
                 }}
                 onMouseOver={() => {

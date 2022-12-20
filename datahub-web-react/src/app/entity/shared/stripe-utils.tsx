@@ -71,7 +71,6 @@ export class ErrorBoundary extends React.Component<
     }
 
     componentDidCatch(error, errorInfo) {
-        console.warn('Uncaught error in ErrorBoundary', { error, errorInfo });
         this.setState({ errorInfo });
     }
 

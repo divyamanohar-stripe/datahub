@@ -281,12 +281,10 @@ const TimePrediction: FC<TimePredictionComponentProps> = ({ urn, executionDate }
             rootType,
             moment.utc(executionDate),
         );
-        console.log('lineage tree data', lineageData);
         predictedLandingTime = getPredictedLandingTime(lineageData, moment.utc(executionDate));
     } catch {
         predictedLandingTime = 'Unable to estimate landing time';
     }
-    console.log('predicted landing time: ', predictedLandingTime);
     return <>{predictedLandingTime}</>;
 };
 

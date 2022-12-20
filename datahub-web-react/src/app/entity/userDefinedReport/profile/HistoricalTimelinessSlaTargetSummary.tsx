@@ -39,7 +39,6 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
             case 90:
                 return undefined;
             default:
-                console.warn(`while determining what lineDash for a point, didn't know what to do with ${days} days`);
                 return undefined;
         }
     };
@@ -101,7 +100,6 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
         },
         tooltip: {
             customContent: (executionDate, items) => {
-                console.log(items);
                 return `
                     <div style="padding: 10px 0px">
                         <div style="font-size: 120%; margin-bottom: 5px">${executionDate}</div>
