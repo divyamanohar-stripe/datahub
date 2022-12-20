@@ -24,8 +24,11 @@ const loadingPage = (
     </LoadingContainer>
 );
 
-function isFieldValid(field: any) {
-    return !(field === undefined || field === null || field === 'nan');
+export function getValidField(field: undefined | null | 'nan' | string): string {
+    if (field === undefined || field === null || field === 'nan') {
+        return '';
+    }
+    return field;
 }
 
 function isTimeValid(timestamp: any) {
@@ -70,10 +73,10 @@ export const IncidentContentTab = () => {
 
     const incidentName = data?.incident?.properties?.name;
     let reportLink: any;
-    const reportLinkValue = data?.incident?.properties?.reportLink;
-    if (isFieldValid(reportLinkValue)) {
+    const reportLinkValue = getValidField(data?.incident?.properties?.reportLink);
+    if (reportLinkValue) {
         reportLink = (
-            <a href={reportLinkValue ?? ''} target="_blank" rel="noreferrer">
+            <a href={reportLinkValue} target="_blank" rel="noreferrer">
                 {reportLinkValue}
             </a>
         );
@@ -94,25 +97,21 @@ export const IncidentContentTab = () => {
                     {renderIncidentSteps(data?.incident?.properties)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Description">
-                    {isFieldValid(data?.incident?.properties?.description)
-                        ? data?.incident?.properties?.description
-                        : ''}
+                    {getValidField(data?.incident?.properties?.description)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Summary">
-                    {isFieldValid(data?.incident?.properties?.summary) ? data?.incident?.properties?.summary : ''}
+                    {getValidField(data?.incident?.properties?.summary)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Resolution">
-                    {isFieldValid(data?.incident?.properties?.resolution) ? data?.incident?.properties?.resolution : ''}
+                    {getValidField(data?.incident?.properties?.resolution)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Reporter">
-                    {isFieldValid(data?.incident?.properties?.reporter) ? data?.incident?.properties?.reporter : ''}
+                    {getValidField(data?.incident?.properties?.reporter)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Severity">
-                    {isFieldValid(data?.incident?.properties?.severity) ? data?.incident?.properties?.severity : ''}
+                    {getValidField(data?.incident?.properties?.severity)}
                 </Descriptions.Item>
-                <Descriptions.Item label="State">
-                    {isFieldValid(data?.incident?.properties?.state) ? data?.incident?.properties?.state : ''}
-                </Descriptions.Item>
+                <Descriptions.Item label="State">{getValidField(data?.incident?.properties?.state)}</Descriptions.Item>
                 <Descriptions.Item label="Report Link">{reportLink ?? ''}</Descriptions.Item>
             </Descriptions>
         </div>

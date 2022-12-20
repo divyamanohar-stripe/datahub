@@ -8,6 +8,7 @@ import { urlEncodeUrn } from '../../../shared/utils';
 import { useGetGroupIncidentsQuery } from '../../../../../graphql/groupMetrics.generated';
 import { EntityType } from '../../../../../types.generated';
 import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
+import { getValidField } from '../../../incident/profile/IncidentContentTab';
 
 // component for incidents table
 const IncidentsTable = ({ incidents }: { incidents: IncidentEntity[] }) => {
@@ -36,25 +37,25 @@ const IncidentsTable = ({ incidents }: { incidents: IncidentEntity[] }) => {
         {
             title: 'Summary',
             render: (incidentEntity) => {
-                return incidentEntity?.properties?.summary ?? '';
+                return getValidField(incidentEntity?.properties?.summary);
             },
         },
         {
             title: 'Description',
             render: (incidentEntity) => {
-                return incidentEntity?.properties?.description ?? '';
+                return getValidField(incidentEntity?.properties?.description);
             },
         },
         {
             title: 'State',
             render: (incidentEntity) => {
-                return incidentEntity?.properties?.state ?? '';
+                return getValidField(incidentEntity?.properties?.state);
             },
         },
         {
             title: 'Severity',
             render: (incidentEntity) => {
-                return incidentEntity?.properties?.severity ?? '';
+                return getValidField(incidentEntity?.properties?.severity);
             },
         },
     ];

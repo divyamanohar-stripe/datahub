@@ -36,11 +36,17 @@ export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
         xAxis: {
             title: {
                 text: 'Execution Date',
+                style: {
+                    fontWeight: 'bold',
+                },
             },
         },
         yAxis: {
             title: {
                 text: 'Starting and Landing Time',
+                style: {
+                    fontWeight: 'bold',
+                },
             },
             label: {
                 formatter: (val) => `T+${convertSecsToHumanReadable(+val, true)}`,
@@ -74,5 +80,9 @@ export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
         },
     };
 
-    return <Column {...config} />;
+    return (
+        <div style={{ paddingLeft: '10px' }}>
+            <Column {...config} />
+        </div>
+    );
 };

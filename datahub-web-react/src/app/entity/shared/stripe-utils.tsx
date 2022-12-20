@@ -5,7 +5,7 @@ import { ReactComponent as LoadingSvg } from '../../../images/datahub-logo-color
 
 const { Title } = Typography;
 
-export function convertSecsToHumanReadable(seconds: number, truncateToHours = false) {
+export function convertSecsToHumanReadable(seconds: number, truncateToMins = false) {
     const oriSeconds = seconds;
     const floatingPart = oriSeconds - Math.floor(oriSeconds);
 
@@ -24,11 +24,11 @@ export function convertSecsToHumanReadable(seconds: number, truncateToHours = fa
     if (hours > 0) {
         readableFormat += `${hours}Hours `;
     }
-    if (truncateToHours) {
-        return readableFormat === '' ? '0Hours' : readableFormat;
-    }
     if (minutes > 0) {
         readableFormat += `${minutes}Min `;
+    }
+    if (truncateToMins) {
+        return readableFormat === '' ? '0Mins' : readableFormat;
     }
     if (secondsFloor + floatingPart > 0) {
         if (Math.floor(oriSeconds) === oriSeconds) {
