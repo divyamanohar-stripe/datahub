@@ -32,6 +32,7 @@ import { DomainEntity } from './app/entity/domain/DomainEntity';
 import { ContainerEntity } from './app/entity/container/ContainerEntity';
 import { UserDefinedReportEntity } from './app/entity/userDefinedReport/UserDefinedReportEntity';
 import { IncidentEntity } from './app/entity/incident/IncidentEntity';
+import { ExperimentsProvider } from './app/experiments/ExperimentsProvider';
 import { loadLocalMockGraphQL } from './utils/local-dev-utils/loadLocalMockGraphQL';
 import { LocalDevLink } from './utils/local-dev-utils/LocalDevLink';
 
@@ -41,9 +42,7 @@ import { LocalDevLink } from './utils/local-dev-utils/LocalDevLink';
 const baseLink =
     window.location.hostname === 'localhost'
         ? new LocalDevLink(loadLocalMockGraphQL())
-        : createHttpLink({
-              uri: '/api/v2/graphql',
-          });
+        : createHttpLink({ uri: '/api/v2/graphql' });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
     if (networkError) {
@@ -116,7 +115,9 @@ const App: React.VFC = () => {
             <Router>
                 <EntityRegistryContext.Provider value={entityRegistry}>
                     <ApolloProvider client={client}>
-                        <Routes />
+                        <ExperimentsProvider>
+                            <Routes />
+                        </ExperimentsProvider>
                     </ApolloProvider>
                 </EntityRegistryContext.Provider>
             </Router>

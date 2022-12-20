@@ -1,7 +1,8 @@
 import { Menu, Typography } from 'antd';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { ANTD_GRAY } from '../entity/shared/constants';
+import { Experiments } from '../experiments/Experiments';
 import { SearchablePage } from '../search/SearchablePage';
 import { AccessTokens } from './AccessTokens';
 
@@ -31,6 +32,16 @@ const PageTitle = styled(Typography.Title)`
 export const SettingsPage = () => {
     const [selectedKey, setSelectedKey] = useState('access-tokens');
 
+    const mainComponent = useMemo(() => {
+        if (selectedKey === 'access-tokens') {
+            return <AccessTokens />;
+        }
+        if (selectedKey === 'experiments') {
+            return <Experiments />;
+        }
+        return null;
+    }, [selectedKey]);
+
     const onMenuClick = ({ key }) => {
         setSelectedKey(key);
     };
@@ -53,9 +64,10 @@ export const SettingsPage = () => {
                         }}
                     >
                         <Menu.Item key="access-tokens">Access Tokens</Menu.Item>
+                        <Menu.Item key="experiments">Experiments</Menu.Item>
                     </Menu>
                 </SettingsBarContainer>
-                {selectedKey === 'access-tokens' && <AccessTokens />}
+                {mainComponent}
             </PageContainer>
         </SearchablePage>
     );
