@@ -1,7 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
+import { useExperiment } from '../experiments/useExperiment';
 import { useGetAuthenticatedUser } from '../useGetAuthenticatedUser';
 import { HomePageRecommendations } from './HomePageRecommendations';
+import { HomePageRecommendationsV2 } from './HomepageRecommendationsV2';
 
 const BodyContainer = styled.div`
     padding: 20px 100px;
@@ -18,9 +20,14 @@ const BodyContainer = styled.div`
 
 export const HomePageBody = () => {
     const authenticatedUserUrn = useGetAuthenticatedUser()?.corpUser?.urn;
-    return (
-        <BodyContainer>
-            {authenticatedUserUrn && <HomePageRecommendations userUrn={authenticatedUserUrn} />}
-        </BodyContainer>
-    );
+    const homepageExperiment = useExperiment('Homepage V2');
+    if (authenticatedUserUrn) {
+        const recsComponent = homepageExperiment ? (
+            <HomePageRecommendationsV2 userUrn={authenticatedUserUrn} />
+        ) : (
+            <HomePageRecommendations userUrn={authenticatedUserUrn} />
+        );
+        return <BodyContainer>{recsComponent}</BodyContainer>;
+    }
+    return null;
 };
