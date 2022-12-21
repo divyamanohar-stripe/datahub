@@ -32,7 +32,5 @@ announce:
       enable_clear_lock: ENABLED
       # A deployment healthcheck is unhealthy during an active deploy
       enable_rollout_stage_unhealthy: ENABLED
-      # A scheduled autodeploy will go out, did go out, or was unable to go out
-      enable_autodeploy_scheduled_deployment: ENABLED
       # Autodeploys are not able to deploy, needs attention
       enable_autodeploy_not_deploying: ENABLED
