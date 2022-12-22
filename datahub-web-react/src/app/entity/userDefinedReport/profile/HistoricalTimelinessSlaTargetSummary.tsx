@@ -134,7 +134,7 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
             },
         },
         legend: {
-            position: 'right',
+            position: 'left',
         },
     };
     return (

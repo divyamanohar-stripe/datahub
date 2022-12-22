@@ -8,6 +8,15 @@ import { extractDataJobFromEntity } from './data-conversion';
 
 const DATE_DAILY_DISPLAY_FORMAT = 'YYYY-MM-DD';
 
+type Counts = { readonly total: number; readonly teamWithBadDayCnt: number };
+
+type Range = { lowerTarget: number | null; upperTarget: number | null };
+
+type Props = {
+    targetRange: Range;
+    dataJobOwnerGrouping: { [key: string]: DataJobEntity[] };
+};
+
 /**
  * Calculate the good day metric per team. A team has a good day if all DataJob runs for that day
  * have succeeded within SLA. Note if a DataJob doesn't set SLA, it's excluded from the measurement.
@@ -71,7 +80,7 @@ function calculateGoodDaysAggregate(windowLength: moment.Duration, sortedAllDays
     for (; lastIndex < sortedAllDaysArr.length; lastIndex++) {
         const { executionDate } = sortedAllDaysArr[lastIndex];
         const minExecutionDate = moment.utc(executionDate).subtract(windowLength).format(DATE_DAILY_DISPLAY_FORMAT);
-        while (firstIndex < lastIndex && sortedAllDaysArr[firstIndex].executionDate < minExecutionDate) {
+        while (firstIndex < lastIndex && sortedAllDaysArr[firstIndex].executionDate <= minExecutionDate) {
             firstIndex++;
         }
         const sum: number = sortedAllDaysArr
@@ -86,30 +95,36 @@ function calculateGoodDaysAggregate(windowLength: moment.Duration, sortedAllDays
     return dataPoints;
 }
 
+function addCounts(a: Counts, b: Counts): Counts {
+    return { total: a.total + b.total, teamWithBadDayCnt: a.teamWithBadDayCnt + b.teamWithBadDayCnt };
+}
+
 /**
  * Get the good day metric data points to render the summary chart on Historical Timeliness content page
  * @param dataJobOwnerGrouping map of team name to list of its DataJob Entities
  */
-function getDataPoints(dataJobOwnerGrouping: { [key: string]: DataJobEntity[] }) {
+function getDataPoints(dataJobOwnerGrouping: { [key: string]: DataJobEntity[] }, targetTeamsPercentage: number) {
     const allDaysByDate: Map<string, number> = new Map();
-    const allDaysCounts: Map<string, number> = new Map();
-    const totalTeamCount: number = Object.entries(dataJobOwnerGrouping).length;
+    const allTeamsCounts: Map<string, Counts> = new Map();
     Object.entries(dataJobOwnerGrouping).forEach(([, dataJobEntitiesList]) => {
         const goodDaysPerTeam = getTeamGoodDayMeasure(dataJobEntitiesList);
+        // Count teams that had a bad day and total teams for each day.
+        // Get good/bad day metric across teams for each day - overall it's a good day if at least
+        // {targetTeamsPercentage} of teams had a good day, otherwise it's a bad day.
         goodDaysPerTeam.forEach((isGoodDay, execDate) => {
+            let counts: Counts;
+
             if (isGoodDay === 0) {
-                allDaysByDate.set(execDate, 0);
-                if (allDaysCounts.get(execDate) === undefined) {
-                    allDaysCounts.set(execDate, 0);
-                }
+                counts = { total: 1, teamWithBadDayCnt: 1 };
             } else {
-                if (allDaysByDate.get(execDate) === undefined) {
-                    allDaysByDate.set(execDate, 1);
-                }
-                const oldCount = allDaysCounts.get(execDate);
-                const newCount = oldCount !== undefined ? oldCount + 1 : 1;
-                allDaysCounts.set(execDate, newCount);
+                counts = { total: 1, teamWithBadDayCnt: 0 };
             }
+
+            const oldCounts = allTeamsCounts.get(execDate);
+            const newCounts = oldCounts ? addCounts(counts, oldCounts) : counts;
+            allTeamsCounts.set(execDate, newCounts);
+            const isGoodDaySoFar = 1 - newCounts.teamWithBadDayCnt / newCounts.total >= targetTeamsPercentage ? 1 : 0;
+            allDaysByDate.set(execDate, isGoodDaySoFar);
         });
     });
 
@@ -126,7 +141,7 @@ function getDataPoints(dataJobOwnerGrouping: { [key: string]: DataJobEntity[] })
         return dataPoints.map((dataPoint) => ({
             numGoodDays: dataPoint.goodDaysCnt,
             totalDays: days,
-            days: `previous ${days} days`,
+            days: `last ${days} days`,
             dayCount: days,
             executionDate: dataPoint.executionDate,
             goodDaysPercent: dataPoint.goodDaysCnt / days,
@@ -134,39 +149,35 @@ function getDataPoints(dataJobOwnerGrouping: { [key: string]: DataJobEntity[] })
     });
 
     // Merge daily data with aggregate data
-    const sortedCountsByDate: Array<{ readonly executionDate: string; readonly teamCount: number }> = Array.from(
-        allDaysCounts,
+    const sortedCountsByDate: Array<{ readonly executionDate: string; readonly teamCount: Counts }> = Array.from(
+        allTeamsCounts,
         ([key, value]) => ({ executionDate: key, teamCount: value }),
     );
     sortedCountsByDate.sort((a, b) => (a.executionDate < b.executionDate ? -1 : 1));
 
     const dailyData = sortedCountsByDate.map((dataPoint) => ({
-        numGoodDays: dataPoint.teamCount,
-        totalDays: totalTeamCount,
-        days: `previous 1 day`,
+        numTeams: dataPoint.teamCount.total - dataPoint.teamCount.teamWithBadDayCnt,
+        totalTeams: dataPoint.teamCount.total,
+        days: `current 1 day`,
         dayCount: 1,
         executionDate: dataPoint.executionDate,
-        goodDaysPercent: dataPoint.teamCount / totalTeamCount,
+        teamsHavingGoodDayPercent: 1 - dataPoint.teamCount.teamWithBadDayCnt / dataPoint.teamCount.total,
     }));
 
-    const allData = dailyData.concat(aggregateData);
-    return allData;
+    return { aggregateData, dailyData };
 }
 
-type Props = {
-    targetGoodDayPercentage: number | null;
-    dataJobOwnerGrouping: { [key: string]: DataJobEntity[] };
-};
-
-export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dataJobOwnerGrouping }: Props) {
-    const data = getDataPoints(dataJobOwnerGrouping);
-
-    if (!data.length) {
-        return <></>;
-    }
-
+function setAndReturnConfig(
+    data,
+    xFieldName: string,
+    yFieldName: string,
+    seriesFieldName: string,
+    colorArr,
+    targetRange: Range,
+    customContentFn,
+) {
     const lineDashForPoint = (point: Record<string, any>) => {
-        const days = +nullthrows(/\d+/.exec(point.days))[0];
+        const days = +nullthrows(/\d+/.exec(point[seriesFieldName]))[0];
         switch (days) {
             case 1:
                 return [1, 5];
@@ -184,11 +195,58 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
     };
 
     const annotations: ComponentProps<typeof Line>['annotations'] = [];
-    if (targetGoodDayPercentage !== null) {
+    if (targetRange.lowerTarget !== null && targetRange.upperTarget !== null) {
         annotations.push(
             {
                 type: 'region',
-                start: ['start', targetGoodDayPercentage],
+                start: ['start', targetRange.lowerTarget],
+                end: ['end', 'start'],
+                style: {
+                    fill: '#fa4e23',
+                    fillOpacity: 0.15,
+                },
+            },
+            {
+                type: 'region',
+                start: ['start', targetRange.upperTarget],
+                end: ['end', targetRange.lowerTarget],
+                style: {
+                    fill: '#faa423',
+                    fillOpacity: 0.15,
+                },
+            },
+            {
+                type: 'text',
+                content: `upper target ${(100 * +targetRange.upperTarget).toFixed(0)}% \u25BC`,
+                position: ['start', targetRange.upperTarget],
+                offsetX: 5,
+                offsetY: -11,
+                style: {
+                    opacity: 0.3,
+                },
+            },
+            {
+                type: 'text',
+                content: `lower target ${(100 * +targetRange.lowerTarget).toFixed(0)}% \u25b2`,
+                position: ['start', targetRange.lowerTarget],
+                offsetX: 5,
+                offsetY: 11,
+                style: {
+                    opacity: 0.3,
+                },
+            },
+        );
+    } else if (targetRange.lowerTarget !== null || targetRange.upperTarget !== null) {
+        let targetThreshold = 0;
+        if (targetRange.lowerTarget !== null) {
+            targetThreshold = targetRange.lowerTarget;
+        } else if (targetRange.upperTarget !== null) {
+            targetThreshold = targetRange.upperTarget;
+        }
+        annotations.push(
+            {
+                type: 'region',
+                start: ['start', targetThreshold],
                 end: ['end', 'start'],
                 style: {
                     fill: '#faa423',
@@ -197,12 +255,12 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
             },
             {
                 type: 'text',
-                content: `below target ${(100 * +targetGoodDayPercentage).toFixed(0)}% \u25BC`,
-                position: ['start', targetGoodDayPercentage],
+                content: `below target ${(100 * +targetThreshold).toFixed(0)}% \u25BC`,
+                position: ['start', targetThreshold],
                 offsetX: 5,
                 offsetY: -11,
                 style: {
-                    opacity: 0.2,
+                    opacity: 0.3,
                 },
             },
         );
@@ -211,14 +269,14 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
     const config: ComponentProps<typeof Line> = {
         data,
         padding: 'auto' as const,
-        xField: 'executionDate',
-        yField: 'goodDaysPercent',
-        seriesField: 'days',
+        xField: xFieldName,
+        yField: yFieldName,
+        seriesField: seriesFieldName,
         smooth: true,
         point: {
             size: 0,
         },
-        color: ['#006C18', '#005AB5', '#5D3A9B', '#4B0092'],
+        color: colorArr,
         lineStyle: (point) => ({
             lineDash: lineDashForPoint(point),
             lineWidth: 2,
@@ -233,11 +291,24 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
             },
         },
         tooltip: {
-            customContent: (executionDate, items) => {
-                const getDaysOrTeams = (dayCount: number) => {
-                    return dayCount === 1 ? 'teams' : 'days';
-                };
-                return `
+            customContent: customContentFn,
+        },
+        legend: {
+            position: 'left',
+        },
+    };
+
+    return config;
+}
+
+function renderOverallPlot(data: readonly any[], targetRange: Range) {
+    if (!data.length) {
+        return <></>;
+    }
+
+    const color = ['#005AB5', '#5D3A9B', '#4B0092'];
+    const customContentFn = (executionDate, items) => {
+        return `
                     <div style="padding: 10px 0px">
                         <div style="font-size: 120%; margin-bottom: 5px">${executionDate}</div>
                         <table style="margin-left: 10px">
@@ -258,9 +329,7 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
                                                 ${(100 * item.data.goodDaysPercent).toFixed(1)}%
                                             </td>
                                             <td style="padding-top: 8px; padding-left: 5px; opacity: 0.7">
-                                                (${item.data.numGoodDays} of ${item.data.totalDays} ${getDaysOrTeams(
-                                        item.data.dayCount,
-                                    )})
+                                                (${item.data.numGoodDays} of ${item.data.totalDays} days)
                                             </td>
                                         </tr>
                                   `,
@@ -270,21 +339,100 @@ export function HistoricalTimelinessGoodDayMetric({ targetGoodDayPercentage, dat
                         </table>
                     </div>
                 `;
-            },
-        },
-        legend: {
-            position: 'right',
-        },
     };
+
+    const config = setAndReturnConfig(
+        data,
+        'executionDate',
+        'goodDaysPercent',
+        'days',
+        color,
+        targetRange,
+        customContentFn,
+    );
     return (
-        <div style={{ marginLeft: '15px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '110%', marginTop: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
-                Percentage of days that all jobs meet SLA
+        <>
+            <div style={{ fontSize: '115%', marginTop: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                Overall good days percentage
             </div>
             <div style={{ fontSize: '100%', marginTop: '5px', marginBottom: '20px' }}>
-                &ldquo;previous 1 day&rdquo; line depicts percentage of teams that all its jobs meet SLA
+                Overall it&apos;s a good day if at least 80% of the teams have a good day. See below plot for details.
             </div>
             <Line {...config} height={175} />
+        </>
+    );
+}
+
+function renderTeamsPlot(data: readonly any[], targetRange: Range) {
+    if (!data.length) {
+        return <></>;
+    }
+
+    const color = ['#006C18'];
+    const customContentFn = (executionDate, items) => {
+        return `
+                    <div style="padding: 10px 0px">
+                        <div style="font-size: 120%; margin-bottom: 5px">${executionDate}</div>
+                        <table style="margin-left: 10px">
+                            <tbody>
+                            ${items
+                                .map(
+                                    (item) => `
+                                        <tr>
+                                            <td align="right" style="padding-right: 2px; padding-top: 8px;">
+                                                ${item.data.days}
+                                            </td>
+                                            <td style="color: ${
+                                                item.mappingData.color
+                                            }; padding-top: 5px; padding-right: 2px;">
+                                                &#11044;
+                                            </td>
+                                            <td style="padding-top: 8px; font-weight: bold;">
+                                                ${(100 * item.data.teamsHavingGoodDayPercent).toFixed(1)}%
+                                            </td>
+                                            <td style="padding-top: 8px; padding-left: 5px; opacity: 0.7">
+                                                (${item.data.numTeams} of ${item.data.totalTeams} teams)
+                                            </td>
+                                        </tr>
+                                  `,
+                                )
+                                .join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+    };
+
+    const config = setAndReturnConfig(
+        data,
+        'executionDate',
+        'teamsHavingGoodDayPercent',
+        'days',
+        color,
+        targetRange,
+        customContentFn,
+    );
+    return (
+        <>
+            <div style={{ fontSize: '110%', marginTop: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                Percentage of teams having a good day
+            </div>
+            <div style={{ fontSize: '100%', marginTop: '5px', marginBottom: '20px' }}>
+                A team has a good day if all its data jobs land within SLA on a given day, otherwise a bad day.
+            </div>
+            <Line {...config} height={175} />
+        </>
+    );
+}
+
+export function HistoricalTimelinessGoodDayMetric({ targetRange, dataJobOwnerGrouping }: Props) {
+    const targetTeamsPercentage = { lowerTarget: null, upperTarget: 0.8 };
+    const data = getDataPoints(dataJobOwnerGrouping, targetTeamsPercentage.upperTarget);
+
+    return (
+        <div style={{ marginLeft: '15px', marginBottom: '20px' }}>
+            {renderOverallPlot(data.aggregateData, targetRange)}
+            {renderTeamsPlot(data.dailyData, targetTeamsPercentage)}
         </div>
     );
 }

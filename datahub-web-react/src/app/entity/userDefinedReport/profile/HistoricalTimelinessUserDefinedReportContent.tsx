@@ -413,7 +413,7 @@ export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ u
             </Header>
             <HistoricalTimelinessGoodDayMetric
                 dataJobOwnerGrouping={dataJobOwnerGrouping}
-                targetGoodDayPercentage={null}
+                targetRange={{ lowerTarget: 0.7, upperTarget: 0.8 }}
             />
             {Object.entries(dataJobOwnerGrouping).map(([teamName, dataJobEntitiesList]) => {
                 return (
