@@ -35,6 +35,21 @@ fragment runResults on DataProcessInstanceResult {
             ...fullRelationshipResults
         }
         externalUrl
+        DPIinsights {
+            type
+            message
+            rootCause
+            link
+            owner {
+                owner {
+                    ...on CorpGroup {
+                        urn
+                        type
+                        name
+                    }
+                }
+            }
+        }
     }
 }
 

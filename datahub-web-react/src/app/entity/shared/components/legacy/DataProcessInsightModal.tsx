@@ -7,8 +7,8 @@ type Props = {
     dataProcessInsight: DataProcessInsight;
 };
 
-type ModalProps = {
-    airflowLogsLink: string;
+export type ModalProps = {
+    airflowLogsLink?: string;
     dataProcessInsight: DataProcessInsight;
     visible: boolean;
     onClose: () => void;
@@ -17,8 +17,8 @@ type ModalProps = {
 function DataProcessInsightDisplay({ dataProcessInsight }: Props) {
     const titleMessaging =
         dataProcessInsight.type === DataProcessInsightType.FailureInsight
-            ? 'Data Process Failure Information'
-            : 'Data Process SLA Miss Information';
+            ? 'Data Job Run Failure Information'
+            : 'Data Job Run SLA Miss Information';
     return (
         <>
             <Typography.Title level={3} type="danger">
@@ -52,9 +52,15 @@ export function DataProcessInsightModal({ airflowLogsLink, dataProcessInsight, v
             onCancel={onClose}
             footer={
                 <>
-                    <Button href={airflowLogsLink}>Airflow Logs</Button>
-                    {dataProcessInsight.link && (
-                        <Button href={dataProcessInsight.link}>Confluence Question Reference</Button>
+                    {airflowLogsLink && (
+                        <Button href={airflowLogsLink} target="_blank">
+                            Airflow Logs
+                        </Button>
+                    )}
+                    {dataProcessInsight?.link && (
+                        <Button href={dataProcessInsight?.link} target="_blank">
+                            Confluence Question Reference
+                        </Button>
                     )}
                 </>
             }

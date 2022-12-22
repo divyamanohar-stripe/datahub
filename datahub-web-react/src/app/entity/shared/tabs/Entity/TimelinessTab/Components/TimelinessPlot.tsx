@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Column } from '@ant-design/plots';
 import { ColumnConfig } from '@ant-design/charts';
 import { convertSecsToHumanReadable } from '../../../../stripe-utils';
 import { DataRunEntity, plotColorLegendMapping } from '../interfaces';
-import { formatUTCDateString, getRunPlotValues, getRunColor, getCustomContentToolTip } from '../functions';
+import { formatUTCDateString, getRunPlotValues, getRunColor, getCustomContentToolTip, getRunState } from '../functions';
+import { DataProcessInsightModal, ModalProps } from '../../../../components/legacy/DataProcessInsightModal';
 
 export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
+    const [modalProps, setModalProps] = useState<ModalProps | null>(null);
+
     const runsPlotData = runs.map((r) => {
         return {
             ...r,
@@ -68,8 +71,21 @@ export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
         },
         onEvent: (chart, event) => {
             if (event.type === 'plot:click') {
-                const url = event.data?.data?.externalUrl;
-                if (url) window.open(url, '_blank');
+                if (
+                    getRunState(event.data?.data) === 'FAILURE' &&
+                    event.data?.data?.DPIinsights &&
+                    event.data.data.DPIinsights.length > 0
+                ) {
+                    setModalProps({
+                        airflowLogsLink: event.data?.data?.externalUrl,
+                        dataProcessInsight: event.data.data.DPIinsights[0],
+                        visible: true,
+                        onClose: () => setModalProps(null),
+                    });
+                } else {
+                    const url = event.data?.data?.externalUrl;
+                    if (url) window.open(url, '_blank');
+                }
             }
         },
         tooltip: {
@@ -82,6 +98,7 @@ export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
 
     return (
         <div style={{ paddingLeft: '10px' }}>
+            {modalProps && <DataProcessInsightModal {...modalProps} />}
             <Column {...config} />
         </div>
     );

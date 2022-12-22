@@ -21,6 +21,21 @@ fragment runResultsTimelinessTab on DataProcessInstanceResult {
             warnStartedBy
             warnFinishedBy
         }
+        DPIinsights {
+            type
+            message
+            rootCause
+            link
+            owner {
+                owner {
+                    ...on CorpGroup {
+                        urn
+                        type
+                        name
+                    }
+                }
+            }
+        }
     }
 }
 

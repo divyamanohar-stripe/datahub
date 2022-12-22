@@ -1,5 +1,5 @@
 import { grey, orange, red, green, blue, gold } from '@ant-design/colors';
-import { SlaInfo } from '../../../../../../types.generated';
+import { SlaInfo, DataProcessInsight } from '../../../../../../types.generated';
 
 export const stateToStepMapping = {
     SCHEDULED: 1,
@@ -62,4 +62,5 @@ export type DataRunEntity = {
     externalUrl: string;
     slaInfo?: SlaInfo | null;
     slaMissData: SLAMissData[] | undefined;
+    DPIinsights: DataProcessInsight[] | null;
 };

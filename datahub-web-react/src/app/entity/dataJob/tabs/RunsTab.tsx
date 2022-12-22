@@ -1,10 +1,14 @@
-import { DeliveredProcedureOutlined } from '@ant-design/icons';
+import React, { useState, FC } from 'react';
+import { DeliveredProcedureOutlined, QuestionCircleTwoTone } from '@ant-design/icons';
 import { Pagination, Table, Tooltip, Typography } from 'antd';
-import React, { useState } from 'react';
 import styled from 'styled-components';
 
 import { useGetDataJobRunsQuery } from '../../../../graphql/dataJob.generated';
-import { DataProcessInstanceRunResultType, DataProcessRunStatus } from '../../../../types.generated';
+import {
+    DataProcessInsightType,
+    DataProcessInstanceRunResultType,
+    DataProcessRunStatus,
+} from '../../../../types.generated';
 import {
     getExecutionRequestStatusDisplayColor,
     getExecutionRequestStatusDisplayText,
@@ -14,6 +18,7 @@ import { CompactEntityNameList } from '../../../recommendations/renderer/compone
 import { ANTD_GRAY } from '../../shared/constants';
 import { useEntityData } from '../../shared/EntityContext';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
+import { DataProcessInsightModal, ModalProps } from '../../shared/components/legacy/DataProcessInsightModal';
 
 const ExternalUrlLink = styled.a`
     font-size: 16px;
@@ -53,6 +58,76 @@ function getStatusForStyling(status: DataProcessRunStatus, resultType: DataProce
     return 'RUNNING';
 }
 
+interface StatusFieldComponentProps {
+    status: any;
+    row: any;
+}
+
+/**
+ * Component to display the "status" column in the Data Job RunsTab. We display the
+ * DataProcessInsightModal if failure insights are available
+ * @param status current run status
+ * @param row all row information
+ */
+const StatusFieldComponent: FC<StatusFieldComponentProps> = ({ status, row }) => {
+    const [modalProps, setModalProps] = useState<ModalProps | null>(null);
+    const statusForStyling = getStatusForStyling(status, row?.resultType);
+    const Icon = getExecutionRequestStatusIcon(statusForStyling);
+    const text = getExecutionRequestStatusDisplayText(statusForStyling);
+    const color = getExecutionRequestStatusDisplayColor(statusForStyling);
+
+    // check if failure insight modal is available
+    const dpiInsightsModalAvailable = () => {
+        return (
+            row?.dpiInsights &&
+            row.dpiInsights.length > 0 &&
+            text === 'Failed' &&
+            row.dpiInsights[0].type === DataProcessInsightType.FailureInsight
+        );
+    };
+
+    // make failure insights modal visible on click and set modal props
+    const onClickHandler = () => {
+        if (dpiInsightsModalAvailable()) {
+            setModalProps({
+                airflowLogsLink: row?.externalUrl,
+                dataProcessInsight: row.dpiInsights[0],
+                visible: true,
+                onClose: () => setModalProps(null),
+            });
+        }
+    };
+
+    // show tool tip with question circle icon if failure insights modal is available
+    let toolTipIcon;
+    if (dpiInsightsModalAvailable()) {
+        toolTipIcon = (
+            <Tooltip title="Click to view Failure Insights">
+                <QuestionCircleTwoTone />
+            </Tooltip>
+        );
+    }
+    return (
+        <>
+            {modalProps && <DataProcessInsightModal {...modalProps} />}
+            <div
+                style={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}
+                onClick={onClickHandler}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') onClickHandler();
+                }}
+                role="button"
+                tabIndex={0}
+            >
+                {Icon && <Icon style={{ color }} />}
+                <Typography.Text strong style={{ color, marginLeft: 8 }}>
+                    {text || 'N/A'} {toolTipIcon}
+                </Typography.Text>
+            </div>
+        </>
+    );
+};
+
 const columns = [
     {
         title: 'Start Time',
@@ -73,22 +148,7 @@ const columns = [
         title: 'Status',
         dataIndex: 'status',
         key: 'status',
-        render: (status: any, row) => {
-            const statusForStyling = getStatusForStyling(status, row?.resultType);
-            const Icon = getExecutionRequestStatusIcon(statusForStyling);
-            const text = getExecutionRequestStatusDisplayText(statusForStyling);
-            const color = getExecutionRequestStatusDisplayColor(statusForStyling);
-            return (
-                <>
-                    <div style={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
-                        {Icon && <Icon style={{ color }} />}
-                        <Typography.Text strong style={{ color, marginLeft: 8 }}>
-                            {text || 'N/A'}
-                        </Typography.Text>
-                    </div>
-                </>
-            );
-        },
+        render: (status: any, row) => <StatusFieldComponent status={status} row={row} />,
     },
     {
         title: 'Inputs',
@@ -134,6 +194,7 @@ export const RunsTab = () => {
             time: run?.properties?.customProperties,
             name: run?.name,
             status: run?.state?.[0]?.status,
+            dpiInsights: run?.DPIinsights,
             resultType: run?.state?.[0]?.result?.resultType,
             inputs: run?.inputs?.relationships.map((relationship) => relationship.entity),
             outputs: run?.outputs?.relationships.map((relationship) => relationship.entity),

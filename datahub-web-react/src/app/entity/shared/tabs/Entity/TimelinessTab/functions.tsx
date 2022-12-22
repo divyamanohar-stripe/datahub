@@ -244,7 +244,12 @@ export function getCustomContentToolTip(items): string {
         (buildingString, element) => buildingString + renderToString(element),
         '',
     );
-    return `<div>${executionDateString}${startDateString}${endDateString}${stateString}${runDurationString}${tryNumber}${slaMissString}<div><a href="${run?.externalUrl}">Click to open in Airflow</a></div></div>`;
+    const linkText =
+        getRunState(run) === 'FAILURE' && run?.DPIinsights && run?.DPIinsights.length > 0
+            ? '*** Click to view Failure Insights ***'
+            : '*** Click to view Airflow task logs ***';
+
+    return `<div>${executionDateString}${startDateString}${endDateString}${stateString}${runDurationString}${tryNumber}${slaMissString}${linkText}</div>`;
 }
 
 // sort runs in order of execution date and add sla miss data
