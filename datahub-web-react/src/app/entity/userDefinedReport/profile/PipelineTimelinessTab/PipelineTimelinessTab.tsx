@@ -25,7 +25,7 @@ export const PipelineTimelinessTab = ({ urn }: { urn: string }) => {
             urn,
             input: {
                 start: 0,
-                count: 100,
+                count: 50,
                 filters: [
                     { type: DataProcessInstanceFilterInputType.BeforeLogicalDate, value: logicalDate.toString(10) },
                 ],
