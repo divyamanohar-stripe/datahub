@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-nested-ternary */
 import React, { useState } from 'react';
-import { DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip, Table } from 'antd';
+import { DatePicker, DatePickerProps, Descriptions, Divider, List, Tooltip, Table, Button } from 'antd';
 import styled from 'styled-components';
 
 import moment from 'moment';
@@ -11,10 +11,8 @@ import {
     DataJobVersionInfo,
     DataJobVersionInfosResult,
     DataProcessRunEvent,
-    DataProcessRunStatus,
     EntityType,
     LineageDirection,
-    Maybe,
 } from '../../../../types.generated';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/textUtil';
@@ -22,10 +20,10 @@ import { IconStyleType } from '../../Entity';
 import InsightsPreviewCard from '../../../preview/InsightsPreviewCard';
 import { ReactComponent as LoadingSvg } from '../../../../images/datahub-logo-color-loading_pendulum.svg';
 import { TimePredictionComponent } from './PredictLandingTime';
-import { useGetDelaysQuery } from '../../../../graphql/delays.generated';
+import { useGetCurrentDateDpiInsightsQuery, useGetDelaysQuery } from '../../../../graphql/delays.generated';
 import { useGetDataJobVersionQuery } from '../../../../graphql/getVersions.generated';
-import { DataJobEntityWithVersions } from '../../shared/types';
 import { getCustomProperty } from '../../shared/utils';
+import { DataProcessInsightModal, ModalProps } from '../../shared/components/legacy/DataProcessInsightModal';
 
 /* eslint eqeqeq: 0 */
 const StyledList = styled(List)`
@@ -202,6 +200,39 @@ type DataJobEntity = {
     };
 };
 
+export const FailureInsights = ({ insightsData }: { insightsData: any }) => {
+    const [modalProps, setModalProps] = useState<ModalProps | null>(null);
+
+    const dpiInsightsModalAvailable = () => {
+        return (
+            insightsData &&
+            insightsData.dataJob?.runs?.runs &&
+            insightsData.dataJob.runs.runs.length > 0 &&
+            insightsData.dataJob.runs.runs[0]?.DPIinsights &&
+            insightsData.dataJob.runs.runs[0].DPIinsights.length > 0
+        );
+    };
+
+    // make failure insights modal visible on click and set modal props
+    const onClickHandler = () => {
+        if (dpiInsightsModalAvailable()) {
+            setModalProps({
+                airflowLogsLink: insightsData.dataJob.runs.runs[0]?.externalUrl,
+                dataProcessInsight: insightsData.dataJob.runs.runs[0]?.DPIinsights[0],
+                visible: true,
+                onClose: () => setModalProps(null),
+            });
+        }
+    };
+
+    return (
+        <>
+            {modalProps && <DataProcessInsightModal {...modalProps} />}{' '}
+            {dpiInsightsModalAvailable() ? <Button onClick={onClickHandler}>Click to View</Button> : 'None'}
+        </>
+    );
+};
+
 // field can be either 'startDate' or 'endDate', depends on the usage
 function getRunDate(run: RunEntity, field) {
     const { customProperties } = run.properties;
@@ -332,12 +363,19 @@ export const InsightsTab = ({
         },
     });
 
+    const { data: insightsData, loading: insightsLoading } = useGetCurrentDateDpiInsightsQuery({
+        variables: {
+            urn,
+            exec_date: String(execDate),
+        },
+    });
+
     const handleDateChange: DatePickerProps['onChange'] = (date, dateString) => {
         setExecDate(moment.utc(dateString).valueOf());
     };
 
     const entityRegistry = useEntityRegistry();
-    if (loading) return loadingPage;
+    if (loading || insightsLoading) return loadingPage;
 
     const additionalPropertiesList = data?.searchAcrossLineage?.searchResults?.map((searchResult) => ({
         degree: searchResult.degree,
@@ -352,7 +390,7 @@ export const InsightsTab = ({
     const delayedEntities = dataJobEntitiesWithRuntime.filter(isEntityDelayed);
     const predictedLandingToolTip = (
         <Tooltip title="landing times are estimated from pending upstreams and historical p95 runtime durations">
-            Predicted Landing Time
+            Current Run Predicted Landing Time
         </Tooltip>
     );
 
@@ -390,6 +428,9 @@ export const InsightsTab = ({
                                 defaultValue={moment.utc(execDate)}
                             />
                         </Tooltip>
+                    </Descriptions.Item>
+                    <Descriptions.Item style={{ fontWeight: 'bold' }} label="Current Run Failure Insights">
+                        <FailureInsights insightsData={insightsData} />
                     </Descriptions.Item>
                     <Descriptions.Item style={{ fontWeight: 'bold' }} label={predictedLandingToolTip}>
                         <TimePredictionComponent urn={urn} executionDate={execDate} />

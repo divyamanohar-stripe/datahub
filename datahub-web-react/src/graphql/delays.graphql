@@ -502,3 +502,28 @@ query getDelays($input: SearchAcrossLineageInput!, $exec_date: String!) {
     __typename
   }
 }
+
+query getCurrentDateDPIInsights($urn: String!, $exec_date: String!){
+    dataJob(urn: $urn) {
+        runs(input: {start: 0, count: 500, filters: {type: ON_LOGICAL_DATE, value: $exec_date}} ) {
+      			runs {
+      			externalUrl
+            	DPIinsights {
+                    type
+                    message
+                    rootCause
+                    link
+                    owner {
+                      owner {
+                          ...on CorpGroup {
+                              urn
+                              type
+                              name
+                          }
+                      }
+                    }
+            	}
+            }
+        }
+    }
+}
