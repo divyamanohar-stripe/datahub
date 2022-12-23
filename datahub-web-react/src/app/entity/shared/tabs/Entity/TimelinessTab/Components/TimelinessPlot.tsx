@@ -3,7 +3,7 @@ import { Column } from '@ant-design/plots';
 import { ColumnConfig } from '@ant-design/charts';
 import { convertSecsToHumanReadable } from '../../../../stripe-utils';
 import { DataRunEntity, plotColorLegendMapping } from '../interfaces';
-import { formatUTCDateString, getRunPlotValues, getRunColor, getCustomContentToolTip, getRunState } from '../functions';
+import { formatUTCDateString, getRunPlotValues, getRunColor, getCustomContentToolTip } from '../functions';
 import { DataProcessInsightModal, ModalProps } from '../../../../components/legacy/DataProcessInsightModal';
 
 export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
@@ -71,11 +71,7 @@ export const TimelinessPlot = ({ runs }: { runs: DataRunEntity[] }) => {
         },
         onEvent: (chart, event) => {
             if (event.type === 'plot:click') {
-                if (
-                    getRunState(event.data?.data) === 'FAILURE' &&
-                    event.data?.data?.DPIinsights &&
-                    event.data.data.DPIinsights.length > 0
-                ) {
+                if (event.data?.data?.DPIinsights && event.data.data.DPIinsights.length > 0) {
                     setModalProps({
                         airflowLogsLink: event.data?.data?.externalUrl,
                         dataProcessInsight: event.data.data.DPIinsights[0],

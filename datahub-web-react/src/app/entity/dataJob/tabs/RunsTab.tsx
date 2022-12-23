@@ -81,7 +81,6 @@ const StatusFieldComponent: FC<StatusFieldComponentProps> = ({ status, row }) =>
         return (
             row?.dpiInsights &&
             row.dpiInsights.length > 0 &&
-            text === 'Failed' &&
             row.dpiInsights[0].type === DataProcessInsightType.FailureInsight
         );
     };

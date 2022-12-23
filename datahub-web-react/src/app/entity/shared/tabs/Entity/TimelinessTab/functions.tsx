@@ -245,7 +245,7 @@ export function getCustomContentToolTip(items): string {
         '',
     );
     const linkText =
-        getRunState(run) === 'FAILURE' && run?.DPIinsights && run?.DPIinsights.length > 0
+        run?.DPIinsights && run?.DPIinsights.length > 0
             ? '*** Click to view Failure Insights ***'
             : '*** Click to view Airflow task logs ***';
 
