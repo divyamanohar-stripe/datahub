@@ -4,7 +4,7 @@ load("config/kubernetes/core/env_var.sky", "container_env_vars")
 load("config/kubernetes/core/volume.sky", "mount_pod_volume", "volume_mount")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/apps/strategy.sky", "rolling_update_strategy")
-load("config/kubernetes/helpers/aws_instance_sizes.sky", "m5d_xlarge")
+load("config/kubernetes/helpers/aws_instance_sizes.sky", "r5_xlarge")
 load("config/kubernetes/helpers/context.sky", "get_cluster", "get_env")
 load("config/kubernetes/helpers/quantities.sky", "cores", "gigabytes")
 load("config/kubernetes/helpers/healthcheck.sky", "healthchecked_service")
@@ -125,8 +125,7 @@ def _service(ctx, replicas, suffix = ""):
             name = "datahub-mce-consumer" + suffix,
             namespace = "datahub",
             command = ["./datahub-mxe-consumers/scripts/mxe-stripe-start.sh"],
-            # m5.xlarge instances have 4 cores and 16 GB of memory
-            instance_type = m5d_xlarge,
+            instance_type = r5_xlarge,
             image = container_image,
         ),
         healthchecked_service(
