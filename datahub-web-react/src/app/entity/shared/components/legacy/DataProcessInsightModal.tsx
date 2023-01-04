@@ -25,7 +25,7 @@ function DataProcessInsightDisplay({ dataProcessInsight }: Props) {
                 {titleMessaging}
             </Typography.Title>
             <Divider />
-            <Card title="Responsible Team">
+            <Card title="Contact Team">
                 {dataProcessInsight.owner && (
                     <Card type="inner">
                         <CompactEntityNameList entities={[dataProcessInsight.owner.owner]} />
