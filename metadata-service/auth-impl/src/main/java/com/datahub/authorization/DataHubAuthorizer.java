@@ -122,7 +122,14 @@ public class DataHubAuthorizer implements Authorizer {
 
     Optional<ResolvedResourceSpec> resolvedResourceSpec = resourceSpec.map(_resourceSpecResolver::resolve);
 
-    return _policyEngine.getGrantedPrivileges(policiesToEvaluate, UrnUtils.getUrn(actorUrn), resolvedResourceSpec);
+    List<String> grantedPrivileges = _policyEngine.getGrantedPrivileges(policiesToEvaluate, UrnUtils.getUrn(actorUrn),
+        resolvedResourceSpec);
+
+    // TODO: Remove this logging after debugging finishes.
+    log.debug(String.format("Obtained grantedPrivileges: %s with policiesToEvaluate: %s and actorUrn: %s",
+        grantedPrivileges, policiesToEvaluate, actorUrn));
+
+    return grantedPrivileges;
   }
 
   /**

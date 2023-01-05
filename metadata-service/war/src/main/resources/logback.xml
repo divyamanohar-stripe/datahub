@@ -33,10 +33,10 @@
         <file>${LOG_DIR}/gms.debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <FileNamePattern>${LOG_DIR}/gms.debug.%d{yyyy-dd-MM}-%i.log</FileNamePattern>
-            <!-- each archived file, size max 10MB -->
+            <!-- each archived file, size max 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <!-- total size of all archive files, if total size > 2GB, it will delete old archived file -->
-            <totalSizeCap>2GB</totalSizeCap>
+            <!-- total size of all archive files, if total size > 12GB, it will delete old archived file -->
+            <totalSizeCap>12GB</totalSizeCap>
             <!-- 1 days to keep -->
             <maxHistory>1</maxHistory>
         </rollingPolicy>
