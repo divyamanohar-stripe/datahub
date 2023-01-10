@@ -8,8 +8,8 @@ import { ANTD_GRAY } from '../../constants';
 import { useEntityData } from '../../EntityContext';
 import { useGetUpstreamVersionsQuery, useGetDataJobVersionQuery } from '../../../../../graphql/getVersions.generated';
 import { DataJobEntityWithVersions } from '../../types';
-import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
 import { getCustomProperty } from '../../utils';
+import { loadingPage } from '../../stripe-utils';
 /* eslint eqeqeq: 0 */
 
 const ValueText = styled(Typography.Text)`

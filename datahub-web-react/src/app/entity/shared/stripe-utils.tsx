@@ -5,6 +5,11 @@ import { ReactComponent as LoadingSvg } from '../../../images/datahub-logo-color
 
 const { Title } = Typography;
 
+export const ExternalUrlLink = styled.a`
+    font-size: 16px;
+    color: grey;
+`;
+
 export function convertSecsToHumanReadable(seconds: number, truncateToMins = false) {
     const oriSeconds = seconds;
     const floatingPart = oriSeconds - Math.floor(oriSeconds);

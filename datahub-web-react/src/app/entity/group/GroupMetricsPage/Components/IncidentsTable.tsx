@@ -7,8 +7,8 @@ import { EntityPreviewTag } from '../../../../recommendations/renderer/component
 import { urlEncodeUrn } from '../../../shared/utils';
 import { useGetGroupIncidentsQuery } from '../../../../../graphql/groupMetrics.generated';
 import { EntityType } from '../../../../../types.generated';
-import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
 import { getValidField } from '../../../incident/profile/IncidentContentTab';
+import { loadingPage } from '../../../shared/stripe-utils';
 
 // component for incidents table
 const IncidentsTable = ({ incidents }: { incidents: IncidentEntity[] }) => {

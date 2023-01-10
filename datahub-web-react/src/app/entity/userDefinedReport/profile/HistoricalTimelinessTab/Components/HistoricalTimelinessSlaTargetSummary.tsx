@@ -1,16 +1,73 @@
-import * as React from 'react';
+import React, { ComponentProps } from 'react';
 import moment from 'moment-timezone';
-import { ComponentProps } from 'react';
 import { Line } from '@ant-design/charts';
-import { extractDataJobFromEntity } from './data-conversion';
-import { nullthrows } from '../../../../utils/nullthrows';
+import { blue, purple, grey } from '@ant-design/colors';
+import { extractDataJobFromEntity } from '../data-conversion';
+import { nullthrows } from '../../../../../../utils/nullthrows';
+
+type Counts = { readonly total: number; readonly misses: number };
+
+function mergeCounts(a: Counts, b: Counts): Counts {
+    return { total: a.total + b.total, misses: a.misses + b.misses };
+}
+
+function calculateSlidingWindowCounts(windowLength: moment.Duration, dataJobEntities: readonly any[]) {
+    const byExecutionDate: Map<number, Counts> = new Map();
+    dataJobEntities.forEach((dataJobEntity) => {
+        const { latestRuns } = extractDataJobFromEntity(dataJobEntity);
+
+        latestRuns.forEach((run) => {
+            const counts = { total: 1, misses: run.missedSLA ? 1 : 0 };
+            const executionDate = new Date(run.executionDate).getTime();
+            const existing = byExecutionDate.get(executionDate);
+            const merged = existing ? mergeCounts(counts, existing) : counts;
+            byExecutionDate.set(executionDate, merged);
+        });
+    });
+
+    const sortedWithDates: Array<{ readonly executionDate: moment.Moment; readonly counts: Counts }> = [];
+    byExecutionDate.forEach((counts, executionDate) =>
+        sortedWithDates.push({ executionDate: moment(new Date(executionDate)), counts }),
+    );
+    sortedWithDates.sort((a, b) => (a.executionDate.isBefore(b.executionDate) ? -1 : 1));
+
+    const dataPoints: Array<{ readonly executionDate: moment.Moment; readonly counts: Counts }> = [];
+
+    let firstIndex = 0;
+    let lastIndex = 0;
+
+    // Skip data points until we have a full {windowLength} of data
+    while (lastIndex < sortedWithDates.length) {
+        const { executionDate } = sortedWithDates[lastIndex];
+        const { executionDate: firstExecutionDate } = sortedWithDates[firstIndex];
+        if (moment(firstExecutionDate).add(windowLength).isBefore(executionDate)) {
+            break;
+        }
+        lastIndex++;
+    }
+
+    for (; lastIndex < sortedWithDates.length; lastIndex++) {
+        const { executionDate } = sortedWithDates[lastIndex];
+        const minExecutionDate = moment(executionDate).subtract(windowLength);
+        while (firstIndex < lastIndex && sortedWithDates[firstIndex].executionDate.isBefore(minExecutionDate)) {
+            firstIndex++;
+        }
+        const merged = sortedWithDates
+            .slice(firstIndex, lastIndex + 1)
+            .map(({ counts }) => counts)
+            .reduce(mergeCounts);
+        dataPoints.push({ executionDate, counts: merged });
+    }
+
+    return dataPoints;
+}
 
 type Props = {
     targetSlaPercentage: number | null;
     dataJobEntitiesList: readonly any[];
 };
 
-export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, dataJobEntitiesList }: Props) {
+export const HistoricalTimelinessSlaTargetSummary = ({ targetSlaPercentage, dataJobEntitiesList }: Props) => {
     const intervalDays: readonly number[] = [7, 30, 90];
     const data = intervalDays.flatMap((days) => {
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -78,13 +135,14 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
         point: {
             size: 0,
         },
-        color: ['#005AB5', '#5D3A9B', '#4B0092'],
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        color: [blue.primary!, purple[3], purple.primary!],
         lineStyle: (point) => ({
             // lineWidth: intervalDays.indexOf(+nullthrows(/\d+/.exec(point.days))[0]) + 1,
             lineDash: lineDashForPoint(point),
             lineWidth: 2,
             opacity: 0.7,
-            color: ['#333333', '#888888', '#cccccc'],
+            color: [grey[grey.length - 1], grey.primary, grey[0]],
         }),
         annotations,
         xAxis: {
@@ -145,69 +203,4 @@ export function HistoricalTimelinessSlaTargetSummary({ targetSlaPercentage, data
             <Line {...config} height={175} />
         </div>
     );
-}
-
-type Counts = { readonly total: number; readonly misses: number };
-
-function mergeCounts(a: Counts, b: Counts): Counts {
-    return { total: a.total + b.total, misses: a.misses + b.misses };
-}
-
-function calculateSlidingWindowCounts(windowLength: moment.Duration, dataJobEntities: readonly any[]) {
-    const byExecutionDate: Map<number, Counts> = new Map();
-    dataJobEntities.forEach((dataJobEntity) => {
-        const extracted = extractDataJobFromEntity(dataJobEntity);
-        if ('error' in extracted) {
-            return;
-        }
-
-        // effectively zero; not set
-        if (extracted.dataJobProperties.finishedBySlaDuration.asMinutes() < 1) {
-            return;
-        }
-
-        extracted.latestRuns.forEach((run) => {
-            const counts = { total: 1, misses: run.isWithinSla ? 0 : 1 };
-            const executionDate = new Date(run.executionDate).getTime();
-            const existing = byExecutionDate.get(executionDate);
-            const merged = existing ? mergeCounts(counts, existing) : counts;
-            byExecutionDate.set(executionDate, merged);
-        });
-    });
-
-    const sortedWithDates: Array<{ readonly executionDate: moment.Moment; readonly counts: Counts }> = [];
-    byExecutionDate.forEach((counts, executionDate) =>
-        sortedWithDates.push({ executionDate: moment(new Date(executionDate)), counts }),
-    );
-    sortedWithDates.sort((a, b) => (a.executionDate.isBefore(b.executionDate) ? -1 : 1));
-
-    const dataPoints: Array<{ readonly executionDate: moment.Moment; readonly counts: Counts }> = [];
-
-    let firstIndex = 0;
-    let lastIndex = 0;
-
-    // Skip data points until we have a full {windowLength} of data
-    while (lastIndex < sortedWithDates.length) {
-        const { executionDate } = sortedWithDates[lastIndex];
-        const { executionDate: firstExecutionDate } = sortedWithDates[firstIndex];
-        if (moment(firstExecutionDate).add(windowLength).isBefore(executionDate)) {
-            break;
-        }
-        lastIndex++;
-    }
-
-    for (; lastIndex < sortedWithDates.length; lastIndex++) {
-        const { executionDate } = sortedWithDates[lastIndex];
-        const minExecutionDate = moment(executionDate).subtract(windowLength);
-        while (firstIndex < lastIndex && sortedWithDates[firstIndex].executionDate.isBefore(minExecutionDate)) {
-            firstIndex++;
-        }
-        const merged = sortedWithDates
-            .slice(firstIndex, lastIndex + 1)
-            .map(({ counts }) => counts)
-            .reduce(mergeCounts);
-        dataPoints.push({ executionDate, counts: merged });
-    }
-
-    return dataPoints;
-}
+};

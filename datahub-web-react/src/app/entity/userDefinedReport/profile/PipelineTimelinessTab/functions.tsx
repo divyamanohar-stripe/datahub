@@ -15,9 +15,9 @@ import {
     SLAMissData,
     SLATypes,
 } from './interfaces';
-import { CLIENT_TZ, DATE_DISPLAY_FORMAT, ExternalUrlLink } from './constants';
+import { CLIENT_TZ, DATE_DISPLAY_FORMAT } from './constants';
 import { CorpGroup } from '../../../../../types.generated';
-import { convertSecsToHumanReadable } from '../../../shared/stripe-utils';
+import { convertSecsToHumanReadable, ExternalUrlLink } from '../../../shared/stripe-utils';
 
 // helper function to add date param to URl for pipeline timeliness report page
 export const useSearchParams = () => {

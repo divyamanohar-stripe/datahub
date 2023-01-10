@@ -2,7 +2,7 @@ import * as React from 'react';
 import moment from 'moment-timezone';
 import { ComponentProps } from 'react';
 import { Line } from '@ant-design/charts';
-import { nullthrows } from '../../../../utils/nullthrows';
+import { nullthrows } from '../../../../../utils/nullthrows';
 import { DataJobEntity } from './SharedContent';
 import { extractDataJobFromEntity } from './data-conversion';
 

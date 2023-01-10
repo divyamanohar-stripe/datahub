@@ -13,4 +13,10 @@ export const ACTIVE_EXPERIMENTS: Preference<any>[] = [
         key: 'homepage_v2',
         defaultValue: false,
     },
+    {
+        title: 'Historical Timeliness Tab V2',
+        description: 'User Defined Report Historical Timeliness View to use SLAs set on DPIs',
+        key: 'historical_timeliness_tab_v2',
+        defaultValue: false,
+    },
 ];

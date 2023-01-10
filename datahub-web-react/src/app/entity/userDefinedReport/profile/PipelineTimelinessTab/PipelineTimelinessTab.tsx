@@ -9,8 +9,7 @@ import { SegmentContent } from './Components/SegmentContent';
 import { SegmentTimeline } from './Components/SegmentTimeline';
 import { useGetPipelineTimelinessTabDataQuery } from '../../../../../graphql/userDefinedReport.generated';
 import { DataProcessInstanceFilterInputType } from '../../../../../types.generated';
-import { loadingPage } from '../SharedContent';
-import { ErrorBoundary } from '../../../shared/stripe-utils';
+import { ErrorBoundary, loadingPage } from '../../../shared/stripe-utils';
 
 // main component for PipelineTimeliness Tab, shows status of jobs in pipeline on the UserDefinedReport entity
 export const PipelineTimelinessTab = ({ urn }: { urn: string }) => {

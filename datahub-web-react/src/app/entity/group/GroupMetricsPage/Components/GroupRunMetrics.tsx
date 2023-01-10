@@ -2,12 +2,12 @@ import React, { FC } from 'react';
 import { PageHeader } from 'antd';
 import { DataProcessInstanceFilterInputType, EntityType } from '../../../../../types.generated';
 import { useGetGroupRunMetricsQuery } from '../../../../../graphql/groupMetrics.generated';
-import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
 import { SLALineChart } from './SLALineChart';
 import { GroupMetricsPageHeader } from './GroupMetricsPageHeader';
 import { getRunMetrics } from '../functions';
 import { DataEntity } from '../interfaces';
 import { SLAMissTable } from './SLAMissTable';
+import { loadingPage } from '../../../shared/stripe-utils';
 
 interface GroupRunMetricsProps {
     urn: string;

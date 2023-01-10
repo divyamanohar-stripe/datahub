@@ -2,10 +2,10 @@ import React, { FC } from 'react';
 import { PageHeader, Table } from 'antd';
 import { EntityType } from '../../../../../types.generated';
 import { useGetDownstreamTeamsQuery } from '../../../../../graphql/groupMetrics.generated';
-import { loadingPage } from '../../../userDefinedReport/profile/SharedContent';
 import { getDownstreamTeams } from '../functions';
 import { DownstreamTeam, DownstreamTeamEntity } from '../interfaces';
 import { CompactEntityNameList } from '../../../../recommendations/renderer/component/CompactEntityNameList';
+import { loadingPage } from '../../../shared/stripe-utils';
 
 const ExpandableRows = ({ downstreamEntities }: { downstreamEntities }) => {
     const columns = [

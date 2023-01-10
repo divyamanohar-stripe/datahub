@@ -144,69 +144,56 @@ query getUserDefinedReportContentType($urn: String!) {
     }
 }
 
-query getUserDefinedReportContentFilterLogicalDate($urn: String!, $entityStart: Int, $entityCount: Int, $input: DataProcessInstanceInput) {
+query getHistoricalTimelinessTabData($urn: String!, $entityStart: Int, $entityCount: Int, $input: DataProcessInstanceInput) {
     userDefinedReport(urn: $urn) {
-        urn
-        id
-        ownership {
-            ...ownershipFields
-        }
-        properties {
-            name
-            type
-            description
-        }
         entities(input: {start: $entityStart, count: $entityCount}) {
-            start
-            count
-            total
             searchResults {
                 entity {
-                    urn
-                    type
                     ... on DataJob {
                         urn
                         type
-                        jobId
+                        properties {
+                            name
+                        }
                         dataFlow {
                             platform {
-                                ...platformFields
+                                properties {
+                                    logoUrl
+                                }
                             }
                         }
                         ownership {
-                            ...ownershipFields
-                        }
-                        properties {
-                            name
-                            description
-                            externalUrl
-                            customProperties {
-                                key
-                                value
+                            owners {
+                                owner {
+                                    ... on CorpGroup {
+                                        urn
+                                        type
+                                        properties {
+                                            displayName
+                                        }
+                                    }
+                                }
                             }
                         }
-                        globalTags {
-                            ...globalTagsFields
+                        slaInfo {
+                            errorFinishedBy
                         }
                         runs(input: $input) {
-                            count
-                            start
-                            total
                             runs {
-                                urn
                                 execution {
                                     logicalDate
                                     startDate
                                     endDate
                                 }
-                                type
-                                properties {
-                                    customProperties {
-                                        key
-                                        value
+                                state(limit: 1){
+                                    status
+                                    result {
+                                        resultType
                                     }
                                 }
-                                name
+                                slaInfo {
+                                    errorFinishedBy
+                                }
                                 externalUrl
                             }
                         }
@@ -289,6 +276,79 @@ query getPipelineTimelinessTabData($urn: String!, $input: DataProcessInstanceInp
                                     warnStartedBy
                                     warnFinishedBy
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+query getUserDefinedReportContentFilterLogicalDate($urn: String!, $entityStart: Int, $entityCount: Int, $input: DataProcessInstanceInput) {
+    userDefinedReport(urn: $urn) {
+        urn
+        id
+        ownership {
+            ...ownershipFields
+        }
+        properties {
+            name
+            type
+            description
+        }
+        entities(input: {start: $entityStart, count: $entityCount}) {
+            start
+            count
+            total
+            searchResults {
+                entity {
+                    urn
+                    type
+                    ... on DataJob {
+                        urn
+                        type
+                        jobId
+                        dataFlow {
+                            platform {
+                                ...platformFields
+                            }
+                        }
+                        ownership {
+                            ...ownershipFields
+                        }
+                        properties {
+                            name
+                            description
+                            externalUrl
+                            customProperties {
+                                key
+                                value
+                            }
+                        }
+                        globalTags {
+                            ...globalTagsFields
+                        }
+                        runs(input: $input) {
+                            count
+                            start
+                            total
+                            runs {
+                                urn
+                                execution {
+                                    logicalDate
+                                    startDate
+                                    endDate
+                                }
+                                type
+                                properties {
+                                    customProperties {
+                                        key
+                                        value
+                                    }
+                                }
+                                name
+                                externalUrl
                             }
                         }
                     }

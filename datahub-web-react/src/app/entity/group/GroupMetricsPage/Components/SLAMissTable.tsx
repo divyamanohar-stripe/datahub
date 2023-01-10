@@ -4,7 +4,7 @@ import { Table, Tag } from 'antd';
 import { grey, red, green, orange } from '@ant-design/colors';
 import { SLAMissData, RunState } from '../interfaces';
 import { CompactEntityNameList } from '../../../../recommendations/renderer/component/CompactEntityNameList';
-import { ExternalUrlLink } from '../../../userDefinedReport/profile/SharedContent';
+import { ExternalUrlLink } from '../../../shared/stripe-utils';
 
 const StateTag = ({ state }: { state: string }) => {
     switch (state) {

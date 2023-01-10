@@ -2,12 +2,12 @@ import React, { ComponentProps, FC, useState } from 'react';
 import moment from 'moment-timezone';
 import { Column } from '@ant-design/plots';
 import { Descriptions, Layout, Tag, DatePicker, Tooltip } from 'antd';
-import { CompactEntityNameList } from '../../../recommendations/renderer/component/CompactEntityNameList';
+import { CompactEntityNameList } from '../../../../recommendations/renderer/component/CompactEntityNameList';
 import { DataJobEntity, loadingPage } from './SharedContent';
 import { HistoricalTimelinessSlaTargetSummary } from './HistoricalTimelinessSlaTargetSummary';
 import { extractDataJobFromEntity, Run } from './data-conversion';
-import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../graphql/userDefinedReport.generated';
-import { DataProcessInstanceFilterInputType } from '../../../../types.generated';
+import { useGetUserDefinedReportContentFilterLogicalDateQuery } from '../../../../../graphql/userDefinedReport.generated';
+import { DataProcessInstanceFilterInputType } from '../../../../../types.generated';
 import { HistoricalTimelinessGoodDayMetric } from './HistoricalTimelinessGoodDayMetric';
 
 const { Header, Content, Sider } = Layout;
@@ -349,7 +349,7 @@ interface HistoricalTimelinessProps {
     urn: string;
 }
 
-export const HistoricalTimelinessComponent: FC<HistoricalTimelinessProps> = ({ urn }) => {
+export const HistoricalTimelinessTabOldVersion: FC<HistoricalTimelinessProps> = ({ urn }) => {
     const maxRunCount = 1000;
     const maxEntityCount = 50;
     const initialEndDate = moment.utc().startOf('day').toDate().getTime();
