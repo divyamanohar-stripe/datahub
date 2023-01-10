@@ -16,6 +16,7 @@ import {
     ThinDivider,
 } from '../recommendations/RecommendationGroup';
 import { ScenarioType } from '../../types.generated';
+import { HomePageShowcase } from './HomepageShowcase';
 
 const BrowseCardContainer = styled.div`
     display: flex;
@@ -105,6 +106,7 @@ export const HomePageRecommendationsV2 = ({ userUrn }: Props) => {
 
     return (
         <RecommendationsContainer>
+            <HomePageShowcase />
             {orderedEntityCounts && orderedEntityCounts.length > 0 && (
                 <RecommendationContainer>
                     <RecommendationTitle level={4}>Explore your Metadata</RecommendationTitle>
