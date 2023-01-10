@@ -75,6 +75,7 @@ def monster_api_deployment(ctx, config):
     deploy = deployment(
         ctx,
         stripe_pod(
+            ctx,
             name = consul_service_name,
             instance_type = config.aws_instance_size,
             availability_tier = get_msp_availability_tier(config.monster_availability_tier),
@@ -94,6 +95,7 @@ def monster_api_deployment(ctx, config):
 
         # Generic healthcheck for deployment control
         healthchecked_service(
+            ctx,
             port = health_port,
             name = "monster-api",
             # When we're instructed to shutdown by a SIGTERM, this is how long we'll wait (in seconds)

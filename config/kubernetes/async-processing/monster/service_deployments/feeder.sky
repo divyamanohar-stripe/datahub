@@ -146,6 +146,7 @@ def monster_feeder_deployment(ctx, config):
     deploy = deployment(
         ctx,
         stripe_pod(
+            ctx,
             name = consul_service_name,
             instance_type = config.aws_instance_size,
             availability_tier = get_msp_availability_tier(config.monster_availability_tier),
@@ -158,6 +159,7 @@ def monster_feeder_deployment(ctx, config):
             vars = {
                 "JAVA_OPTS": " ".join([
                     "-XX:+ExitOnOutOfMemoryError",
+                    "-XX:+UseParallelGC",
                     "-Xmx{}m".format(jvm_heap_max_mb),
                     "-Djava.io.tmpdir=/pay/tmp",
                     "-Djava.util.logging.config.file=/src/scala/com/stripe/monster/feeder/logging.properties",
@@ -169,6 +171,7 @@ def monster_feeder_deployment(ctx, config):
         monster_deployment_labels(config),
         # Generic healthcheck for deployment control
         healthchecked_service(
+            ctx,
             port = port,
             name = "monster-feeder",
             # Feeder initiates outbound requests rather than receiving inbound requests

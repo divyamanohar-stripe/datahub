@@ -5,8 +5,8 @@ load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/helpers/security.sky", "mount_credentials_proxy", "use_credentials_proxy")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
-_core = proto.package("k8s.io.api.core.v1")
 kafka_credentials_container_name = "kafka-init"
 sidecar_main = [
     "java",
@@ -64,7 +64,8 @@ def _kafka_sidecar(
             volume_mount(machine_cas_path),
             _mount_kafka_credentials(kafka_credentials_container_name, read_only = False),
         ]
-        return _core.Container(
+        return Container(
+            ctx,
             name = container.name,
             image = sidecar_image(ctx, name = "kafka-sidecar", fallback = fallback),
             command = sidecar_main + sidecar_args,

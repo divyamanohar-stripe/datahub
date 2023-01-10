@@ -46,6 +46,7 @@ def artifactory_publish_job(
     return job(
         ctx,
         stripe_pod(
+            ctx,
             name = job_name,
             host_type = "artifactpublishbox",
             image = image(ctx, artifact = package_image),
@@ -53,8 +54,8 @@ def artifactory_publish_job(
                 "./publish-package.sh",
                 package_type,
             ] + packages,
-            cpu = cores(1),
-            memory = gigabytes(3),
+            cpu = cores(ctx, 1),
+            memory = gigabytes(ctx, 3),
         ),
         container_env_vars(
             vars = {

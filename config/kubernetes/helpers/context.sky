@@ -55,6 +55,19 @@ def get_availability_tier(ctx):
 
     return get_henson_config(ctx).availability_tier
 
+def get_inbound_rate_limits(ctx):
+    """
+    Gets the inbound rate limits specified in Service Config.
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        A list of inbound rate limit configurations (as a List<RateLimiting.InboundConfig>)
+    """
+    rate_limits = ctx.vars.get("service.config.rate_limiters", None)
+    if not rate_limits or not rate_limits.inbound_configs:
+        return []
+    return rate_limits.inbound_configs
+
 def get_owner(ctx):
     """
     Get the owner of the service being deployed.
@@ -251,97 +264,194 @@ def get_identity(ctx):
     Returns:
         The identity name of the service
     """
-    return ctx.vars.get("service.config.identity")
+    identity = ctx.vars.get("service.config.identity")
+    if not identity or identity == "":
+      fail("Identity not set, please check your service_config file")
+    return identity
 
-def get_entrypoint_command(ctx):
+# TODO (https://jira.corp.stripe.com/browse/SERVICEINFRA-861)
+# remove once per env service configs are fully supported
+def is_legacy_compute_config(ctx):
+    """
+    Checks if working with the legacy compute config (without cluster/role overrides).
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        A boolean indicating if the service uses the legacy compute config.
+    """
+    compute_config = ctx.vars.get("service.config.compute")
+
+    return compute_config.qa_config or compute_config.preprod_config or compute_config.prod_config
+
+# TODO (https://jira.corp.stripe.com/browse/SERVICEINFRA-861)
+# remove once per env service configs are fully supported
+def get_legacy_compute_config(ctx):
+    """
+    Gets the legacy compute config of the service
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+    Returns:
+        The compute config of the service
+    """
+    environment = get_env(ctx)
+    compute_config = ctx.vars.get("service.config.compute")
+    env_override_config = None
+
+    if environment == "qa":
+        env_override_config = compute_config.qa_config
+    elif environment == "preprod":
+        env_override_config = compute_config.preprod_config
+    else:
+        env_override_config = compute_config.prod_config
+
+    # Merge env overrides into the base config to have easier access to all of the fields.
+    # Otherwise, for instance, `entrypoint_command` and `instance_type` have to be
+    # retrieved from differently (`entrypoint_command` is a top-level key,
+    # while `instance_type` is defined under the `%env%_config` namespace).
+    compute_config = merge_compute(compute_config, env_override_config)
+
+    return compute_config
+
+def get_compute_config(ctx, role=None):
+    """
+    Gets the compute config with overrides applied according to the service role and/or cluster
+
+    Args:
+        ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
+    Returns:
+        The compute config of the service
+    """
+    # TODO (https://jira.corp.stripe.com/browse/SERVICEINFRA-861)
+    # remove once per env service configs are fully supported
+    if is_legacy_compute_config(ctx):
+        return get_legacy_compute_config(ctx)
+
+    compute_config = ctx.vars.get("service.config.compute")
+    cluster = get_cluster(ctx)
+    # TODO: persist role in kube vars, implement get_role(ctx)
+    # role = get_role(ctx)
+    overrides = compute_config.overrides
+
+    def is_match(override, cluster, role):
+        if override.filter.cluster != None and override.filter.cluster != cluster:
+            return False
+
+        if override.filter.role != None and override.filter.role != role:
+            return False
+
+        return True
+
+    overrides = [override for override in overrides if is_match(override, cluster, role)]
+
+    for override in overrides:
+        compute_config = merge_compute(compute_config, override.config)
+
+    return compute_config
+
+def merge_compute(a, b):
+    """
+    Merges Compute proto messages into a single object, effectively replacing all the fields in
+    the proto mesasge 'a' with the matching ones in the proto message 'b'
+    """
+    pb = proto.package("com.stripe.gocode.service_config")
+    a_config = proto.decode_json(pb.Compute, proto.encode_json(a))
+    b_config = proto.decode_json(pb.Compute, proto.encode_json(b))
+
+    return proto.merge(a_config, b_config)
+
+def get_entrypoint_command(ctx, role=None):
     """
     Gets the path to the entrypoint that boots the service
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The entry point command of the service
     """
-    return ctx.vars.get("service.config.compute").entrypoint_command
+    entrypoint_command = get_compute_config(ctx, role).entrypoint_command
 
-def get_puma_port(ctx):
+    # empty sequences are treated as False in Starlark (https://github.com/bazelbuild/starlark/blob/master/spec.md#booleans)
+    if not entrypoint_command:
+      fail("Entrypoint not set, please check your service_config file")
+
+    return entrypoint_command
+
+def get_puma_port(ctx, role=None):
     """
     Gets the port on which Puma will listen to connections
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The port on which Puma will listen to connections
     """
-    return ctx.vars.get("service.config.compute").puma_cluster_config.port
+    return get_compute_config(ctx, role).puma_cluster_config.port
 
-def get_puma_num_workers(ctx):
+def get_puma_num_workers(ctx, role=None):
     """
     Gets the number of Puma workers that the service should boot
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The number of workers in the Puma cluster
     """
-    return ctx.vars.get("service.config.compute").puma_cluster_config.num_workers
+    return get_compute_config(ctx, role).puma_cluster_config.num_workers
 
-def get_puma_tags(ctx):
+def get_puma_tags(ctx, role=None):
     """
     Gets the tags to initialize Puma processes
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The tags to initialize your Puma processes with
     """
-    return ctx.vars.get("service.config.compute").puma_cluster_config.tags
+    return get_compute_config(ctx, role).puma_cluster_config.tags
 
-def get_puma_worker_shutdown_timeout_seconds(ctx):
+def get_puma_worker_shutdown_timeout_seconds(ctx, role=None):
     """
     Gets the timeout for gracefully shutting down Puma workers
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The graceful worker shutdown timeout in seconds
     """
-    return ctx.vars.get("service.config.compute").puma_cluster_config.worker_shutdown_timeout_seconds
+    return get_compute_config(ctx, role).puma_cluster_config.worker_shutdown_timeout_seconds
 
-def get_resource_allocations(ctx):
-    environment = get_env(ctx)
-    compute_config = ctx.vars.get("service.config.compute")
-
-    if environment == "qa":
-        return compute_config.qa_config
-    elif environment == "preprod":
-        return compute_config.preprod_config
-    else:
-        return compute_config.prod_config
-
-
-def get_num_replicas(ctx):
+def get_num_replicas(ctx, role=None):
     """
     Gets the number of replicas requested for the environment present in ctx
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The number of replicas requested
     """
-    return get_resource_allocations(ctx).num_replicas
+    return get_compute_config(ctx, role).num_replicas
 
-def get_instance_type(ctx):
+def get_instance_type(ctx, role=None):
     """
     Gets the instance type requested for the environment present in ctx
 
     Args:
         ctx: The context containing Henson and Centralized Service Configurations.
+        role: [optional] The role assigned to the service (e.g. RpcServer, LoadTester).
     Returns:
         The instance type requested in the given environment
     """
     # TODO(moe): convert this string to a struct defined in aws_instance_sizes.sky
-    return get_resource_allocations(ctx).instance_type
+    return get_compute_config(ctx, role).instance_type
 
 def get_fail_on_warnings(ctx):
     """
@@ -355,3 +465,17 @@ def get_fail_on_warnings(ctx):
     """
 
     return ctx.vars.get("henson.fail_on_warnings", None)
+
+def get_render_yaml(ctx):
+    return ctx.vars.get("skycfg.render_yaml", False)
+
+def get_suppress_warnings(ctx):
+    """
+    Returns whether all warnings should be suppressed from the output.
+
+    Args:
+        ctx: The context containing Henson and the Centralized Service Configurations.
+    Returns:
+        The value of the context variable or None if not specified
+    """
+    return ctx.vars.get("henson.suppress_warnings", None)

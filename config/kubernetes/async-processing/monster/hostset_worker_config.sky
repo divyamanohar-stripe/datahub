@@ -8,6 +8,7 @@ load(
     "config/kubernetes/helpers/aws_instance_sizes.sky",
     "m5_16xlarge", "r5_8xlarge"
 )
+load("config/kubernetes/async-processing/monster/util.sky", "dynamic_replicas")
 
 def empty_worker_cluster():
   return cluster(
@@ -27,6 +28,10 @@ A100_HOST_SETS = struct(
     hostsets=[
         hostset("high_priority_emails",
                 suffix="low-cpu",
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(fanout_replicas=4),
                     "cmh":          cluster(fanout_replicas=3),
@@ -123,13 +128,17 @@ A200_HOST_SETS = struct(
                     "bom":          empty_worker_cluster(),
                 },
                 prod={
-                    "northwest":    cluster(consume_replicas=5,
+                    "northwest":    cluster(consume_replicas=10,
                                             mb_per_worker=2800),
                     "cmh":          cluster(consume_replicas=3),
                 }),
         hostset("connections",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2800),
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(consume_replicas=5,
                                             fanout_replicas=3),
@@ -141,6 +150,10 @@ A200_HOST_SETS = struct(
         hostset("emails",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=3000),
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(consume_replicas=10,
                                             fanout_replicas=4),
@@ -185,7 +198,7 @@ A200_HOST_SETS = struct(
                 default=            cluster(mb_per_worker=2400),
                 qa=                 cluster(mb_per_worker=2800),
                 prod={
-                    "northwest":    cluster(consume_replicas=14,
+                    "northwest":    cluster(consume_replicas=30,
                                             fanout_replicas=4),
                     "bom":          cluster(consume_replicas=6),
                     "cmh":          cluster(consume_replicas=4),
@@ -205,17 +218,23 @@ A200_HOST_SETS = struct(
         hostset("mobile",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2500),
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(consume_replicas=3),
                     "cmh":          cluster(consume_replicas=3),
                 }),
         hostset("latam",
                 suffix="low-cpu",
+                qa=all_regions_empty_worker_cluster(),
+                prod=all_regions_empty_worker_cluster(),
                 ),
         hostset("model-ingestion",
                 suffix="low-cpu",
                 prod={
-                    "northwest":    cluster(consume_replicas=20,
+                    "northwest":    cluster(consume_replicas=dynamic_replicas(20, 40, 6),
                                             fanout_replicas=15,
                                             mb_per_worker=2600),
                     "bom":          cluster(consume_replicas=4),
@@ -224,6 +243,10 @@ A200_HOST_SETS = struct(
         hostset("payment-flows",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2600),
+                preprod={
+                    "northwest":    cluster(consume_replicas=4),
+                    "cmh":          cluster(consume_replicas=3),
+                },
                 prod={
                     "northwest":    cluster(consume_replicas=4),
                     "cmh":          cluster(consume_replicas=3),
@@ -256,6 +279,10 @@ A200_HOST_SETS = struct(
                 }),
         hostset("review-platform",
                 suffix="low-cpu",
+                preprod={
+                    "northwest":    empty_worker_cluster(),
+                    "bom":          empty_worker_cluster(),
+                },
                 prod={
                     "northwest":    cluster(mb_per_worker=2600),
                 }),
@@ -278,21 +305,21 @@ A200_HOST_SETS = struct(
                 suffix="low-cpu",
                 prod={
                     "northwest":    cluster(mb_per_worker=3600,
-                                            consume_replicas=30,
+                    # TODO(stevenroberts, 2022-12-01): Scale back down to 30
+                                            consume_replicas=40,
                                             fanout_replicas=3),
                     "bom":          cluster(mb_per_worker=3600,
-                                            consume_replicas=6),
-                    "cmh":          empty_worker_cluster(),
+                                            consume_replicas=6,
+                                            fanout_replicas=2),
+                    "cmh":          cluster(mb_per_worker=3600,
+                                            consume_replicas=6,
+                                            fanout_replicas=10),
                 },
                 qa={
                     "northwest":    cluster(mb_per_worker=3600),
                     "bom":          cluster(mb_per_worker=3600),
-                    "cmh":          empty_worker_cluster(),
+                    "cmh":          cluster(mb_per_worker=3600),
                 }),
-        hostset("usersec",
-                suffix="low-cpu",
-                qa=all_regions_empty_worker_cluster(),
-                prod=all_regions_empty_worker_cluster()),
         hostset("verifications",
                 suffix="low-cpu",
                 default=            cluster(mb_per_worker=2800),
@@ -302,6 +329,11 @@ A200_HOST_SETS = struct(
                 preprod={
                     "northwest":    empty_worker_cluster(),
                     "bom":          empty_worker_cluster(),
+                    # TODO(RUN_IDCORE, 2022-12-01): Investigate whether the cmh
+                    # entry here can be removed. See
+                    # https://docs.google.com/document/d/1xVENl7Kxtkz2V3fHHnMNjbmTet9z9ofAYLI_L32lKm8/edit
+                    # for details.
+                    "cmh":          cluster(consume_replicas=4),
                 },
                 prod={
                     "northwest":    cluster(consume_replicas=9,
@@ -365,14 +397,14 @@ A400_HOST_SETS = struct(
                     # we use larger instances (256GB mem) in BOM and northwest, but 32GB in CMH
                     # we share about 4GB memory via memory sharing and it is less effective on smaller instances
                     "cmh":          cluster(mb_per_worker=6000,
-                                            consume_replicas=32,
+                                            consume_replicas=64,
                                             fanout_replicas=16),
                     "bom":          cluster(consume_replicas=8,
                                             instance_type=r5_8xlarge),
                     # general workers need a little bit more cpu, so we're increasing the
                     # mb_per_worker to reduce the number of workers per pod
                     "northwest":    cluster(consume_replicas=0,
-                                            fanout_replicas=52),
+                                            fanout_replicas=45),
                 }),
     ]
 )
@@ -387,23 +419,24 @@ SIGMA_HOST_SET = struct(
                 # this is a temporary increase in memory to alleviate https://go/ir/desk-subside
                 default=            cluster(mb_per_worker=2500),
                 qa={
-                    "cmh":          cluster(consume_replicas=0,
+                    "cmh":          cluster(consume_replicas=dynamic_replicas(0, 0, 0),
                                             fanout_replicas=0),
-                    "northwest":    cluster(mb_per_worker=2900),
+                    "northwest":    cluster(mb_per_worker=2900,
+                                            consume_replicas=dynamic_replicas(2, 4, 1)),
                 },
                 prod={
                     "cmh":          cluster(consume_replicas=0,
                                             fanout_replicas=0),
                     "northwest":
-                                    cluster(consume_replicas=150,
-                                            fanout_replicas=25,
+                                    cluster(consume_replicas=dynamic_replicas(120, 220, 30),
+                                            fanout_replicas=dynamic_replicas(25, 50, 7),
                                             mb_per_worker=3600),
                     "bom":
                     # As part of the cutover for India DL, we expect BOM to see up to 20% of northwest's traffic
                     # Since we use the same spot instance mix in both regions, we can simply size to 20% of northwest
                     # At max, we'll have 50 consumer worker pods (1 per node) x 72 workers/pod = 3,600 workers
-                                    cluster(consume_replicas=15,
-                                            fanout_replicas=2,
+                                    cluster(consume_replicas=dynamic_replicas(15, 30, 3),
+                                            fanout_replicas=dynamic_replicas(2, 4, 1),
                                             instance_type=r5_8xlarge),
                 }),
     ]

@@ -11,6 +11,7 @@ load("config/kubernetes/core/pod.sky", "all_containers")
 load("config/kubernetes/meta/metadata.sky", "render_metadata")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "job_plugin")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Job", "JobSpec")
 
 def job(ctx, *plugins, shared_msp=False, **kwargs):
     """
@@ -81,8 +82,6 @@ def job_options(**kwargs):
         kwargs = kwargs,
     )
 
-_batch = proto.package("k8s.io.api.batch.v1")
-
 _default_job_kwargs = {
 }
 
@@ -96,9 +95,11 @@ def _render_job(ctx, job_def):
     pod_template = job.pod["render"](ctx, job.pod)
     kwargs = job.kwargs
 
-    return _batch.Job(
+    return Job(
+        ctx,
         metadata = render_metadata(ctx, job.metadata),
-        spec = _batch.JobSpec(
+        spec = JobSpec(
+            ctx,
             template = pod_template,
             **kwargs
         ),

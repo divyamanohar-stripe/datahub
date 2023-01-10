@@ -11,8 +11,7 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/variables.sky", "CONFIDANT_CONTAINER_FALLBACK_ENV", "CONFIDANT_CONTAINER_FALLBACK_DIGEST")
 load("config/kubernetes/helpers/security.sky", use_credentials_proxy_plugin = "use_credentials_proxy", "mount_credentials_proxy")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 # TODO(jmillikin): Get some equivalent to `namedtuple` into the Starlark spec, since
 # both Bazel and starlark-go have their own versions of that concept.
@@ -271,7 +270,7 @@ def _update_pod_autoload(ctx, plugin, pod_def):
             path = plugin.autoload_dir,
             reason = "Provides in-memory storage for the pod's secrets.",
             medium = "Memory",
-            sizeLimit = megabytes(100),
+            sizeLimit = megabytes(ctx, 100),
         )
         volume.update_pod(ctx, volume, pod_def)
 
@@ -305,7 +304,7 @@ def _setup_confidant(ctx, pod_def, use_credentials_proxy = None):
             path = "/pay/keys",
             reason = "Provides in-memory storage for the pod's secrets.",
             medium = "Memory",
-            sizeLimit = megabytes(100),
+            sizeLimit = megabytes(ctx, 100),
         ),
     ]
     if config["use_credentials_proxy"]:
@@ -368,6 +367,7 @@ def _render_confidant_container(ctx, container_def, pod):
     if container.config["use_credentials_proxy"]:
         command.extend([
             "--experimental-use-service-ca",
+            "--stripe.service-credentials.retry-interval=5s",
         ])
 
     if container.config["autoload"]:
@@ -376,7 +376,8 @@ def _render_confidant_container(ctx, container_def, pod):
         if container.config["autoload_dir"] != "/pay/keys":
             volume_mounts.append(volume_mount(container.config["autoload_dir"], read_only = False))
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = _confidant_image(ctx),
         command = command,

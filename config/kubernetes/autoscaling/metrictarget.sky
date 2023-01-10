@@ -19,7 +19,7 @@ def metric_target(ctx, metric):
 
     if hasattr(metric, "value"):
         if type(metric.value) == "string":
-            obj_metric_target.value = get_quantity(metric.value)
+            obj_metric_target.value = get_quantity(ctx, metric.value)
             obj_metric_target.type = "Value"
         else:
             fail("MetricTarget value field called with non string value")
@@ -33,23 +33,23 @@ def metric_target(ctx, metric):
 
     if hasattr(metric, "averageValue"):
         if type(metric.averageValue) == "string":
-            obj_metric_target.averageValue = get_quantity(metric.averageValue)
+            obj_metric_target.averageValue = get_quantity(ctx, metric.averageValue)
             obj_metric_target.type = "AverageValue"
         else:
             fail("MetricTarget averageValue field called with non string value")
 
     return obj_metric_target
 
-def get_quantity(value):
+def get_quantity(ctx, value):
     if type(value) == "int":
         quantity = str(value)
     elif value[-1] == "k":
-        quantity = kilo(int(value[:-1]))
+        quantity = kilo(ctx, int(value[:-1]))
     elif value[-2:] == "Mi":
-        quantity = megabytes(int(value[:-2]))
+        quantity = megabytes(ctx, int(value[:-2]))
     elif value[-2:] == "Gi":
-        quantity = gigabytes(int(value[:-2]))
+        quantity = gigabytes(ctx, int(value[:-2]))
     else:
-        quantity = count(int(value))
+        quantity = count(ctx, int(value))
 
     return quantity

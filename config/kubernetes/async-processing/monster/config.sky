@@ -35,6 +35,9 @@ def monster_deployment_config(
     dynamic_replicas=None,
     failure_threshold=100,
     extra_env=None, # List of (env_var_name, val_string) pairs to add to each pod's env
+    hack_kick_interval = None,
+    hack_kick_start_delay = None,
+    hack_kick_restart_only = None,
 ):
     return struct(
         monster_service = monster_service,
@@ -51,4 +54,7 @@ def monster_deployment_config(
         strategy = strategy,
         dynamic_replicas = dynamic_replicas,
         extra_env = extra_env,
+        hack_kick_interval = hack_kick_interval,
+        hack_kick_start_delay = hack_kick_start_delay,
+        hack_kick_restart_only = hack_kick_restart_only,
     )

@@ -12,6 +12,7 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "deployment_plugin", "pod_plugin", "statefulset_plugin")
 
 def shared_msp_healthchecked_service(
+        ctx,
         port,
         name,
         healthcheck_port = None,
@@ -76,11 +77,11 @@ def shared_msp_healthchecked_service(
         ),
         deployment_plugin(
             _register_service,
-            service=define_registered_healthchecked_service(**arguments)
+            service=define_registered_healthchecked_service(ctx, **arguments)
         ),
         statefulset_plugin(
             _register_service,
-            service=define_registered_healthchecked_service(**arguments)
+            service=define_registered_healthchecked_service(ctx, **arguments)
         ),
     )
 
@@ -88,6 +89,7 @@ def _register_service(ctx, arguments, resource_def):
     resource_def['registered_services'].append(arguments.service)
 
 def define_registered_healthchecked_service(
+        ctx,
         port,
         name,
         healthcheck_port = None,
@@ -145,11 +147,13 @@ def define_registered_healthchecked_service(
     probe_plugins = []
     if include_probes:
         ready_probe = http_probe(
+            ctx,
             port = healthcheck_port,
             path = path,
         )
 
         startup_probe = http_probe(
+            ctx,
             port = healthcheck_port,
             path = path,
             failureThreshold = startup_probe_failure_threshold,
@@ -157,6 +161,7 @@ def define_registered_healthchecked_service(
         )
 
         deploy_safety_plugin = safely_deployed_service(
+            ctx,
             request_drain_grace_period_seconds = request_drain_grace_period_seconds,
             consul_propagation_period_seconds = 60,
         )

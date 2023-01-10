@@ -9,6 +9,7 @@ load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/core/env_var.sky", "container_env_vars", "default_env_vars")
 load("config/kubernetes/helpers/context.sky", "get_env")
 load("config/kubernetes/pay-server.sky", "default_pay_server_image")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "EnvVar", "Container")
 
 def use_offload_profiles():
     """
@@ -62,15 +63,13 @@ def _update_pod(ctx, plugin, pod_def):
     pod_def["offload_profiles_sidecar"] = container_def
     pod_def["containers"].append(container_def)
 
-_core = proto.package("k8s.io.api.core.v1")
-
 def _offload_profiles_container(ctx, container_def, pod):
     container = struct(**container_def)
     is_shared = container_def["is_shared"]
     env = default_env_vars(ctx)
 
     if is_shared:
-        env.append(_core.EnvVar(name = "AWS_CONFIG_FILE", value = "/pay/aws-config/kube_iam_aws_credentials.ini"))
+        env.append(EnvVar(ctx, name = "AWS_CONFIG_FILE", value = "/pay/aws-config/kube_iam_aws_credentials.ini"))
         volume_mounts = [
             render_volume_mount(ctx, mount_credentials_proxy()),
             render_volume_mount(ctx, volume_mount("/tmp/profiler-dumps", read_only = False)),
@@ -85,7 +84,8 @@ def _offload_profiles_container(ctx, container_def, pod):
             render_volume_mount(ctx, volume_mount("/pay/cache")),
         ]
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = image(ctx, default_pay_server_image),
         command = ["/deploy/pay-server/current/lib/production_profiler/scripts/offload_dumps_sidecar.rb"],

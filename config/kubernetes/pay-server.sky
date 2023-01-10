@@ -29,7 +29,7 @@ default_pay_server_image = image_defaults(
     artifact = "pay-server-image",
 )
 
-def pay_server_pod(**kwargs):
+def pay_server_pod(ctx, **kwargs):
     """
     Create a standard pay-server job or service with a main container.
 
@@ -63,6 +63,7 @@ def pay_server_pod(**kwargs):
 
     standard_plugins = compose_plugins(
         stripe_pod(
+            ctx,
             image=image,
             **kwargs
         ),
@@ -119,6 +120,7 @@ def pay_server_pod(**kwargs):
     )
 
 def einhorn_service(
+    ctx,
     port,
     name,
     daemoncommon_svcname = None,
@@ -133,6 +135,7 @@ def einhorn_service(
     startup_failure_threshold = 600,
     hack_kick_interval = None,
     hack_kick_start_delay = None,
+    hack_kick_restart_only = None,
     **kwargs
 ):
     """
@@ -169,6 +172,7 @@ def einhorn_service(
             up as requests are made every 1 second by default.
         hack_kick_interval: How often to restart einhorn workers
         hack_kick_start_delay: Minimum time to wait on server boot before starting to cycle workers
+        hack_kick_restart_only: Do not reload master process before resarting processes
         **kwargs: Additional arguments to set up Einhorn. See `einhorn` for possible options.
 
     Returns:
@@ -178,6 +182,7 @@ def einhorn_service(
         daemoncommon_svcname = name
 
     einhorn_plugin = _einhorn_service(
+        ctx,
         port = port,
         healthcheck = healthcheck,
         container_name = container_name,
@@ -194,6 +199,7 @@ def einhorn_service(
         request_drain_grace_period_seconds += 5
 
     deploy_safety_plugin = safely_deployed_service(
+        ctx,
         consul_propagation_period_seconds = 60,
         request_drain_grace_period_seconds = request_drain_grace_period_seconds,
     )
@@ -210,6 +216,7 @@ def einhorn_service(
             service = daemoncommon_svcname,
             hack_kick_interval = hack_kick_interval,
             hack_kick_start_delay = hack_kick_start_delay,
+            hack_kick_restart_only = hack_kick_restart_only,
         )
 
     consul_tags = []
@@ -372,15 +379,17 @@ def _einhornify_container(ctx, plugin, container_def):
         **plugin.kwargs
     )
 
-def _einhorn_service(port, healthcheck, container_name, failure_threshold):
+def _einhorn_service(ctx, port, healthcheck, container_name, failure_threshold):
     if not healthcheck:
         return compose_plugins()
 
     probe = http_probe(
+        ctx,
         port = port,
         path = healthcheck,
     )
     startup_probe = http_probe(
+        ctx,
         port = port,
         path = healthcheck,
         failureThreshold = failure_threshold,
@@ -394,6 +403,7 @@ def _einhorn_service(port, healthcheck, container_name, failure_threshold):
     )
 
 def puma_cluster_service(
+    ctx,
     port,
     name,
     daemoncommon_svcname = None,
@@ -443,6 +453,7 @@ def puma_cluster_service(
         daemoncommon_svcname = name
 
     puma_cluster_plugin = _puma_cluster_service(
+        ctx,
         port = port,
         healthcheck = healthcheck,
         container_name = container_name,
@@ -459,6 +470,7 @@ def puma_cluster_service(
         request_drain_grace_period_seconds += 5
 
     deploy_safety_plugin = safely_deployed_service(
+        ctx,
         consul_propagation_period_seconds = 60,
         request_drain_grace_period_seconds = request_drain_grace_period_seconds,
     )
@@ -602,15 +614,17 @@ def _puma_clusterify_container(ctx, plugin, container_def):
         **plugin.kwargs
     )
 
-def _puma_cluster_service(port, healthcheck, container_name, failure_threshold):
+def _puma_cluster_service(ctx, port, healthcheck, container_name, failure_threshold):
     if not healthcheck:
         return compose_plugins()
 
     probe = http_probe(
+        ctx,
         port = port,
         path = healthcheck,
     )
     startup_probe = http_probe(
+        ctx,
         port = port,
         path = healthcheck,
         failureThreshold = failure_threshold,

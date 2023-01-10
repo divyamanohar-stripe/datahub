@@ -3,6 +3,7 @@ load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/core/probe.sky", "http_probe")
 load("config/kubernetes/sidecars/variables.sky", "DEFUALT_CONTAINER_ENV", "TEST_SUBJECT_CONTAINER_FALLBACK_DIGEST")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 def add_test_sidecar(port = 54321):
     return pod_plugin(
@@ -23,12 +24,11 @@ def _update_pod(ctx, plugin, pod_def):
     pod_def["test_sidecar_container"] = container_def
     pod_def["containers"].append(container_def)
 
-_core = proto.package("k8s.io.api.core.v1")
-
 def _test_sidecar_container(ctx, container_def, pod):
     container = struct(**container_def)
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = sidecar_image(ctx, name = "henson-test-subject-sidecar", fallback = image(ctx, name = "stripe/henson-test-subject/sidecar", label = TEST_SUBJECT_CONTAINER_FALLBACK_DIGEST, env = DEFUALT_CONTAINER_ENV)),
         command = [
@@ -37,6 +37,7 @@ def _test_sidecar_container(ctx, container_def, pod):
             "{}".format(container.port),
         ],
         readinessProbe = http_probe(
+            ctx,
             path = "/healthcheck",
             port = container.port,
         )

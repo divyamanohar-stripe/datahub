@@ -8,12 +8,9 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/sidecars/variables.sky", "GO_PROFILER_CONTAINER_FALLBACK_ENV", "GO_PROFILER_CONTAINER_FALLBACK_DIGEST")
-
+load("config/kubernetes/helpers/proto_or_yaml.sky", "EnvVar", "Container")
 
 SIDECAR_NAME = "go-profiler-sidecar"
-
-_core = proto.package("k8s.io.api.core.v1")
-
 
 def go_profiler_sidecar(srv_addr = "127.0.0.1", http_port = "6060", prof_duration = 30, prof_interval = 600):
     """
@@ -82,8 +79,8 @@ def _go_profiler_sidecar_container(ctx, container_def, pod):
     env = default_env_vars(ctx)
 
     if is_shared:
-        env.append(_core.EnvVar(name = "AWS_CONFIG_FILE", value = "/pay/aws-config/kube_iam_aws_credentials.ini"))
-        env.append(_core.EnvVar(name = "AWS_SDK_LOAD_CONFIG", value = "true"))
+        env.append(EnvVar(ctx, name = "AWS_CONFIG_FILE", value = "/pay/aws-config/kube_iam_aws_credentials.ini"))
+        env.append(EnvVar(ctx, name = "AWS_SDK_LOAD_CONFIG", value = "true"))
         volume_mounts = [
             render_volume_mount(ctx, mount_credentials_proxy()),
             render_volume_mount(ctx, volume_mount("/usr/stripe/bin/kube-iam-credentials", read_only = True)),
@@ -99,7 +96,8 @@ def _go_profiler_sidecar_container(ctx, container_def, pod):
         # TODO: AWS credentials config for dedicated MSP
 
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image =  _go_profiler_sidecar_image(ctx),
         command = [

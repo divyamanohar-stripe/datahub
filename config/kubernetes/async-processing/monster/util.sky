@@ -132,6 +132,9 @@ def get_monster_env_cmd_arguments(ctx, unformatted_host_set, host_type):
         host_type
     ]
 
+def dynamic_replicas(desired, max, min):
+    return struct(desired=desired, max=max, min=min)
+
 def get_jmx_java_options(jmx_port):
     return [
         "-Dcom.sun.management.jmxremote.port={}".format(jmx_port),

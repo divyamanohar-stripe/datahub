@@ -94,6 +94,23 @@ def generate_parallel(config):
     return ["--parallel", str(parallel)]
 
 
+def generate_request_timeout(config):
+    # RUN_STREAMING-41303
+    # ===================
+    #
+    # Default is 15s. Increasing this value to deal with a poison message
+    # looping around retry queues. Although it seems like the queuing endpoint
+    # does end up returning a result, the Fanout client stops listening, and
+    # if that happens, the message is just shunted back into the retry queue
+    # endlessly.
+    #
+    # Data from Splunk shows that the max time to return over the past two
+    # days has been 75 s, so I'm picking 90 s.
+    #
+    # Revert this change once the queues are purged.
+    return ["--request-timeout", str(90)] # in seconds
+
+
 def generate_total_timeout(config):
     # We almost always prefer to retry in-process on errors from the Ruby workers
     # rather than crash (which is what we'll do when this expires). Crashes force a
@@ -221,6 +238,7 @@ def monster_fanout_deployment(ctx, config):
         generate_monster_config_service(config),
         ["--name", name],
         generate_parallel(config),
+        generate_request_timeout(config),
         generate_total_timeout(config),
         generate_batch(config),
         generate_max_batches_per_partition(config),
@@ -249,6 +267,7 @@ def monster_fanout_deployment(ctx, config):
     deploy = deployment(
         ctx,
         stripe_pod(
+            ctx,
             name = consul_service_name,
             instance_type = config.aws_instance_size,
             availability_tier = get_msp_availability_tier(config.monster_availability_tier),
@@ -276,6 +295,7 @@ def monster_fanout_deployment(ctx, config):
 
         # generic healthcheck for deployment control
         healthchecked_service(
+            ctx,
             port = port,
             name = "monster-{}".format(config.monster_service),
             # When we're instructed to shutdown by a SIGTERM, this is how long we'll wait (in seconds)

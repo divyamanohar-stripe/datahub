@@ -3,9 +3,9 @@
 Helpers for defining quantities of resources for Kubernetes limits and requests.
 """
 
-Quantity = proto.package("k8s.io.apimachinery.pkg.api.resource").Quantity
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Quantity")
 
-def percents(val):
+def percents(ctx, val):
     """
     Create a quantity for percents of CPU.
 
@@ -18,9 +18,9 @@ def percents(val):
     if type(val) != "int":
         fail("Called percents with a non-integer")
 
-    return Quantity(string = "%d" % val)
+    return Quantity(ctx, string = "%d" % val)
 
-def cores(val):
+def cores(ctx, val):
     """
     Create a quantity for a whole number of CPU cores.
 
@@ -33,9 +33,9 @@ def cores(val):
     if type(val) != "int":
         fail("Called cores with a non-integer")
 
-    return Quantity(string = "%d.0" % val)
+    return Quantity(ctx, string = "%d.0" % val)
 
-def millicores(val):
+def millicores(ctx, val):
     """
     Create a quantity for a fractional number of CPU cores.
 
@@ -64,9 +64,9 @@ def millicores(val):
             break
         sub_cores_str = sub_cores_str[:-1]
 
-    return Quantity(string = "%d.%s" % (whole_cores, sub_cores_str))
+    return Quantity(ctx, string = "%d.%s" % (whole_cores, sub_cores_str))
 
-def kilo(val):
+def kilo(ctx, val):
     """
     Create a quantity for a whole number of kilo.
 
@@ -79,9 +79,9 @@ def kilo(val):
     if type(val) != "int":
         fail("Called kilo with a non-integer")
 
-    return Quantity(string = "%dk" % val)
+    return Quantity(ctx, string = "%dk" % val)
 
-def count(val):
+def count(ctx, val):
     """
     Create a quantity for a whole number of integer value.
 
@@ -94,9 +94,9 @@ def count(val):
     if type(val) != "int":
         fail("Called count with a non-integer")
 
-    return Quantity(string = "%d" % val)
+    return Quantity(ctx, string = "%d" % val)
 
-def megabytes(val):
+def megabytes(ctx, val):
     """
     Create a quantity for a whole number of megabytes.
 
@@ -109,9 +109,9 @@ def megabytes(val):
     if type(val) != "int":
         fail("Called megabytes with a non-integer")
 
-    return Quantity(string = "%dMi" % val)
+    return Quantity(ctx, string = "%dMi" % val)
 
-def gigabytes(val):
+def gigabytes(ctx, val):
     """
     Create a quantity for a whole number of gigabytes.
 
@@ -124,4 +124,4 @@ def gigabytes(val):
     if type(val) != "int":
         fail("Called gigabytes with a non-integer")
 
-    return Quantity(string = "%dGi" % val)
+    return Quantity(ctx, string = "%dGi" % val)

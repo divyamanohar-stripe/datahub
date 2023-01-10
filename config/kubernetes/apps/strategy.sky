@@ -6,16 +6,16 @@ See our [Rollouts](http://go/sky/rollouts) topic page for more information about
 how Kubernetes rollouts work and how to configure them.
 """
 
-_apps = proto.package("k8s.io.api.apps.v1")
-IntOrString = proto.package("k8s.io.apimachinery.pkg.util.intstr").IntOrString
+load("config/kubernetes/helpers/proto_or_yaml.sky", "DeploymentStrategy", "DaemonSetUpdateStrategy", "RollingUpdateDeployment", "StatefulSetUpdateStrategy", "RollingUpdateStatefulSetStrategy", "RollingUpdateDaemonSet", "IntOrString")
 
-def deployment_strategy(strategy_type):
-    return _apps.DeploymentStrategy(type = strategy_type)
+def deployment_strategy(ctx, strategy_type):
+    return DeploymentStrategy(ctx, type = strategy_type)
 
-def daemonset_strategy(strategy_type):
-    return _apps.DaemonSetUpdateStrategy(type = strategy_type)
+def daemonset_strategy(ctx, strategy_type):
+    return DaemonSetUpdateStrategy(ctx, type = strategy_type)
 
 def rolling_update_strategy(
+        ctx,
         max_unavailable = None,
         max_surge = None):
     """
@@ -43,27 +43,22 @@ def rolling_update_strategy(
     kwargs = {}
 
     if type(max_unavailable) == "string":
-        kwargs["maxUnavailable"] = IntOrString(
-            type = 1,
-            strVal = max_unavailable,
-        )
+        kwargs["maxUnavailable"] = IntOrString(ctx, strVal = max_unavailable)
     elif type(max_unavailable) == "int":
-        kwargs["maxUnavailable"] = IntOrString(intVal = max_unavailable)
+        kwargs["maxUnavailable"] = IntOrString(ctx, intVal = max_unavailable)
 
     if type(max_surge) == "string":
-        kwargs["maxSurge"] = IntOrString(
-            type = 1,
-            strVal = max_surge,
-        )
+        kwargs["maxSurge"] = IntOrString(ctx, strVal = max_surge)
     elif type(max_surge) == "int":
-        kwargs["maxSurge"] = IntOrString(intVal = max_surge)
+        kwargs["maxSurge"] = IntOrString(ctx, intVal = max_surge)
 
-    return _apps.DeploymentStrategy(
+    return DeploymentStrategy(
+        ctx,
         type = "RollingUpdate",
-        rollingUpdate = _apps.RollingUpdateDeployment(**kwargs),
+        rollingUpdate = RollingUpdateDeployment(ctx, **kwargs),
     )
 
-def rolling_update_daemonset_strategy(max_unavailable = None):
+def rolling_update_daemonset_strategy(ctx, max_unavailable = None):
     """
     Create a strategy for a `daemonset` that performs rolling updates of pods.
 
@@ -82,19 +77,17 @@ def rolling_update_daemonset_strategy(max_unavailable = None):
     kwargs = {}
 
     if type(max_unavailable) == "string":
-        kwargs["maxUnavailable"] = IntOrString(
-            type = 1,
-            strVal = max_unavailable,
-        )
+        kwargs["maxUnavailable"] = IntOrString(ctx, strVal = max_unavailable)
     elif type(max_unavailable) == "int":
-        kwargs["maxUnavailable"] = IntOrString(intVal = max_unavailable)
+        kwargs["maxUnavailable"] = IntOrString(ctx, intVal = max_unavailable)
 
-    return _apps.DaemonSetUpdateStrategy(
+    return DaemonSetUpdateStrategy(
+        ctx,
         type = "RollingUpdate",
-        rollingUpdate = _apps.RollingUpdateDaemonSet(**kwargs),
+        rollingUpdate = RollingUpdateDaemonSet(ctx, **kwargs),
     )
 
-def rolling_update_statefulset_strategy(partition = 0):
+def rolling_update_statefulset_strategy(ctx, partition = 0):
     """
     Creates an update strategy for a `statefulset` that performs rolling updates of pods.
 
@@ -111,14 +104,16 @@ def rolling_update_statefulset_strategy(partition = 0):
         that can be used as the `updateStrategy` parameter for a `statefulset` or the
         `statefulset_options` plugin.
     """
-    return _apps.StatefulSetUpdateStrategy(
+    return StatefulSetUpdateStrategy(
+        ctx,
         type = "RollingUpdate",
-        rollingUpdate = _apps.RollingUpdateStatefulSetStrategy(
+        rollingUpdate = RollingUpdateStatefulSetStrategy(
+            ctx,
             partition = partition,
         )
     )
 
-def blue_green_deployment_strategy_shared_msp():
+def blue_green_deployment_strategy_shared_msp(ctx):
     """
     Creates a default deployment strategy to use for shared msp blue-green deployment.
 
@@ -130,11 +125,12 @@ def blue_green_deployment_strategy_shared_msp():
         `deployment_options` plugin.
     """
     return rolling_update_strategy(
+        ctx,
         max_unavailable = "0%",
         max_surge = "100%",
     )
 
-def blue_green_deployment_strategy_dedicated_msp():
+def blue_green_deployment_strategy_dedicated_msp(ctx):
     """
     Creates a default deployment strategy to use for blue-green deployment.
     Unlike shared msp blue/green deployments, this uses an update strategy that
@@ -149,6 +145,7 @@ def blue_green_deployment_strategy_dedicated_msp():
         `deployment_options` plugin.
     """
     return rolling_update_strategy(
+        ctx,
         max_unavailable = "100%",
-        max_surge = 0,
+        max_surge = "100%",
     )

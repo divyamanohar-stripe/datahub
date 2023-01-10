@@ -5,8 +5,8 @@ Plugins for working with volumes in pods.
 
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin", "all_container_plugin")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "VolumeMount", "VolumeSource", "HostPathVolumeSource", "EmptyDirVolumeSource", "Volume")
+load("config/kubernetes/helpers/context.sky", "get_render_yaml")
 
 def mount_host_volume(path, container_name = None, volume_args = {}, mount_args = {}):
     """
@@ -225,7 +225,8 @@ def add_pod_volume(pod_def, path, *, reason = None, **kwargs):
 
 def render_volume_mount(ctx, volume_mount):
     kwargs = volume_mount.kwargs
-    return _core.VolumeMount(
+    return VolumeMount(
+        ctx,
         name = volume_mount.name,
         mountPath = volume_mount.path,
         readOnly = volume_mount.read_only,
@@ -233,20 +234,36 @@ def render_volume_mount(ctx, volume_mount):
     )
 
 def render_volume(ctx, volume):
-    source = _core.VolumeSource()
+    source = VolumeSource(ctx)
     if hasattr(volume, "host_path"):
         kwargs = volume.host_path_kwargs
-        source.hostPath = _core.HostPathVolumeSource(
-            path = volume.host_path,
-            **kwargs
-        )
+
+        if get_render_yaml(ctx):
+            source["hostPath"] = HostPathVolumeSource(
+                ctx,
+                path = volume.host_path,
+                **kwargs
+            )
+        else:
+            source.hostPath = HostPathVolumeSource(
+                ctx,
+                path = volume.host_path,
+                **kwargs
+            )
+
     elif hasattr(volume, "empty_dir_kwargs"):
         kwargs = volume.empty_dir_kwargs
-        source.emptyDir = _core.EmptyDirVolumeSource(**kwargs)
+
+        if get_render_yaml(ctx):
+            source["emptyDir"] = EmptyDirVolumeSource(ctx, **kwargs)
+        else:
+            source.emptyDir = EmptyDirVolumeSource(ctx, **kwargs)
+
     else:
         fail("Unsupported volume type")
 
-    return _core.Volume(
+    return Volume(
+        ctx,
         name = volume.name,
         volumeSource = source,
     )

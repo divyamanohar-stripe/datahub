@@ -6,7 +6,7 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/stripe.sky", "stripe_pod")
 load("config/kubernetes/helpers/images.sky", "image_defaults")
 
-def gocode_pod(**kwargs):
+def gocode_pod(ctx, **kwargs):
     """
     Create a standard gocode job or service with a main container
 
@@ -41,6 +41,7 @@ def gocode_pod(**kwargs):
 
     return compose_plugins(
         stripe_pod(
+            ctx,
             image = image,
             **kwargs
         ),

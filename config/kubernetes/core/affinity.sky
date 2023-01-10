@@ -4,11 +4,9 @@ Plugins for adding rules to control how pods are scheduled onto nodes.
 """
 
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Affinity", "PodAffinityTerm", "PodAntiAffinity", "WeightedPodAffinityTerm", "LabelSelector", "LabelSelectorRequirement")
 
-_core = proto.package("k8s.io.api.core.v1")
-_meta = proto.package("k8s.io.apimachinery.pkg.apis.meta.v1")
-
-def avoid_pods_with_labels(labels, weight = None):
+def avoid_pods_with_labels(ctx, labels, weight = None):
     """
     Avoid scheduling the pod co-located with other pods with the given labels.
 
@@ -27,7 +25,8 @@ def avoid_pods_with_labels(labels, weight = None):
     """
     return _affinity_plugin(
         _pod_affinity_rule(
-            selector = _meta.LabelSelector(
+            selector = LabelSelector(
+                ctx,
                 matchLabels = labels,
             ),
             weight = weight,
@@ -42,11 +41,12 @@ def empty_affinity():
         "highly_available_zones": (),
     }
 
-def render_affinity(affinity):
+def render_affinity(ctx, affinity):
     if len(affinity["rules"]) == 0 and not affinity["highly_available"]:
         return None
 
-    pod_anti_affinity = _core.PodAntiAffinity(
+    pod_anti_affinity = PodAntiAffinity(
+        ctx,
         preferredDuringSchedulingIgnoredDuringExecution = [],
         requiredDuringSchedulingIgnoredDuringExecution = [],
     )
@@ -56,7 +56,7 @@ def render_affinity(affinity):
             if not rule.negative:
                 fail("Pod affinity rules haven't been implemented yet")
 
-            term = _render_pod_affinity_term(rule)
+            term = _render_pod_affinity_term(ctx, rule)
             if rule.weight == None:
                 pod_anti_affinity.requiredDuringSchedulingIgnoredDuringExecution.append(term)
             else:
@@ -66,9 +66,11 @@ def render_affinity(affinity):
         labelSelector = None
         zones = affinity["highly_available_zones"]
         if zones:
-            labelSelector = _meta.LabelSelector(
+            labelSelector = LabelSelector(
+                ctx,
                 matchExpressions = [
-                    _meta.LabelSelectorRequirement(
+                    LabelSelectorRequirement(
+                        ctx,
                         key = "topology.kubernetes.io/zone",
                         operator = "In",
                         values = list(zones),
@@ -76,16 +78,19 @@ def render_affinity(affinity):
                 ],
             )
         pod_anti_affinity.preferredDuringSchedulingIgnoredDuringExecution.append(
-            _core.WeightedPodAffinityTerm(
+            WeightedPodAffinityTerm(
+                ctx,
                 weight = 100,
-                podAffinityTerm = _core.PodAffinityTerm(
+                podAffinityTerm = PodAffinityTerm(
+                    ctx,
                     labelSelector = labelSelector,
                     topologyKey="topology.kubernetes.io/zone",
                 ),
             ),
         )
 
-    return _core.Affinity(
+    return Affinity(
+        ctx,
         podAntiAffinity = pod_anti_affinity,
     )
 
@@ -113,8 +118,9 @@ def _affinity_plugin(rule):
 def _add_affinity_rule(ctx, plugin, pod_def):
     pod_def["affinity"]["rules"].append(plugin.rule)
 
-def _render_pod_affinity_term(rule):
-    term = _core.PodAffinityTerm(
+def _render_pod_affinity_term(ctx, rule):
+    term = PodAffinityTerm(
+        ctx,
         labelSelector = rule.selector,
         namespaces = rule.namespaces,
         topologyKey = rule.topologyKey,
@@ -123,7 +129,8 @@ def _render_pod_affinity_term(rule):
     if rule.weight == None:
         return term
 
-    return _core.WeightedPodAffinityTerm(
+    return WeightedPodAffinityTerm(
+        ctx,
         weight = rule.weight,
         podAffinityTerm = term,
     )

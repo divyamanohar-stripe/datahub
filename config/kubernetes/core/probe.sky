@@ -12,20 +12,7 @@ for you.
 """
 
 load("config/kubernetes/plugins/types.sky", "container_plugin")
-
-_core = proto.package("k8s.io.api.core.v1")
-IntOrString = proto.package("k8s.io.apimachinery.pkg.util.intstr").IntOrString
-
-
-# Shim for proto rename to support 1.22 -> 1.23 upgrade. Once we are on 1.23
-# everywhere we can remove this. See
-# https://github.com/kubernetes/api/commit/cca52a076791d31b1796453ece4b2f4df97406a2
-def ProbeHandler(*args, **kwargs):
-    if hasattr(_core, "ProbeHandler"):
-        return _core.ProbeHandler(*args, **kwargs)
-    else:
-        return _core.Handler(*args, **kwargs)
-
+load("config/kubernetes/helpers/proto_or_yaml.sky", "ProbeHandler", "Probe", "ExecAction", "HTTPHeader", "HTTPGetAction", "TCPSocketAction", "IntOrString")
 
 def probes(liveness = None, readiness = None, startup = None, container_name = None):
     """
@@ -59,7 +46,7 @@ def probes(liveness = None, readiness = None, startup = None, container_name = N
         startup = startup,
     )
 
-def http_probe(path, port, headers = {}, scheme = None, **kwargs):
+def http_probe(ctx, path, port, headers = {}, scheme = None, **kwargs):
     """
     Create a probe that uses HTTP to check the status of a container.
 
@@ -82,14 +69,17 @@ def http_probe(path, port, headers = {}, scheme = None, **kwargs):
     http_headers = []
     for name, value in headers.items():
         http_headers.append(
-            _core.HTTPHeader(name = name, value = value),
+            HTTPHeader(ctx, name = name, value = value),
         )
 
-    return _core.Probe(
+    return Probe(
+        ctx,
         handler = ProbeHandler(
-            httpGet = _core.HTTPGetAction(
+            ctx,
+            httpGet = HTTPGetAction(
+                ctx,
                 path = path,
-                port = IntOrString(intVal = port),
+                port = IntOrString(ctx, intVal = port),
                 httpHeaders = http_headers,
                 scheme = scheme,
             ),
@@ -97,7 +87,7 @@ def http_probe(path, port, headers = {}, scheme = None, **kwargs):
         **kwargs
     )
 
-def tcp_probe(port, **kwargs):
+def tcp_probe(ctx, port, **kwargs):
     """
     Create a probe that uses TCP to check the status of a container.
 
@@ -115,16 +105,19 @@ def tcp_probe(port, **kwargs):
         that can be applied to a container using the `probes` plugin.
     """
 
-    return _core.Probe(
+    return Probe(
+        ctx,
         handler = ProbeHandler(
-            tcpSocket = _core.TCPSocketAction(
-                port = IntOrString(intVal = port),
+            ctx,
+            tcpSocket = TCPSocketAction(
+                ctx,
+                port = IntOrString(ctx, intVal = port),
             )
         ),
         **kwargs
     )
 
-def command_probe(command, **kwargs):
+def command_probe(ctx, command, **kwargs):
     """
     Create a probe that runs a command inside the container to check its status.
 
@@ -139,9 +132,12 @@ def command_probe(command, **kwargs):
         A [Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#probe-v1-core)
         that can be applied to a container using the `probes` plugin.
     """
-    return _core.Probe(
+    return Probe(
+        ctx,
         handler = ProbeHandler(
-            exec = _core.ExecAction(
+            ctx,
+            exec = ExecAction(
+                ctx,
                 command = command,
             ),
         ),

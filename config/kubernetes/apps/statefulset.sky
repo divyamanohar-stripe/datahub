@@ -15,6 +15,7 @@ load("config/kubernetes/sidecars/metrics.sky", "metrics")
 load("config/kubernetes/helpers/context.sky", "get_env")
 load("config/kubernetes/core/volume.sky", "volume_mount_all_containers")
 load("config/kubernetes/helpers/ldap.sky", "mount_ldap_host_volumes", "LDAP_MOUNT_NAME")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "StatefulSet", "StatefulSetSpec")
 
 def statefulset(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwargs):
     """
@@ -89,8 +90,8 @@ def statefulset(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, **kwar
         _apply_plugin(ctx, metrics(ctx, config=statefulset["metrics_config"]), statefulset)
 
         _apply_plugin(ctx, compose_plugins(
-            prestop_all_infra_sidecars(pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
-            prestop_all_containers(generate_prestop_sleep_action(DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME)),
+            prestop_all_infra_sidecars(ctx, pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
+            prestop_all_containers(generate_prestop_sleep_action(ctx, DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME)),
             volume_mount_all_containers(
                 "/usr/stripe/bin/kube-prestop",
                 read_only=True,
@@ -134,9 +135,6 @@ def statefulset_options(**kwargs):
         kwargs = kwargs,
     )
 
-_apps = proto.package("k8s.io.api.apps.v1")
-_core = proto.package("k8s.io.api.core.v1")
-
 def _update_statefulset_options(ctx, plugin, statefulset_def):
     statefulset_def["kwargs"].update(plugin.kwargs)
 
@@ -146,9 +144,11 @@ def _render_statefulset(ctx, statefulset_def):
 
     pod_template = statefulset.pod["render"](ctx, statefulset.pod)
 
-    return _apps.StatefulSet(
+    return StatefulSet(
+        ctx,
         metadata = render_metadata(ctx, statefulset.metadata),
-        spec = _apps.StatefulSetSpec(
+        spec = StatefulSetSpec(
+            ctx,
             selector = render_selector(ctx, statefulset.metadata),
             template = pod_template,
             **statefulset.kwargs

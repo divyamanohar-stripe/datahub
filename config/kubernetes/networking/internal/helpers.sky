@@ -45,20 +45,3 @@ def mount_splunk_forwarded_basedir(container_name):
         container_name = container_name,
         read_only = False,
     )
-
-def get_combined_sn_sidecar(env, availability_tier, host_network):
-    standalone_envoy_monitor = True
-    standalone_consul_sidecar = True
-    standalone_envoy_sidecar = True
-    # used to roll out the combined container of envoy-monitor and envoy-config-srv
-    if env == "qa" or (env == "prod" and availability_tier != "A100") :
-        standalone_envoy_monitor = False
-    # used to roll out the combined container of consul-sidecar and envoy-config-srv
-    if not host_network and (env == "qa") :
-        standalone_consul_sidecar = False
-
-    return struct(
-        standalone_envoy_monitor=standalone_envoy_monitor,
-        standalone_consul_sidecar=standalone_consul_sidecar,
-        standalone_envoy_sidecar=standalone_envoy_sidecar
-    )

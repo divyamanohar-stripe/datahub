@@ -1,7 +1,6 @@
 # DO NOT EDIT: http://go/vendor-skycfg
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Toleration")
 
 def add_toleration(key = None, operator = None, effect = None, value = None, toleration_seconds = None):
     """
@@ -34,7 +33,7 @@ def add_toleration(key = None, operator = None, effect = None, value = None, tol
     )
 
 def render_pod_toleration(ctx, toleration_def):
-    toleration = _core.Toleration()
+    toleration = Toleration(ctx) # TODO fix this for yaml
 
     toleration.key = toleration_def.key
     toleration.operator = toleration_def.operator

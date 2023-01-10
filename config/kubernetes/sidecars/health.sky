@@ -7,7 +7,7 @@ load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/core/generic.sky", "is_dedicated_msp", "is_shared_msp")
 load("config/kubernetes/plugins/conditional.sky", "conditional_plugin")
-
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/variables.sky", "HEALTH_CONTAINER_FALLBACK_SHA", "HEALTH_CONTAINER_FALLBACK_ENV")
 load("config/kubernetes/sidecars/consul.sky", "consul_termination_delay")
@@ -17,6 +17,7 @@ health_pod_volume_name = "pay-pod-health"
 default_request_drain_grace_period_seconds = 60
 
 def safely_deployed_service(
+    ctx,
     request_drain_grace_period_seconds = None,
     consul_propagation_period_seconds = 90,
     container_name = None,
@@ -67,7 +68,7 @@ def safely_deployed_service(
         # The Shared MSP plugin is applied in deployment.sky, since the plugin must be run after all containers already exist.
         conditional_plugin(
             condition=is_dedicated_msp,
-            plugin=pre_stop(exec_action("/bin/sleep", str(consul_propagation_period_seconds)), container_name = container_name),
+            plugin=pre_stop(exec_action(ctx, "/bin/sleep", str(consul_propagation_period_seconds)), container_name = container_name),
         ),
 
         # mount the pod health into the healthchecked container
@@ -87,8 +88,6 @@ def pod_health_volume():
         name = health_pod_volume_name,
         reason = "Allows the health sidecar to inform service healthchecks.",
     )
-
-_core = proto.package("k8s.io.api.core.v1")
 
 def _update_pod(ctx, plugin, pod_def):
     if health_container_name in pod_def:
@@ -134,7 +133,8 @@ def _render_health_sidecar(ctx, container_def, pod):
     if container.should_mount_node_health:
         command.append("--node-health-dir=/pay/health")
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = _health_image(ctx),
         command = command,

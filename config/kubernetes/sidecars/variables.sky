@@ -17,8 +17,8 @@ FILE_WRITER_ALPINE_CONTAINER_SHA = "3e3fcf4be3e2260ab21f149f4065ce312f72f1c0"
 # You can get the gocode commit by looking at recent gocode builds - see
 # https://confluence.corp.stripe.com/display/DEPLOY/Config-srv+sidecar#Configsrvsidecar-Updatingtheconfig-srvsidecar.
 #
-# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/4e744ef3bc68d8d32d3f342441f360a3e5b36c4c
-CONFIG_SRV_CONTAINER_DIGEST = "sha256:9c9568c473b5ec89399f771a598280df2cda89da5d1989d5e7f171df3a0aaab7"
+# gocode commit: https://git.corp.stripe.com/stripe-internal/gocode/commit/a4f6412ff3bcdae13a8c28f7f4df0e561ff00cab
+CONFIG_SRV_CONTAINER_DIGEST = "sha256:3e9909fd86f4663fae904247b9fe20b2174fb08b0f8e2b29ac7a8d9014c4f68c"
 CONFIG_SRV_CONTAINER_ENV = DEFUALT_CONTAINER_ENV
 
 # HEADS UP! Updating these values is no longer the right way to roll out a new version of the confidant sidecar.

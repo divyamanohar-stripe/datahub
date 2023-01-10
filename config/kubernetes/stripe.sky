@@ -13,7 +13,6 @@ load("config/kubernetes/core/volume.sky", "mount_host_volume", "mount_pod_volume
 load("config/kubernetes/helpers/availability_tiers.sky", "A400")
 load("config/kubernetes/core/lifecycle.sky", "prestop_all_containers", "exec_action")
 load("config/kubernetes/helpers/aws_instance_sizes.sky", "aws_instance_size")
-load("config/kubernetes/helpers/context.sky", "get_env")
 load("config/kubernetes/helpers/msp_shard.sky", "prefer_msp_shard")
 load("config/kubernetes/helpers/msp_shard.sky", "autoset_shard_shared_msp")
 load("config/kubernetes/helpers/node_selectors.sky", "node_selectors", host_type_plugin="host_type", "SHARED_MSP_HOST_TYPE")
@@ -24,9 +23,9 @@ load("config/kubernetes/meta/metadata.sky", "annotations", "labels", "metadata")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/confidant.sky", "secret_options")
 load("config/kubernetes/sidecars/feature_flags.sky", "use_feature_flags")
-load("config/kubernetes/sidecars/sansshell.sky", "sansshell_sidecar")
 
 def stripe_pod(
+        ctx,
         name,
         command,
         cpu = None,
@@ -79,6 +78,13 @@ def stripe_pod(
     Returns:
         A plugin that can be used with an entrypoint like `deployment` or `cronjob`.
     """
+
+    if command == None or len(command) == 0:
+        fail("No command specified in stripe_pod " + str(name))
+
+    if str(type(command)) != 'list':
+        fail("Invalid command specified in stripe_pod " + str(name) + ": was not of type list, was " + str(type(command)))
+
     all_args = dict(
         name=name,
         image=image,
@@ -123,12 +129,8 @@ def stripe_pod(
             condition=is_shared_msp,
             plugin=compose_plugins(
                 _validate_shared_msp_params_plugin(**all_args),
-                use_shared_msp(namespace=namespace, name=name, instance_type=instance_type, availability_tier=defaulted_availability_tier),
-                # go/sod:sansshell; only limited to shared MSP and QA (as of 2022Q3)
-                conditional_plugin(
-                    condition=lambda ctx, _: get_env(ctx) == "qa",
-                    plugin=sansshell_sidecar()),
-                )
+                use_shared_msp(ctx, namespace=namespace, name=name, instance_type=instance_type, availability_tier=defaulted_availability_tier),
+            )
         ),
         conditional_plugin(
             condition=is_dedicated_msp,
@@ -154,15 +156,15 @@ def stripe_pod(
     return compose_plugins(*plugins)
 
 
-def use_shared_msp(*, namespace, name, instance_type, availability_tier):
+def use_shared_msp(ctx, *, namespace, name, instance_type, availability_tier):
     """
     Plugin for enabling a pod to run on Shared MSP.
     """
     if instance_type == None:
         return _fail_plugin("No instance type specified for shared msp")
     total_resources = aws_instance_size(instance_type.name)
-    cpu = millicores(total_resources.cpu_millicores - instance_type.slack_cpu_millicores)
-    memory = megabytes(total_resources.memory_mib)
+    cpu = millicores(ctx, total_resources.cpu_millicores - instance_type.slack_cpu_millicores)
+    memory = megabytes(ctx, total_resources.memory_mib)
     shard_plugin = autoset_shard_shared_msp()
 
     return compose_plugins(

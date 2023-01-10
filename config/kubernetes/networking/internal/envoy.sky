@@ -14,7 +14,6 @@ load(
     "allow_ulimit_management",
 )
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
-load("config/kubernetes/networking/internal/envoy-monitor.sky", "ENVOY_MONITOR_PORT")
 load(
     "config/kubernetes/networking/internal/config/envoy-config-srv-config.sky",
     "CDS_PORT",
@@ -38,11 +37,13 @@ load(
     "generate_cli_args",
     "generate_envoy_bootstrap_opts",
 )
+load(
+    "config/kubernetes/networking/internal/envoy-config-srv.sky",
+    "envoy_sidecar_config",
+)
 load("config/kubernetes/helpers/constants.sky", "ENVOY_SIDECAR_NAME")
 
 ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS = 4096
-
-_core = proto.package("k8s.io.api.core.v1")
 
 # When trying to test a digest from a non-master branch, use stripe-qa instead of stripe in the URI
 _CONTAINER_IMAGES = {
@@ -132,7 +133,7 @@ def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, names
 
     cli_args = generate_cli_args(config_target, user_overrides)
 
-    cfg_json = _envoy_sidecar_config(
+    cfg_json = envoy_sidecar_config(
         config_target,
         user_overrides,
         envoy_id = envoy_id,
@@ -178,11 +179,13 @@ def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, names
             ),
             probes(
                 readiness = http_probe(
+                    ctx,
                     port = probe_port,
                     path = "/msp-infra-ready",
                 ),
                 # add a startup probe to give envoy-sidecar time to initialize before the liveness probe kicks in
                 startup = http_probe(
+                    ctx,
                     port = probe_port,
                     path = "/msp-infra-live",
                     failureThreshold = 30,
@@ -192,334 +195,3 @@ def envoy_container(ctx, self, config_target, user_overrides, *, envoy_id, names
             allow_ulimit_management(container_name = self),
         ],
     )
-
-def _envoy_sidecar_config(
-        config_target,
-        user_overrides,
-        envoy_id,
-        cluster,
-        zone,
-        admin_port = 9901,
-        fallback_port = 10084,
-        ratelimit_port = 20081,
-        cds_port = CDS_PORT,
-        lds_port = LDS_PORT,
-        debug_port = DEBUG_PORT):
-    bootstrap_cfg = generate_envoy_bootstrap_opts(config_target, user_overrides)
-    node = {
-        # NB(xyu): These attributes are logged by envoy-config-srv to identify
-        # the client sending an xDS Discovery Request, but are otherwise unused
-        # because the properties injected into the pod-local envoy-config-srv
-        # determine decisions such as AZ-aware routing. However, we still want
-        # to generate a bootstrap config for envoy with matching properties.
-        "id": envoy_id,
-        "cluster": cluster,
-        "locality": {
-            "region": config_target.region,
-            "zone": zone,
-        },
-    }
-    admin = {
-        "access_log": [
-            {
-                "name": "envoy.access_loggers.file",
-                "typed_config" : {
-                    "@type": "type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog",
-                    "path": "%s/envoy_admin_access.log" % ENVOY_LOGS_DIR,
-                }
-            }
-        ],
-        "address": {
-            "socket_address": {
-                "address": "127.0.0.1",
-                "port_value": admin_port,
-            },
-        },
-    }
-
-    envoycontrol_v2 = {
-        "name": "envoycontrol-v2",
-        "type": "STATIC",
-        "connect_timeout": "1s",
-        "http2_protocol_options": {},
-        "load_assignment": {
-            "cluster_name": "envoycontrol-v2",
-            "endpoints": [
-                {
-                    "lb_endpoints": [
-                        {
-                            "endpoint": {
-                                "address": {
-                                    "socket_address": {
-                                        "address": "127.0.0.1",
-                                        "port_value": cds_port,
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-            ],
-        },
-        "circuit_breakers": {
-            "thresholds": [
-                {
-                    "priority": "DEFAULT",
-                    "max_connections": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
-                    "max_pending_requests": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
-                    "max_requests": ENVOYCONTROL_V2_CIRCUIT_BREAKER_LIMITS,
-                }
-            ]
-        },
-    }
-    envoy_config_srv_local = {
-        "name": "envoy-config-srv--local",
-        "type": "STATIC",
-        "connect_timeout": "1s",
-        "http2_protocol_options": {},
-        "load_assignment": {
-            "cluster_name": "envoy-config-srv--local",
-            "endpoints": [
-                {
-                    "lb_endpoints": [
-                        {
-                            "endpoint": {
-                                "address": {
-                                    "socket_address": {
-                                        "address": "127.0.0.1",
-                                        "port_value": lds_port,
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-            ],
-        },
-    }
-    envoy_config_srv_local_debug = {
-        "name": "envoy-config-srv--local--debug",
-        "type": "STATIC",
-        "connect_timeout": "1s",
-        "health_checks": [
-            {
-                "timeout": "1s",
-                "interval": "10s",
-                "unhealthy_threshold": 1,
-                "healthy_threshold": 1,
-                "reuse_connection": True,
-                "http_health_check": {
-                    "path": "/healthcheck",
-                },
-            },
-        ],
-        "http2_protocol_options": {},
-        "load_assignment": {
-            "cluster_name": "envoy-config-srv--local--debug",
-            "endpoints": [
-                {
-                    "lb_endpoints": [
-                        {
-                            "endpoint": {
-                                "address": {
-                                    "socket_address": {
-                                        "address": "127.0.0.1",
-                                        "port_value": debug_port,
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-            ],
-        },
-    }
-    internal_envoy_fallback = {
-        "name": "internal-envoy-fallback-route",
-        "type": "STATIC",
-        "connect_timeout": "1s",
-        "lb_policy": "ROUND_ROBIN",
-        "http2_protocol_options": {},
-        "load_assignment": {
-            "cluster_name": "internal-envoy-fallback-route",
-            "endpoints": [
-                {
-                    "lb_endpoints": [
-                        {
-                            "endpoint": {
-                                "address": {
-                                    "socket_address": {
-                                        "address": "127.0.0.1",
-                                        "port_value": fallback_port,
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-            ],
-        },
-    }
-
-    clusters = [
-        envoycontrol_v2,
-        envoy_config_srv_local,
-        envoy_config_srv_local_debug,
-        internal_envoy_fallback,
-    ]
-
-    # In case enable_global_ratelimit is True, we will add a cluster for the Rate-Limit sidecar.
-    # Owned and maintained by Reliability-patterns-and-practices.
-    if bootstrap_cfg["add_global_ratelimit_cluster"] == True:
-        global_ratelimit_cluster = {
-            "name": "ratelimit--local",
-            "type": "STATIC",
-            "http2_protocol_options": {},
-            "connect_timeout": "1s",
-            "load_assignment": {
-                "cluster_name": "ratelimit--local",
-                "endpoints": [
-                    {
-                        "lb_endpoints": [
-                            {
-                                "endpoint": {
-                                    "address": {
-                                        "socket_address": {
-                                            "address": "127.0.0.1",
-                                            "port_value": ratelimit_port,
-                                        },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-        }
-        clusters.append(global_ratelimit_cluster)
-
-    return {
-        "envoy_api_version": "v3",  # XXX(xyu): envoy-sidecar doesn't actually consume this field
-        "envoy_bootstrap_version": "v3",
-        # NB(xyu): This config should be kept in sync with the one generated by
-        # go/puppet-config/blob/master/modules/envoy/templates/host_proxy.yaml.erb
-        "envoy_bootstrap_config": {
-            "node": node,
-            "admin": admin,
-            "flags_path": ENVOY_SYSTEM_FLAGS_PATH,
-            "static_resources": {
-                "clusters": clusters,
-            },
-            "dynamic_resources": {
-                "lds_config": {
-                    "api_config_source": {
-                        "api_type": "GRPC",
-                        "grpc_services": [{
-                            "envoy_grpc": {
-                                "cluster_name": "envoy-config-srv--local",
-                            },
-                        }],
-                        "transport_api_version": "V3",
-                    },
-                    "resource_api_version": "V3",
-                },
-                "cds_config": {
-                    "api_config_source": {
-                        "api_type": "GRPC",
-                        "grpc_services": [{
-                            "envoy_grpc": {
-                                "cluster_name": "envoycontrol-v2",
-                            },
-                        }],
-                        "transport_api_version": "V3",
-                    },
-                    "resource_api_version": "V3",
-                },
-            },
-            "stats_flush_interval": "%ss" % bootstrap_cfg["stats_flush_interval"],
-            "stats_sinks": [
-                {
-                    "name": "envoy.stat_sinks.dog_statsd",
-                    "typed_config": {
-                        "@type": "type.googleapis.com/envoy.config.metrics.v3.DogStatsdSink",
-                        "address": {
-                            "socket_address": {
-                                "address": "127.0.0.1",
-                                "port_value": ENVOY_MONITOR_PORT,
-                            },
-                        },
-                    },
-                },
-            ],
-            "stats_config": {
-                "stats_tags": [
-                    {
-                        "tag_name": "envoy_dst_zone",
-                        "regex": "cluster\\.(?:[^.]+\\.)?zone\\.[-a-z0-9]+\\.(([-a-z0-9]+)?\\.)",
-                    },
-                    {
-                        "tag_name": "envoy_src_zone",
-                        "regex": "cluster\\.(?:[^.]+\\.)?zone\\.(([-a-z0-9]+)?\\.)",
-                    },
-                    {
-                        "tag_name": "envoy_instance_name",
-                        "fixed_value": "mesh",
-                    },
-                    {
-                        "tag_name": "dest",
-                        "regex": "stripe\\.no_route\\.no_route(\\.([-a-z0-9_\\.]+)(?:\\:\\d+)?)",
-                    },
-                    {
-                        "tag_name": "grpc_method",
-                        "regex": "^cluster[.][^.]+[.]grpc([.].+[.]([^.]+[.][^.]+))[.][^.]+$",
-                    },
-                    {
-                        "tag_name": "grpc_status",
-                        "regex": "^cluster[.][^.]+[.]grpc[.].+([.](\\d+))$",
-                    },
-                ],
-                "stats_matcher": {
-                    "exclusion_list": {
-                        "patterns": [
-                            {
-                                "suffix": ".downstream_rq_time",
-                            },
-                            {
-                                "safe_regex": {
-                                    "google_re2": {},
-                                    "regex": "cluster[.].*[.]internal[.]upstream_rq_time",
-                                },
-                            },
-                            {
-                                "safe_regex": {
-                                    "google_re2": {},
-                                    "regex": "cluster[.].*[.]external[.]upstream_rq_time",
-                                },
-                            },
-                            {
-                                "safe_regex": {
-                                    "google_re2": {},
-                                    "regex": "cluster[.].*[.]zone[.]upstream_rq_time",
-                                },
-                            },
-                        ],
-                    },
-                },
-            },
-            "layered_runtime": {
-                "layers": [
-                    {
-                        "name": "static_layer",
-                        "static_layer": {
-                            "re2.max_program_size.error_level": 1000000,
-                            "overload.global_downstream_max_connections": bootstrap_cfg["global_downstream_max_connections"],
-                        },
-                    },
-                    {
-                        "name": "admin_layer",
-                        "admin_layer": {},
-                    },
-                ],
-            },
-        },
-    }

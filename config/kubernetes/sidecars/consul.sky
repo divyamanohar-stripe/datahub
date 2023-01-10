@@ -21,7 +21,7 @@ load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin")
 load("config/kubernetes/sidecars/variables.sky", "CONSUL_CONTAINER_FALLBACK_DIGEST", "CONSUL_CONTAINER_FALLBACK_ENV")
 load("config/kubernetes/sidecars/config_file.sky", "config_file")
 load("config/kubernetes/networking/public/consul.sky", "register_service")
-load("config/kubernetes/core/service.sky", "service")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 # Name of the sidecar container that registers Consul services for a pod.
 #
@@ -237,8 +237,6 @@ def consul_tcp_check(*, port, interval = "10s", timeout = "5s", notes = None):
 # Backwards compatibility
 consul_check = consul_http_check
 
-_core = proto.package("k8s.io.api.core.v1")
-
 def _update_pod(ctx, plugin, pod_def):
     if "consul_sidecar" in pod_def:
         sidecar = pod_def["consul_sidecar"]
@@ -338,11 +336,13 @@ def _render_consul_sidecar(ctx, container_def, pod):
     if container.use_probes:
         command.append("--bind-msp-probe-responder=0.0.0.0:8599")
         probes["readinessProbe"] = http_probe(
+            ctx,
             port = 8599,
             path = "/msp-infra-ready",
         )
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = _consul_image(ctx),
         command = command,

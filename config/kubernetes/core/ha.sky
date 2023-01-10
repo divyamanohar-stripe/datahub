@@ -6,8 +6,7 @@ Plugins for making Kubernetes configurations highly available
 load("config/kubernetes/meta/metadata.sky", "render_selector")
 load("config/kubernetes/helpers/context.sky", "get_henson_git_commit")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "TopologySpreadConstraint")
 
 def spread_across_zones(selected_zones=()):
     """Spread pods across availability zones.
@@ -71,7 +70,8 @@ def render_topology_spreading(ctx, pod):
     if hasattr(pod.resource["metadata"], "henson_git_commit"):
         selector.matchLabels["stripe.io/henson-git-commit"] = pod.resource["metadata"].henson_git_commit
 
-    return [_core.TopologySpreadConstraint(
+    return [TopologySpreadConstraint(
+        ctx,
         labelSelector = selector,
         maxSkew = plugin.max_skew,
         topologyKey = "topology.kubernetes.io/zone",

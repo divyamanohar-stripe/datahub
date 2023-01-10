@@ -7,6 +7,7 @@ load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/core/env_var.sky", "default_env_vars")
 load("config/kubernetes/helpers/context.sky", "get_aws_region", "get_env")
 load("config/kubernetes/sidecars/variables.sky", "FEATURE_FLAGS_CONTAINER_DIGEST", "FEATURE_FLAGS_CONTAINER_ENV")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 def use_feature_flags(use_legacy_host_mounts = False):
     if use_legacy_host_mounts:
@@ -40,8 +41,6 @@ def _update_pod(ctx, plugin, pod_def):
     pod_def["feature_flags_container"] = container_def
     pod_def["containers"].append(container_def)
 
-_core = proto.package("k8s.io.api.core.v1")
-
 def _feature_flags_container(ctx, container_def, pod):
     container = struct(**container_def)
 
@@ -52,7 +51,8 @@ def _feature_flags_container(ctx, container_def, pod):
     if env == "prod" or env == "preprod":
         env = "production"
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = image(ctx, name = "stripe/ruby-infra/feature-flag-cache-downloader", label = FEATURE_FLAGS_CONTAINER_DIGEST, env = FEATURE_FLAGS_CONTAINER_ENV),
         command = [

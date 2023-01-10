@@ -5,10 +5,10 @@ https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/generate
 """
 
 load("config/kubernetes/autoscaling/labelselectorrequirement.sky", "label_selector_requirement")
-load("config/kubernetes/autoscaling/schema.sky", "meta")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "LabelSelector")
 
 def label_selector(ctx, object):
-    obj_label_selector = meta.LabelSelector()
+    obj_label_selector = LabelSelector(ctx)
     object = struct(**object)
 
     if hasattr(object, "matchLabels"):

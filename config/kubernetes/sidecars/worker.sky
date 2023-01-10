@@ -8,11 +8,10 @@ load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/health.sky", "pod_health_volume")
 load("config/kubernetes/sidecars/variables.sky", "WORKER_CONTAINER_FALLBACK_SHA", "WORKER_CONTAINER_FALLBACK_ENV")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "EnvVar", "Container")
 
 sidecar_name = "worker-sidecar"
 health_pod_volume_name = "pay-pod-health"
-
-_core = proto.package("k8s.io.api.core.v1")
 
 def add_worker_sidecar(
     einhorn_socket_dir,
@@ -24,7 +23,8 @@ def add_worker_sidecar(
     mode = "einhorn",
     puma_statefile_name = None,
     hack_kick_interval = None,
-    hack_kick_start_delay = None):
+    hack_kick_start_delay = None,
+    hack_kick_restart_only = None):
 
     # TODO: make einhorn_socket_dir optional when mode is 'puma-cluster'
     if mode == "einhorn":
@@ -47,6 +47,7 @@ def add_worker_sidecar(
        "puma_statefile_name": puma_statefile_name,
        "hack_kick_interval": hack_kick_interval,
        "hack_kick_start_delay": hack_kick_start_delay,
+       "hack_kick_restart_only": hack_kick_restart_only,
     }
 
     pod = pod_plugin(
@@ -133,11 +134,12 @@ def _render_go_worker_sidecar(ctx, container_def, pod):
     blue_green_color = get_blue_green_color(ctx)
     if blue_green_color != None:
         env += [
-            _core.EnvVar(name = "STRIPE_BLUE_GREEN_COLOR", value = blue_green_color),
-            _core.EnvVar(name = "STRIPE_BLUE_GREEN_ENABLE_METRICS_TAGGING", value = "1"),
+            EnvVar(ctx, name = "STRIPE_BLUE_GREEN_COLOR", value = blue_green_color),
+            EnvVar(ctx, name = "STRIPE_BLUE_GREEN_ENABLE_METRICS_TAGGING", value = "1"),
         ]
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image=img,
         command = command,
@@ -162,6 +164,8 @@ def _go_worker_command(config):
         cmd += ["--hack-kick-interval={}".format(config["hack_kick_interval"])]
     if config["hack_kick_start_delay"]:
         cmd += ["--hack-kick-start-delay={}".format(config["hack_kick_start_delay"])]
+    if config["hack_kick_restart_only"]:
+        cmd += ["--hack-kick-restart-only={}".format(config["hack_kick_restart_only"])]
 
     if config["mode"] == "einhorn":
         cmd += ["--einhorn-socket-path={}/{}".format(config["einhorn_socket_dir"], config["einhorn_socket_name"])]

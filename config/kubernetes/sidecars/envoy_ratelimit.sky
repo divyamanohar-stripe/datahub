@@ -2,7 +2,7 @@
 # team: reliability-patterns-and-practices
 load("config/kubernetes/core/container.sky", "container", "container_port")
 load("config/kubernetes/core/env_var.sky", "container_env_vars")
-load("config/kubernetes/helpers/context.sky", "get_env", "get_cluster")
+load("config/kubernetes/helpers/context.sky", "get_env", "get_cluster", "has_availability_tier", "get_availability_tier")
 load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/networking/internal/helpers.sky", "host_mount_stripe_cas")
@@ -43,18 +43,26 @@ def get_redis_cluster_addr(ctx):
 
     return "service-to-service-ratelimit.elasticache.{}.{}.stripe.io:6379".format(get_cluster(ctx), get_env(ctx))
 
-MEMENTO_ROLLOUT_HOST_TYPES = [
-    "userauthcodegrpc",
-    "merchant-ui-api",
+MEMENTO_ROLLOUT_AVAILABILITY_TIERS = [
+    "A400",
+    "A300",
+    "A200",
+    "A150",
+    "A140",
+    "A130",
+    "A120",
+    "A110",
+    "A100",
 ]
 
-def get_cache_arg(ctx, host_type):
+def get_cache_arg(ctx):
     if get_cluster(ctx) == "northwest" and get_env(ctx) == "qa":
         return ["--use-memento"]
     if get_cluster(ctx) == "cmh" and get_env(ctx) in ["qa", "preprod"]:
         return ["--use-memento"]
-    if get_cluster(ctx) in ["northwest", "cmh"] and get_env(ctx) == "prod" and host_type in MEMENTO_ROLLOUT_HOST_TYPES:
-        return ["--use-memento"]
+    if get_cluster(ctx) in ["northwest", "cmh"] and get_env(ctx) == "prod":
+        if has_availability_tier(ctx) and get_availability_tier(ctx) in MEMENTO_ROLLOUT_AVAILABILITY_TIERS:
+            return ["--use-memento"]
 
     return ["--redis-cluster-address", get_redis_cluster_addr(ctx)]
 
@@ -66,15 +74,31 @@ def get_config_srv_addr(ctx):
     else:
         return "config-srv.northwest.service.envoy:10080"
 
-def get_updater_logging_option(ctx, host_type):
-    # KProxy is emitting tons of logs as they have thousands of buckets.
-    # By setting a command-line-arg we'll silence those.
-    if get_env(ctx) in ["preprod", "prod", "qa"] and host_type in ["kproxy"]:
+def get_updater_logging_option(passed_override):
+    if passed_override == False:
         return ["--no-log-update-lines"]
+    elif passed_override == True:
+        return []
+    elif passed_override != None:
+        fail("Malformed argument. Expecting a Boolean. actual: %r" % passed_override)
     else:
         return []
 
-def ratelimit_sidecar(ctx, label, host_type):
+def get_force_updater_option(passed_override):
+    if not passed_override:
+        return []
+    passed = int(passed_override)
+    if passed != passed_override or passed < 0:
+        # covers non integers decimals or negative numbers.
+        fail("Malformed argument, expecting a positive integer. actual %r" % passed_override)
+    if passed == 0:
+        return []
+    else:
+        # Definitely a positive number.
+        return ["--force-update-no-usage-interval", str(passed_override)]
+
+
+def ratelimit_sidecar(ctx, label, host_type, enable = True, namespace_override="", log_updater_canonical_lines=None,  force_update_interval=None):
     """
     Adds the Envoy-RateLimit sidecar to the deployment.
     This sidecar is needed to perform global rate-limiting.
@@ -85,14 +109,28 @@ def ratelimit_sidecar(ctx, label, host_type):
     Args:
         label: DEPRECATED (no longer used)
         host_type: The logical host-type/pod-type. Used by the sidecar when loading configuration.
-
+        enable: Ignored. Assumed True.
+        namespace_override: (Optional) Allows overriding `host_type`.
+        log_updater_canonical_lines: (Optional) Whether to log RATE-LIMT-UPDATER cononical lines. Very useful for debugging
+            but not recommended for hosts with thousands of buckets(e.g. kproxy, mproxy). Boolean.
+        force_update_interval: (Optional) How frequent to force a bucket to refresh local limits even if was not used. Integer.
     Returns:
         A plugin that installs the envoy-ratelimit-srv sidecar.
     """
-    command = ["/bin/envoy-ratelimit-srv", "--host-type", host_type, "--stats-addr", "127.0.0.1:8200", "--use-config-srv", "--config-srv-address", get_config_srv_addr(ctx)]
-    command.extend(get_cache_arg(ctx, host_type))
+    final_host_type = host_type
+    if namespace_override != "":
+        final_host_type = namespace_override
+    command = ["/bin/envoy-ratelimit-srv", "--host-type", final_host_type, "--stats-addr", "127.0.0.1:8200", "--use-config-srv", "--config-srv-address", get_config_srv_addr(ctx)]
+    command.extend(get_cache_arg(ctx))
     command.append("--use-global-ratelimiter")
-    command.extend(get_updater_logging_option(ctx, host_type))
+    command.extend(get_updater_logging_option(log_updater_canonical_lines))
+    command.extend(get_force_updater_option(force_update_interval))
+    if namespace_override != "":
+        # In MSP, in case we have set the namespace_override, we actually need to let the sidecar
+        # know to ignore the passed value from Envoy (which will by default be the k8s_namespace) and
+        # instead use the "rate-limiter identity" used here in host-type argument.
+        command.append("--use-host-type-as-source")
+
     return compose_plugins(
         container(
             name = "envoy-ratelimit-srv",

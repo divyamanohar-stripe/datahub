@@ -16,9 +16,11 @@ load("config/kubernetes/networking/public/networking.sky", "networking")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "deployment_plugin")
 load("config/kubernetes/sidecars/metrics.sky", "metrics")
-load("config/kubernetes/helpers/context.sky", "get_env", "get_blue_green_color")
+load("config/kubernetes/sidecars/sansshell.sky", "sansshell_sidecar")
+load("config/kubernetes/helpers/context.sky", "get_env", "get_blue_green_color", "get_render_yaml")
 load("config/kubernetes/core/volume.sky", "volume_mount_all_containers")
 load("config/kubernetes/helpers/ldap.sky", "mount_ldap_host_volumes", "LDAP_MOUNT_NAME")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Deployment", "DeploymentSpec")
 
 def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, disable_default_metrics_sidecar=False, **kwargs):
     """
@@ -58,6 +60,7 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, disable
     all_plugins = [
         deployment_options(
             strategy = rolling_update_strategy(
+                ctx,
                 max_unavailable = 1,
                 max_surge = 1,
             ),
@@ -100,9 +103,11 @@ def deployment(ctx, *plugins, shared_msp=False, mount_ldap_volumes=True, disable
         if not disable_default_metrics_sidecar:
             _apply_plugin(ctx, metrics(ctx, config=deployment["metrics_config"]), deployment)
 
+        _apply_plugin(ctx, sansshell_sidecar(ctx), deployment)  # go/sod:sansshell
+
         _apply_plugin(ctx, compose_plugins(
-            prestop_all_infra_sidecars(pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
-            prestop_all_containers(generate_prestop_sleep_action(DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME)),
+            prestop_all_infra_sidecars(ctx, pod_termination_grace_period_seconds=pod_termination_grace_period_seconds),
+            prestop_all_containers(generate_prestop_sleep_action(ctx, DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME)),
             volume_mount_all_containers(
                 "/usr/stripe/bin/kube-prestop",
                 read_only=True,
@@ -150,9 +155,6 @@ def deployment_options(**kwargs):
         kwargs = kwargs,
     )
 
-_apps = proto.package("k8s.io.api.apps.v1")
-_core = proto.package("k8s.io.api.core.v1")
-
 def _update_deployment_options(ctx, plugin, deployment_def):
     deployment_def["kwargs"].update(plugin.kwargs)
 
@@ -165,9 +167,11 @@ def _render_deployment(ctx, deployment_def):
     pod_template = deployment.pod["render"](ctx, deployment.pod)
     _validate_pod_container_resources(ctx, pod_template)
 
-    return _apps.Deployment(
+    return Deployment(
+        ctx,
         metadata = render_metadata(ctx, deployment.metadata),
-        spec = _apps.DeploymentSpec(
+        spec = DeploymentSpec(
+            ctx,
             selector = render_selector(ctx, deployment.metadata),
             template = pod_template,
             **deployment.kwargs
@@ -177,32 +181,58 @@ def _render_deployment(ctx, deployment_def):
 def _validate_pod_container_resources(ctx, pod_template):
     containers_with_resources = 0
     first_container_with_resources = None
-    for container in pod_template.spec.containers:
-        if _container_has_resources(container):
+
+    if get_render_yaml(ctx):
+        containers = pod_template["spec"]["containers"]
+    else:
+        containers = pod_template.spec.containers
+
+    for container in containers:
+        if _container_has_resources(ctx, container):
             containers_with_resources += 1
+
+        if get_render_yaml(ctx):
+            name = container["name"]
+        else:
+            name = container.name
 
         if containers_with_resources > 1:
             warn(ctx, "".join([
                 "More than one container in a Deployment specified requests or limits on resources, which will soon be disallowed. ",
-                "The sidecar container with name " + container.name + " needs to have its CPU and memory resource requirements removed: ",
+                "The sidecar container with name " + name + " needs to have its CPU and memory resource requirements removed: ",
                 "container with name " + first_container_with_resources + " already specified CPU or memory resources for this Deployment. ",
             ]))
         else:
-            first_container_with_resources = container.name
+            first_container_with_resources = name
 
-def _container_has_resources(container):
-    if not container.resources:
+def _container_has_resources(ctx, container):
+    if get_render_yaml(ctx):
+        if not container["resources"]:
+            return False
+
+        if container["resources"]["limits"]:
+            if container["resources"]["limits"]["cpu"] or container["resources"]["limits"]["memory"]:
+                return True
+
+        if container["resources"]["requests"]:
+            if container["resources"]["requests"]["cpu"] or container["resources"]["requests"]["memory"]:
+                return True
+
         return False
 
-    if container.resources.limits:
-        if container.resources.limits["cpu"] or container.resources.limits["memory"]:
-            return True
+    else:
+        if not container.resources:
+            return False
 
-    if container.resources.requests:
-        if container.resources.requests["cpu"] or container.resources.requests["memory"]:
-            return True
+        if container.resources.limits:
+            if container.resources.limits["cpu"] or container.resources.limits["memory"]:
+                return True
 
-    return False
+        if container.resources.requests:
+            if container.resources.requests["cpu"] or container.resources.requests["memory"]:
+                return True
+
+        return False
 
 
 def _validate_deployment(ctx, deployment):
@@ -242,30 +272,57 @@ def _validate_strategy_max_unavailable(ctx, name, replicas, strategy):
     if strategy == None:
         return
 
-    # Only RollingUpdate deployment strategies are checked.
-    if strategy.type != "RollingUpdate":
-        return
+    # This is not ideal but because we no longer have a wrapped struct with the value/type
+    # which wasn't ideal in the first palce we can't modify the code in place neatly.
+    if get_render_yaml(ctx):
+        # Only RollingUpdate deployment strategies are checked.
+        if strategy["type"] != "RollingUpdate":
+            return
 
-    max_unavailable = strategy.rollingUpdate.maxUnavailable
-    if max_unavailable == None:
-        fail("Deployment %s specifies a RollingUpdate strategy without maxUnavailable" % name)
+        max_unavailable = strategy["rollingUpdate"]["maxUnavailable"]
+        if max_unavailable == None:
+            fail("Deployment %s specifies a RollingUpdate strategy without maxUnavailable" % name)
 
-    if max_unavailable.type == 1 and len(max_unavailable.strVal) > 0:
-        if "%" in max_unavailable.strVal:
-            percent = int(max_unavailable.strVal.split("%")[0])
-            _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent)
-        else:
-            literal = int(max_unavailable.strVal)
+        if type(max_unavailable) == "string" and len(max_unavailable) > 0:
+            if "%" in max_unavailable:
+                percent = int(max_unavailable.split("%")[0])
+                _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent)
+            else:
+                literal = int(max_unavailable)
+                percent = 0
+                if replicas > 0:
+                    percent = 100 * literal // replicas
+                _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
+        elif type(max_unavailable) == "int" and max_unavailable > 0:
+            percent = 0
+            if replicas > 0:
+                percent = 100 * max_unavailable // replicas
+            _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, max_unavailable)
+    else:
+        # Only RollingUpdate deployment strategies are checked.
+        if strategy.type != "RollingUpdate":
+            return
+
+        max_unavailable = strategy.rollingUpdate.maxUnavailable
+        if max_unavailable == None:
+            fail("Deployment %s specifies a RollingUpdate strategy without maxUnavailable" % name)
+
+        if max_unavailable.type == 1 and len(max_unavailable.strVal) > 0:
+            if "%" in max_unavailable.strVal:
+                percent = int(max_unavailable.strVal.split("%")[0])
+                _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent)
+            else:
+                literal = int(max_unavailable.strVal)
+                percent = 0
+                if replicas > 0:
+                    percent = 100 * literal // replicas
+                _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
+        elif max_unavailable.intVal != None:
+            literal = max_unavailable.intVal
             percent = 0
             if replicas > 0:
                 percent = 100 * literal // replicas
             _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
-    elif max_unavailable.intVal != None:
-        literal = max_unavailable.intVal
-        percent = 0
-        if replicas > 0:
-            percent = 100 * literal // replicas
-        _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal)
 
 def _validate_strategy_max_unavailable_warning(ctx, name, replicas, percent, literal=None):
     if replicas < MIN_REPLICAS_FOR_CHECK:

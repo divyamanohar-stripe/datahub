@@ -43,3 +43,9 @@ review_requirements:
   - sidecars/kafka_test.sky
   assignees:
   - codeowners-stream-infrastructure
+
+- files:
+  - sidecars/metrics.sky
+  - sidecars/metrics_test.sky
+  assignees:
+  - codeowners-observability-monitoring

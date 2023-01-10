@@ -161,7 +161,7 @@ def _update_if_provided(cfg, key, val):
 def populate_config(cfg, user_overrides, update_fn_name):
     for field in dir(user_overrides):
         user_value = getattr(user_overrides, field, None)
-        if (user_value != NOT_PROVIDED):
+        if (user_value != NOT_PROVIDED and user_value != None):
             if is_network_config_updater(user_value):
                 update_fn = getattr(user_value, update_fn_name, None)
                 if update_fn != None:

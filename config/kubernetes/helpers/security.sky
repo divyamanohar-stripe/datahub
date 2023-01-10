@@ -6,6 +6,8 @@ Helper functions for configuring security properties of your service
 
 load("config/kubernetes/plugins/types.sky", "pod_or_container_plugin", "pod_plugin", "container_plugin")
 load("config/kubernetes/core/volume.sky", "host_volume", "volume_mount", "mount_host_volume")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "SecurityContext", "Capabilities", "PodSecurityContext")
+load("config/kubernetes/helpers/context.sky", "get_render_yaml")
 
 SECGROUP_KEY = "stripe.io/extra-security-groups"
 UNIQUE_HORIZON_IDENTITY_ANNOTATION_KEY = "horizon.stripe.io/bundle-unique-identity"
@@ -71,35 +73,56 @@ def mount_host_stripe_ca_certs(container_name = None):
         },
     )
 
-_core = proto.package("k8s.io.api.core.v1")
-
-def render_pod_security_context(security_def, pod):
-    securityContext = _core.PodSecurityContext()
+def render_pod_security_context(ctx, security_def, pod):
+    securityContext = PodSecurityContext(ctx)
 
     if "uid" in security_def or "gid" in security_def:
         uid = _uidgid_or_default(security_def["uid"], pod)
         gid = _uidgid_or_default(security_def["gid"], pod)
 
-        securityContext.runAsNonRoot = True
-        securityContext.runAsUser = uid
-        securityContext.runAsGroup = gid
-        securityContext.fsGroup = gid
+        if get_render_yaml(ctx):
+            securityContext["runAsNonRoot"] = True
+            securityContext["runAsUser"] = uid
+            securityContext["runAsGroup"] = gid
+            securityContext["fsGroup"] = gid
+        else:
+            securityContext.runAsNonRoot = True
+            securityContext.runAsUser = uid
+            securityContext.runAsGroup = gid
+            securityContext.fsGroup = gid
+
 
         if "supplementalGroups" in security_def:
-            securityContext.supplementalGroups = security_def["supplementalGroups"]
+            if get_render_yaml(ctx):
+                securityContext["supplementalGroups"] = security_def["supplementalGroups"]
+            else:
+                securityContext.supplementalGroups = security_def["supplementalGroups"]
 
     return securityContext
 
-def render_security_context(security_def, pod):
-    securityContext = _core.SecurityContext()
+def render_security_context(ctx, security_def, pod):
+    securityContext = SecurityContext(ctx)
 
     if "uid" in security_def or "gid" in security_def:
-        securityContext.runAsNonRoot = True
-        securityContext.runAsUser = _uidgid_or_default(security_def["uid"], pod)
-        securityContext.runAsGroup = _uidgid_or_default(security_def["gid"], pod)
+        if get_render_yaml(ctx):
+            securityContext["runAsNonRoot"] = True
+            securityContext["runAsUser"] = _uidgid_or_default(security_def["uid"], pod)
+            securityContext["runAsGroup"] = _uidgid_or_default(security_def["gid"], pod)
+        else:
+            securityContext.runAsNonRoot = True
+            securityContext.runAsUser = _uidgid_or_default(security_def["uid"], pod)
+            securityContext.runAsGroup = _uidgid_or_default(security_def["gid"], pod)
+
 
     if "capabilities" in security_def:
-        securityContext.capabilities = _add_to_default_capabilities(security_def["capabilities"])
+        if get_render_yaml(ctx):
+            securityContext["capabilities"] = _add_to_default_capabilities(ctx, security_def["capabilities"])
+        else:
+            securityContext.capabilities = _add_to_default_capabilities(ctx, security_def["capabilities"])
+
+
+    if "privileged" in security_def:
+        securityContext.privileged = True
 
     return securityContext
 
@@ -126,7 +149,7 @@ def _uidgid_or_default(uidgid, pod):
         return 1577241873 # Should match $kubernetes_pod_unix_id: https://go/lg/$kubernetes_pod_unix_id%20=
     return 3001
 
-def _add_to_default_capabilities(capabilities):
+def _add_to_default_capabilities(ctx, capabilities):
     DEFAULT_ADD_CAPABILITIES = []
     DEFAULT_DROP_CAPABILITIES = []
 
@@ -137,7 +160,8 @@ def _add_to_default_capabilities(capabilities):
         if capabilities["drop"]:
             DEFAULT_DROP_CAPABILITIES.extend(capabilities["drop"])
 
-    return _core.Capabilities(
+    return Capabilities(
+        ctx,
         add = DEFAULT_ADD_CAPABILITIES,
         drop = DEFAULT_DROP_CAPABILITIES,
     )
@@ -180,6 +204,14 @@ def allow_ulimit_management(container_name):
         drop_capabilities = [],
     )
 
+def allow_net_admin_capabilities(container_name):
+    return container_plugin(
+        _update_container_capabilities,
+        container_name = container_name,
+        add_capabilities = ["NET_ADMIN"],
+        drop_capabilities = [],
+    )
+
 def _update_container_capabilities(ctx, plugin, container_def):
     if container_def["security"] == None:
         container_def["security"] = {}
@@ -188,6 +220,12 @@ def _update_container_capabilities(ctx, plugin, container_def):
         "add": plugin.add_capabilities,
         "drop": plugin.drop_capabilities,
     }
+
+def _update_container_privileged(ctx, plugin, container_def):
+    if container_def["security"] == None:
+        container_def["security"] = {}
+
+    container_def["security"]["privileged"] = True
 
 def unique_horizon_identity_annotation(enableUniqueIdentities):
     """
@@ -213,3 +251,21 @@ def _unique_horizon_identity_annotation(ctx, plugin, pod_def):
             return
     fail("Pod isn't a Horizon pod, this plugin expects the label stripe.io/platform=horizon")
 
+def run_as_privileged(container_name):
+    """
+    Sets up a container to run as a privileged user.
+
+    NOTE: Reach out to #msp slack channel before using this plugin. Use of this plugin
+    is highly restricted for select use cases.
+
+
+    Args:
+        container_name: The name of a container to run as a privileged user.
+
+    Returns:
+        A plugin that configures the security settings of a container.
+    """
+    return container_plugin(
+        _update_container_privileged,
+        container_name = container_name,
+    )

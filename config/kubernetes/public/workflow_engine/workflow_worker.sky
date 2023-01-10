@@ -18,14 +18,16 @@ Can't be overriden because the canary is always one node.
 """
 def deployment_strategy_canary_func(ctx):
   return rolling_update_strategy(
-     max_unavailable = 1,
-     max_surge = 1,
+    ctx,
+    max_unavailable = 1,
+    max_surge = 1,
   )
 
 def deployment_strategy_func(ctx):
   return rolling_update_strategy(
-     max_unavailable = 1,
-     max_surge = 1,
+    ctx,
+    max_unavailable = 1,
+    max_surge = 1,
   )
 
 def ruby_workflow_worker_shared_msp(
@@ -278,6 +280,7 @@ def _service_shared_msp(
 
     all_plugins = [
         pay_server_pod(
+            ctx,
             name = name,
             namespace = namespace,
             instance_type = instance_type,
@@ -288,6 +291,7 @@ def _service_shared_msp(
             command = [command, "--remote"],
         ),
         einhorn_service(
+            ctx,
             # This port isn't actually used (see next comment).
             port = 8080,
             name = consul_name,
@@ -304,7 +308,7 @@ def _service_shared_msp(
             # claiming availability before a lot of Ruby code has been required) or wait
             # for the canary to confirm that it is able to round-trip a workflow through
             # the server back to itself.
-            startup = _startup_command_probe(startup_timeout = startup_timeout, path = file_to_wait_for),
+            startup = _startup_command_probe(ctx, startup_timeout = startup_timeout, path = file_to_wait_for),
         ),
         auto_secrets(),
         grace_period(drain_timeout)
@@ -346,6 +350,7 @@ def _service_dedicated_msp(
 
     all_plugins = [
         pay_server_pod(
+            ctx,
             name = name,
             host_type = host_type,
             cpu = cpu,
@@ -356,6 +361,7 @@ def _service_dedicated_msp(
             command = [command, "--remote"],
         ),
         einhorn_service(
+            ctx,
             # This port isn't actually used (see next comment).
             port = 8080,
             name = consul_name,
@@ -371,7 +377,7 @@ def _service_dedicated_msp(
             # claiming availability before a lot of Ruby code has been required) or wait
             # for the canary to confirm that it is able to round-trip a workflow through
             # the server back to itself.
-            startup = _startup_command_probe(startup_timeout = startup_timeout, path = file_to_wait_for),
+            startup = _startup_command_probe(ctx, startup_timeout = startup_timeout, path = file_to_wait_for),
         ),
         auto_secrets(),
         grace_period(drain_timeout),
@@ -387,7 +393,7 @@ def _service_dedicated_msp(
     )
     return [deploy]
 
-def _startup_command_probe(*, startup_timeout, path):
+def _startup_command_probe(ctx, *, startup_timeout, path):
     # https://skycfg.corp.stripe.com/docs/config/kubernetes/core/probe.sky/probes
     # https://skycfg.corp.stripe.com/docs/config/kubernetes/core/probe.sky/command_probe
     # https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#probe-v1-core
@@ -395,6 +401,7 @@ def _startup_command_probe(*, startup_timeout, path):
     iterations = startup_timeout // period
 
     return command_probe(
+        ctx,
         command = ["/bin/bash", "-c", "test -f " + path],
         # ...after 10 seconds...
         initialDelaySeconds = period,

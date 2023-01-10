@@ -625,6 +625,11 @@ _CRONS = [
 		"name": "hadoop-currant-decom-hosts-fetcher",
 		"namespace": "hadoopresourcesec"
 	},
+    {
+        #dbricks-infra-monitor is an MSP cron which does not handle any financial data
+        "name": "dbricks-infra-monitor",
+        "namepsace": "dbrickscronbox"
+    },
     # The following cronjobs only send emails to remind
     # users to update their KYC data on their accounts.
 	{
@@ -647,12 +652,35 @@ _CRONS = [
 		"name": "send-email-t7--asyncflow--in-orr--onboarding--opus",
 		"namespace": "kubeacronnoegress"
 	},
-
     {
         # this job creates snapshots of emails with sample data and send it to a vendor for translation
         # it does not handle any financial data
         "name": "i18n--email-lqa-runner",
         "namespace": "kubeacronnoegress",
+    },
+    {
+        # cuts Jiras to teams to make sure they are aware that their emails were dropped due to kill switches
+        # feature flag rules
+        "name": "send-email-kill-switch-notifications",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # cuts Jiras to teams to have them delete unused Letter emails
+        "name": "send-stale-email-notifications",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+        # cuts Jiras to teams to have them archive their Letter email stable IDs
+        "name": "send-stable-id-archival-notifications",
+        "namespace": "kubeacronnoegress",
+    },
+    {
+    	"name": "gtm-ui-automation-p2-opportunity-sales",
+    	"namespace": "gtmspeuibox"
+    },
+    {
+    	"name": "gtm-ui-automation-p1-opportunity",
+    	"namespace": "gtmspeuibox"
     },
 ]
 

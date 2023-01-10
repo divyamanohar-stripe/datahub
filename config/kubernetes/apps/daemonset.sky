@@ -12,6 +12,7 @@ load("config/kubernetes/helpers/msp_shard.sky", "msp_shard")
 load("config/kubernetes/helpers/tolerations.sky", "add_toleration")
 load("config/kubernetes/meta/metadata.sky", "render_metadata", "render_selector", "metadata")
 load("config/kubernetes/plugins/types.sky", "daemonset_plugin")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "DaemonSet", "DaemonSetSpec")
 
 def daemonset(ctx, *plugins, **kwargs):
     """
@@ -72,9 +73,6 @@ def daemonset_options(**kwargs):
         kwargs = kwargs,
     )
 
-_apps = proto.package("k8s.io.api.apps.v1")
-_core = proto.package("k8s.io.api.core.v1")
-
 def _update_daemonset_options(ctx, plugin, daemonset_def):
     daemonset_def["kwargs"].update(plugin.kwargs)
 
@@ -83,9 +81,11 @@ def _render_daemonset(ctx, daemonset_def):
     daemonset = struct(**daemonset_def)
     pod_template = daemonset.pod["render"](ctx, daemonset.pod)
 
-    return _apps.DaemonSet(
+    return DaemonSet(
+        ctx,
         metadata = render_metadata(ctx, daemonset.metadata),
-        spec = _apps.DaemonSetSpec(
+        spec = DaemonSetSpec(
+            ctx,
             selector = render_selector(ctx, daemonset.metadata),
             template = pod_template,
             **daemonset.kwargs
@@ -133,6 +133,6 @@ def mspworker_daemonset(ctx, name, shard, *plugins, max_unavailable = "10%", nod
     return daemonset(
         ctx,
         compose_plugins(*all_plugins),
-        updateStrategy = rolling_update_daemonset_strategy(max_unavailable),
+        updateStrategy = rolling_update_daemonset_strategy(ctx, max_unavailable),
     )
 

@@ -120,12 +120,14 @@ def networking_config(
         egress_proxy_tier = NOT_PROVIDED,
         enable_inbound_websockets = NOT_PROVIDED,
         enable_global_ratelimit = NOT_PROVIDED,
+        global_ratelimit = NOT_PROVIDED,
         inbound_ratelimit = NOT_PROVIDED,
         outbound_mproxy_ratelimit = NOT_PROVIDED,
         enable_grpc_web = NOT_PROVIDED,
         envoy_concurrency = NOT_PROVIDED,
         envoy_scrape_histogram_metrics = NOT_PROVIDED,
         allowed_machine_orgs = NOT_PROVIDED,
+        enable_cross_domain_services = NOT_PROVIDED,
         # enable_tracing = NOT_PROVIDED, # TODO(xyu): go/jira/SN-1059
         # Non-public SN knobs to tweak on a per-workload basis
         _sn_breakglass = breakglass_settings()):
@@ -144,9 +146,12 @@ def networking_config(
             for options. (Default: "", example: "p0")
         enable_inbound_websockets: configure Envoy to allow inbound websocket connections to
             this service.
-        enable_global_ratelimit: Boolean value indicating if outbound requests from
+        enable_global_ratelimit: (Deprecated, use global_ratelimit instead)
+            Boolean value indicating if outbound requests from
             your service should respect the global rate limits for upstream services
             (if upstream services are configured accordingly). Defaults to False.
+        global_ratelimit: Configuration struct controlling the Global (Outbound) rate-limier.
+            Disabled by default. See `global_ratelimit` for all default values.
         inbound_ratelimit: Configuration struct controlling the inbound (local)
             rate limiter for requests to your service. Disabled by default; see `inbound_ratelimit`
             for all default values.
@@ -163,6 +168,8 @@ def networking_config(
             must present a matching org (`O` field) for inbound requests to be authorized. This field
             should be specified as a list of strings. This sets the --allowed-machine-orgs command line
             flag for envoy-config-srv.
+        enable_cross_domain_services: The names of services to enable cross domain networking with
+            from this service
 
         _sn_breakglass: these are internal networking customizations for use by the
             Service Networking Team. While service owners are generally not expected
@@ -173,10 +180,18 @@ def networking_config(
         A `deployment_plugin` that injects the specified networking config into the deployment.
     """
     user_provided = struct(
+        # If rate-limiting is enabled, we need both to change envoy-config-srv-config and
+        # pass in the other arguments from global_ratelimit_config.
         enable_global_ratelimit = network_config_updater(
             _update_envoy_config_srv_config = _envoy_config_srv_toggle_global_ratelimit,
             _update_envoy_bootstrap_config = _envoy_bootstrap_config_toggle_global_ratelimit,
-            enable = enable_global_ratelimit,
+            enable = _is_global_ratelimit_enabled(enable_global_ratelimit, global_ratelimit),
+        ),
+        global_ratelimit = global_ratelimit,
+
+        enable_cross_domain_services = network_config_updater(
+            _update_envoy_config_srv_config = _envoy_config_srv_set_cross_domain_services,
+            services = enable_cross_domain_services,
         ),
         inbound_ratelimit = inbound_ratelimit,
         outbound_mproxy_ratelimit = outbound_mproxy_ratelimit,
@@ -231,7 +246,7 @@ def networking_config(
         statefulset_plugin(
             _update_statefulset_networking_config,
             config = user_provided,
-        )
+        ),
     )
 
 def _update_deployment_networking_config(ctx, plugin, deployment_def):
@@ -239,7 +254,6 @@ def _update_deployment_networking_config(ctx, plugin, deployment_def):
     # If you make changes to how we interact with the deployment IR, update `build_networking_config`
     # accordingly.
     deployment_def["networking_config"] = plugin.config
-
 
 def _update_statefulset_networking_config(ctx, plugin, statefulset_def):
     # NOTE: `build_networking_config` depends on how this plugin interacts with the `statefulset_def`.
@@ -272,6 +286,8 @@ def inbound_ratelimit(
         fill_interval_duration = "100ms",
         tokens_per_interval = 100,
         unavailable_status_code = False):
+    # When changing the defaults here, also change them in
+    # _service_config_inbound_ratelimit in networking/internal/envoy-config-srv.sky.
     """
     Construct inbound rate limiter configuration.
 
@@ -301,10 +317,48 @@ def _set_local_ratelimit(args):
                 max_capacity = args.max_capacity,
                 tokens_per_interval = args.tokens_per_interval,
                 fill_interval_duration = args.fill_interval_duration,
-                unavailable_status_code = args.unavailable_status_code
+                unavailable_status_code = args.unavailable_status_code,
             )
         ),
     }
+
+# Notice fields should match fields in the `global_ratelimit` function
+def _set_global_ratelimit(args):
+    return {
+        "enable": args.enable,
+        "namespace_override": args.namespace_override,
+        "force_update_interval": args.force_update_interval,
+        "log_updater_canonical_lines": args.log_updater_canonical_lines
+
+    }
+
+def global_ratelimit(
+    *,
+    enable = False,
+    namespace_override = "",
+    force_update_interval = None,
+    log_updater_canonical_lines = None):
+    """
+    Construct the Global (outbound) rate limiter configuration.
+    Notice `enable_global_ratelimit` is being deprecated in favor of this struct.
+
+    By default, this rate limiter is disabled.
+    Args:
+        enable: Should the global rate-limit be turned on (default: False).
+        namespace_override: (Optional) allows overriding the host-type/k8s-namespace used as client identity.
+        force_update_interval: (Optional) In case of no usage of a token-bucket, how often should we still check
+            with the global storage on utilization to update the bucket.
+            (Default None - while no utilization, no global storage updater-checks)
+        log_updater_canonical_lines - (Optional) Whether the sidecar should log the Token-Bucket dynamic updater
+            canonical-lines. In some cases, this can generate a lot of logs, but it's required for deeper analysis.
+    """
+    return network_config_updater(
+        _global_ratelimit_args = _set_global_ratelimit,
+        enable = enable,
+        namespace_override = namespace_override,
+        force_update_interval = force_update_interval,
+        log_updater_canonical_lines = log_updater_canonical_lines,
+    )
 
 def outbound_mproxy_ratelimit(
         *,
@@ -337,7 +391,7 @@ def _set_outbound_mproxy_ratelimit(args):
             None if args.enable == False else mproxy_local_rate_limit(
                 max_capacity = args.max_capacity,
                 tokens_per_interval = args.tokens_per_interval,
-                fill_interval_duration = args.fill_interval_duration
+                fill_interval_duration = args.fill_interval_duration,
             )
         ),
     }
@@ -347,3 +401,16 @@ def _envoy_config_srv_toggle_global_ratelimit(args):
 
 def _envoy_bootstrap_config_toggle_global_ratelimit(args):
     return {"add_global_ratelimit_cluster": args.enable}
+
+def _envoy_config_srv_set_cross_domain_services(args):
+    return {"enable_cross_domain_services": args.services}
+
+# A helper function to resolve whether the global rate-limiter should be turned-on
+# based on the old / deprecated value (`enable_global_ratelimit`) and the new struct (`global_ratelimit.enable`)
+def _is_global_ratelimit_enabled(deprecated_val, global_ratelimit):
+    global_ratelimit_enabled = False
+    if deprecated_val != NOT_PROVIDED:
+        global_ratelimit_enabled = deprecated_val
+    if global_ratelimit != NOT_PROVIDED and global_ratelimit != None:
+        global_ratelimit_enabled = global_ratelimit_enabled or global_ratelimit.kwargs.enable
+    return global_ratelimit_enabled

@@ -1,5 +1,5 @@
 # DO NOT EDIT: http://go/vendor-skycfg
-load("config/kubernetes/helpers/context.sky", "get_fail_on_warnings")
+load("config/kubernetes/helpers/context.sky", "get_fail_on_warnings", "get_suppress_warnings")
 
 def warn(ctx, *args):
     """
@@ -9,6 +9,5 @@ def warn(ctx, *args):
 
     if get_fail_on_warnings(ctx):
         fail(*args)
-    else:
+    elif not get_suppress_warnings(ctx):
         print(*args)
-

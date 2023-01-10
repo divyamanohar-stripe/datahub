@@ -16,8 +16,7 @@ load("config/kubernetes/core/volume.sky", "render_volume_mount", "volume_mount")
 load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/plugins/types.sky", "pod_plugin")
 load("config/kubernetes/sidecars/variables.sky", "FILE_WRITER_ALPINE_CONTAINER_SHA")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 def config_file(path, content, volume):
     """
@@ -93,7 +92,8 @@ def _render_container(ctx, container_def, pod):
 
     volume_mounts = [volume_mount(volume, read_only = False) for volume in volumes.keys()]
 
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = image(ctx, "stripe/build/alpine-3.7", label = "git-%s" % FILE_WRITER_ALPINE_CONTAINER_SHA),
         command = command,

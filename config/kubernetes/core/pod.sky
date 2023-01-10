@@ -11,8 +11,8 @@ load("config/kubernetes/helpers/security.sky", "render_pod_security_context")
 load("config/kubernetes/helpers/sidecars.sky", "generate_sidecars_annotation")
 load("config/kubernetes/helpers/tolerations.sky", "render_pod_toleration")
 load("config/kubernetes/core/affinity.sky", "empty_affinity", "render_affinity")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "PodSpec", "PodTemplateSpec")
+load("config/kubernetes/helpers/context.sky", "get_render_yaml")
 
 def pod(node_selectors = None, host_network = True, share_pid_namespace = False, host_pid = False):
     """
@@ -85,9 +85,11 @@ def _render_pod(ctx, pod_def):
     if pod.include_iam_annotation:
         extra_annotations["iam.amazonaws.com/role"] = pod.resource["iam_role"]
 
-    pod_template = _core.PodTemplateSpec(
+    pod_template = PodTemplateSpec(
+        ctx,
         metadata = render_metadata(ctx, pod.resource["metadata"], extra_annotations = extra_annotations),
-        spec = _core.PodSpec(
+        spec = PodSpec(
+            ctx,
             hostNetwork = pod.host_network,
             shareProcessNamespace = pod.share_pid_namespace,
             hostPID = pod.host_pid,
@@ -101,27 +103,45 @@ def _render_pod(ctx, pod_def):
     )
 
     if pod.grace_period != None:
-        pod_template.spec.terminationGracePeriodSeconds = pod.grace_period
+        if get_render_yaml(ctx):
+            pod_template["spec"]["terminationGracePeriodSeconds"] = pod.grace_period
+        else:
+            pod_template.spec.terminationGracePeriodSeconds = pod.grace_period
 
     if pod.security != None:
-        pod_template.spec.securityContext = render_pod_security_context(pod.security, pod)
+        if get_render_yaml(ctx):
+            pod_template["spec"]["securityContext"] = render_pod_security_context(ctx, pod.security, pod)
+        else:
+            pod_template.spec.securityContext = render_pod_security_context(ctx, pod.security, pod)
 
     if hasattr(pod, "service_account_name"):
-        pod_template.spec.serviceAccountName = pod.service_account_name
+        if get_render_yaml(ctx):
+            pod_template["spec"]["serviceAccountName"] = pod.service_account_name
+        else:
+            pod_template.spec.serviceAccountName = pod.service_account_name
 
-    affinity = render_affinity(pod.affinity)
+    affinity = render_affinity(ctx, pod.affinity)
     if affinity != None:
         pod_template.spec.affinity = affinity
 
     topology_spreading = render_topology_spreading(ctx, pod)
     if topology_spreading != None:
-        pod_template.spec.topologySpreadConstraints = topology_spreading
+        if get_render_yaml(ctx):
+            pod_template["spec"]["topologySpreadConstraints"] = topology_spreading
+        else:
+            pod_template.spec.topologySpreadConstraints = topology_spreading
 
     if pod.host_aliases != None:
-        pod_template.spec.hostAliases = pod.host_aliases
+        if get_render_yaml(ctx):
+            pod_template["spec"]["hostAliases"] = pod.host_aliases
+        else:
+            pod_template.spec.hostAliases = pod.host_aliases
 
     if pod.tolerations != None:
-        pod_template.spec.tolerations = [render_pod_toleration(ctx, toleration) for toleration in pod.tolerations]
+        if get_render_yaml(ctx):
+            pod_template["spec"]["tolerations"] = [render_pod_toleration(ctx, toleration) for toleration in pod.tolerations]
+        else:
+            pod_template.spec.tolerations = [render_pod_toleration(ctx, toleration) for toleration in pod.tolerations]
 
     return pod_template
 

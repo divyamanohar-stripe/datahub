@@ -10,11 +10,11 @@ load("config/kubernetes/sidecars/variables.sky", "SANSSHELL_CONTAINER_FALLBACK_D
 SIDECAR_NAME = "sansshell-sidecar"
 
 ALLOWED_CLIENTS = {
-    "qa": ["forserversbox.global.deploy.stripe.net", "forserversbox.global.qa.deploy.stripe.net"],
-    None: ["forserversbox.global.deploy.stripe.net"],  # default
+    "qa": ["forserversbox.global.prod.deploy.stripe.net", "forserversbox.global.qa.deploy.stripe.net"],
+    None: ["forserversbox.global.prod.deploy.stripe.net"],  # default
 }
 
-def sansshell_sidecar():
+def sansshell_sidecar(ctx):
     """
     Sets up a SansShell server (go/sansshell) as a sidecar.
     """
@@ -40,7 +40,11 @@ def sansshell_sidecar():
             fallback_label = SANSSHELL_CONTAINER_FALLBACK_DIGEST,
             fallback_env = SANSSHELL_CONTAINER_FALLBACK_ENV,
             plugins = [
-                probes(liveness = tcp_probe(port = port)),
+                probes(
+                    # p99 latency of GetServiceCertificate occasionally spike over a minute threshold.
+                    # Allow 180 seconds before declaring startup a failure.
+                    startup = tcp_probe(ctx, port, failureThreshold = 180, periodSeconds = 1),
+                    liveness = tcp_probe(ctx, port)),
                 add_flags(**{"accept-from": ALLOWED_CLIENTS}),
             ],
             ports = {port: "sansshell"},

@@ -10,8 +10,8 @@ load("config/kubernetes/helpers/images.sky", "image", "sidecar_image")
 load("config/kubernetes/helpers/security.sky", "render_security_context")
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin")
-
-_core = proto.package("k8s.io.api.core.v1")
+load("config/kubernetes/helpers/context.sky", "get_render_yaml")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container", "ContainerPort", "ResourceRequirements")
 
 def container(
         name,
@@ -209,7 +209,7 @@ def container_port(port, container_name = None, port_name = None):
         port_name = port_name,
     )
 
-def resource_requirements(cpu, memory, storage = None):
+def resource_requirements(ctx, cpu, memory, storage = None):
     reqs = {}
     if cpu != None:
         reqs["cpu"] = cpu
@@ -218,7 +218,8 @@ def resource_requirements(cpu, memory, storage = None):
     if storage != None:
         reqs["ephemeral-storage"] = storage
 
-    return _core.ResourceRequirements(
+    return ResourceRequirements(
+        ctx,
         limits = reqs,
         requests = reqs,
     )
@@ -325,7 +326,7 @@ def _render_container(ctx, container_def, pod):
     ports = [_render_container_port(ctx, port, host_network = pod.host_network) for port in container.ports.values()]
     volume_mounts = sorted(
         [render_volume_mount(ctx, mount) for mount in container.volume_mounts.values()],
-        key=_get_volume_mount_path
+        key=_get_volume_mount_path(ctx)
     )
 
     probes = container.probes
@@ -334,11 +335,13 @@ def _render_container(ctx, container_def, pod):
     if not container.is_init_container:
         lifecycle = render_lifecycle(ctx, container.lifecycle)
 
-    rendered = _core.Container(
+    rendered = Container(
+        ctx,
         name = container.name,
         image = image(ctx, container.image),
         env = env,
         resources = resource_requirements(
+            ctx,
             memory = container.memory,
             cpu = container.cpu,
             storage = container.storage,
@@ -351,30 +354,55 @@ def _render_container(ctx, container_def, pod):
     )
 
     if container.command != None:
-        rendered.command = container.command
+        if get_render_yaml(ctx):
+            rendered["command"] = container.command
+        else:
+            rendered.command = container.command
 
     if container.args != None:
-        rendered.args = container.args
+        if get_render_yaml(ctx):
+            rendered["args"] = container.args
+        else:
+            rendered.args = container.args
 
     if container.security != None:
-        rendered.securityContext = render_security_context(container.security, pod)
+        if get_render_yaml(ctx):
+            rendered["securityContext"] = render_security_context(ctx, container.security, pod)
+        else:
+            rendered.securityContext = render_security_context(ctx, container.security, pod)
 
     if container.image_pull_policy in ("Always", "Never", "IfNotPresent"):
-        rendered.imagePullPolicy = container.image_pull_policy
+        if get_render_yaml(ctx):
+            rendered["imagePullPolicy"] = container.image_pull_policy
+        else:
+            rendered.imagePullPolicy = container.image_pull_policy
 
     if container.working_dir != None:
-        rendered.workingDir = container.working_dir
+        if get_render_yaml(ctx):
+            rendered["workingDir"] = container.working_dir
+        else:
+            rendered.workingDir = container.working_dir
 
     return rendered
 
-def _get_volume_mount_path(volume_mount):
-    return volume_mount.mountPath
+def _get_volume_mount_path(ctx):
+    def _get_volume_mount_path_yaml(volume_mount):
+        return volume_mount["mountPath"]
+
+    def _get_volume_mount_path_proto(volume_mount):
+        return volume_mount.mountPath
+
+    if get_render_yaml(ctx):
+        return _get_volume_mount_path_yaml
+    else:
+        return _get_volume_mount_path_proto
 
 def _add_container_port(ctx, arguments, container_def):
     container_def["ports"][arguments.port] = arguments
 
 def _render_container_port(ctx, port, host_network):
-    return _core.ContainerPort(
+    return ContainerPort(
+        ctx,
         containerPort = port.port,
         hostPort = port.port if host_network else None,
         name = port.port_name,

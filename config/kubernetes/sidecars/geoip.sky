@@ -7,6 +7,7 @@ load("config/kubernetes/helpers/images.sky", "image")
 load("config/kubernetes/sidecars/variables.sky", "GEOIP_CONTAINER_DIGEST", "GEOIP_CONTAINER_ENV")
 load("config/kubernetes/helpers/context.sky", "get_aws_region", "get_cluster")
 load("config/kubernetes/core/env_var.sky", "default_env_vars")
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Container")
 
 _out_path = "/usr/stripe/geoip_automatic"
 _share_path = "/usr/share/geoip"
@@ -74,11 +75,10 @@ def _update_pod(ctx, plugin, pod_def):
     pod_def["geoip_init_container"] = container_def
     pod_def["init_containers"].append(container_def)
 
-_core = proto.package("k8s.io.api.core.v1")
-
 def _geoip_container(ctx, container_def, pod):
     container = struct(**container_def)
-    return _core.Container(
+    return Container(
+        ctx,
         name = container.name,
         image = image(ctx, name = "stripe/foundation/geoip-refresher", label = GEOIP_CONTAINER_DIGEST, env = GEOIP_CONTAINER_ENV),
         command = [

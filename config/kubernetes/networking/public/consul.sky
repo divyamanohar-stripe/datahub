@@ -234,27 +234,3 @@ def consul_grpc_check(*, port, interval = "10s", service = None, notes = None):
 
 # Backwards compatibility
 consul_check = consul_http_check
-
-# NB(xyu): This should probably be an internal-facing API -- it is only used by
-# health.sky
-def consul_termination_delay(delay = "90s"):
-    """
-    Delays the termination of the consul sidecar.
-
-    This allows a service to fail healthchecks for a while before deregistering from consul.
-
-    Args:
-        delay: The duration to delay, in golang time.Duration notation
-
-    Returns:
-        A plugin that delays the consul sidecar from deregistering the service from consul.
-    """
-
-    return container_plugin(
-        _add_termination_delay_to_consul,
-        container_name = CONSUL_SIDECAR_CONTAINER_NAME,
-        delay = delay,
-    )
-
-def _add_termination_delay_to_consul(ctx, arguments, container_def):
-    container_def["termination_delay"] = arguments.delay

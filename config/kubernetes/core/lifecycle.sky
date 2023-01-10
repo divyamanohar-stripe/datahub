@@ -6,19 +6,8 @@ load("config/kubernetes/core/volume.sky", "volume_mount_all_containers", "volume
 load("config/kubernetes/plugins/compose.sky", "compose_plugins")
 load("config/kubernetes/plugins/types.sky", "container_plugin", "pod_plugin", "all_container_plugin")
 load("config/kubernetes/helpers/constants.sky", "CONFIG_SRV_SIDECAR_NAME", "CONSUL_SIDECAR_CONTAINER_NAME", "ENVOY_SIDECAR_NAME", "ENVOY_CONFIG_SRV_SIDECAR_NAME", "ENVOY_RATELIMIT_SRV_SIDECAR_NAME", "METRICS_SIDECAR_CONTAINER_NAME", "NSQD_SIDECAR_CONTAINER_NAME")
-
-_core = proto.package("k8s.io.api.core.v1")
-
-
-# Shim for proto rename to support 1.22 -> 1.23 upgrade. Once we are on 1.23
-# everywhere we can remove this. See
-# https://github.com/kubernetes/api/commit/cca52a076791d31b1796453ece4b2f4df97406a2
-def LifecycleHandler(*args, **kwargs):
-    if hasattr(_core, "LifecycleHandler"):
-        return _core.LifecycleHandler(*args, **kwargs)
-    else:
-        return _core.Handler(*args, **kwargs)
-
+load("config/kubernetes/helpers/proto_or_yaml.sky", "Lifecycle", "LifecycleHandler", "ExecAction")
+load("config/kubernetes/helpers/context.sky", "get_render_yaml")
 
 def pre_stop(action, container_name = None):
     """
@@ -42,7 +31,7 @@ def pre_stop(action, container_name = None):
         action = action,
     )
 
-def exec_action(*command):
+def exec_action(ctx, *command):
     """
     Create a lifecycle action that executes a command in the container.
 
@@ -54,9 +43,8 @@ def exec_action(*command):
         An action that can be added to a container using the `pre_stop` plugin.
     """
     return LifecycleHandler(
-        exec = _core.ExecAction(
-            command = list(command),
-        ),
+        ctx,
+        exec = ExecAction(ctx, command = list(command)),
     )
 
 
@@ -90,8 +78,8 @@ DEFAULT_NEW_ENDPOINT_PROPAGATION_SECONDS = 45
 #
 DEFAULT_ENVOY_HEALTHCHECK_PROPAGATION_TIME = 20
 
-def generate_prestop_sleep_action(sleep_seonds):
-    return exec_action("/usr/stripe/bin/kube-prestop", "--sleep-seconds",  str(sleep_seonds))
+def generate_prestop_sleep_action(ctx, sleep_seonds):
+    return exec_action(ctx, "/usr/stripe/bin/kube-prestop", "--sleep-seconds",  str(sleep_seonds))
 
 def prestop_all_containers(action):
     """
@@ -151,20 +139,26 @@ def generate_infra_sidecar_prestop_command_args(sidecarName, pod_termination_gra
         str(pod_termination_grace_period_seconds),
     ]
 
+#   For envoy-config-srv unified sidecar, we are using the ubuntu base image which does
+#   not have /bin/sh -> busybox setup. For this sidecar, we are failing the local healthcheck
+#   from the prestop binary. This is the reason this arg is included for this sidecar.
+    if sidecarName == ENVOY_CONFIG_SRV_SIDECAR_NAME:
+        args.append('--fail-healthcheck')
+
     for sidecarCommand in BLESSED_INFRA_SIDECAR_COMMANDS:
         args.append("--sidecar-command")
         args.append(sidecarCommand)
 
     return args
 
-def prestop_all_infra_sidecars(pod_termination_grace_period_seconds):
+def prestop_all_infra_sidecars(ctx, pod_termination_grace_period_seconds):
     """
     Internal function, do not use.
     """
     plugins = []
 
     for sidecarName in BLESSED_INFRA_SIDECAR_CONTAINER_NAMES:
-        action = exec_action(*generate_infra_sidecar_prestop_command_args(sidecarName=sidecarName, pod_termination_grace_period_seconds=pod_termination_grace_period_seconds))
+        action = exec_action(ctx, *generate_infra_sidecar_prestop_command_args(sidecarName=sidecarName, pod_termination_grace_period_seconds=pod_termination_grace_period_seconds))
         plugins.extend(
             [
                 pre_stop(
@@ -244,10 +238,13 @@ def _add_handler(ctx, plugin, container_def):
     container_def["lifecycle"][plugin.type] = plugin.action
 
 def render_lifecycle(ctx, lifecycle):
-    result = _core.Lifecycle()
+    result = Lifecycle(ctx)
 
     if "preStop" in lifecycle:
-        result.preStop = lifecycle["preStop"]
+        if get_render_yaml(ctx):
+            result["preStop"] = lifecycle["preStop"]
+        else:
+            result.preStop = lifecycle["preStop"]
 
     return result
 

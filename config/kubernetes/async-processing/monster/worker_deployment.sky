@@ -21,8 +21,6 @@ load("config/kubernetes/sidecars/envoy_ratelimit.sky", "ratelimit_sidecar")
 load("config/kubernetes/sidecars/geoip.sky", "use_geoip_databases")
 load("config/kubernetes/sidecars/offload_profiles.sky", "use_offload_profiles")
 
-AUTOSCALED_HOST_SETS = ["sigma"]
-
 def generate_pod_name(prefix, monster_service, monster_isolation_group, suffix):
     name = "monster-{}-{}-{}{}".format(prefix, worker_type(monster_service), monster_isolation_group, suffix)
     if len(name) > 63:
@@ -34,11 +32,11 @@ def monster_deployment(ctx, config, port, suffix = ""):
     return monster_deployment_shared_msp(ctx, config, port, suffix=suffix)
 
 def make_deployment_options_plugins(config):
-    if config.monster_isolation_group in AUTOSCALED_HOST_SETS:
-        min_replicas = 0 if config.replicas == 0 else max(2, config.replicas // 4)
+    # If replicas are defined using dynamic configurations we will set those up using dynamic configs.
+    if type(config.replicas) == 'struct':
         return [
-            deployment_options(replicas = config.replicas),
-            dynamic_replicas(config.replicas, config.replicas * 2, min_replicas)
+            deployment_options(replicas = config.replicas.desired),
+            dynamic_replicas(config.replicas.desired, config.replicas.max, config.replicas.min)
         ]
 
     # We limit how many previous revisions of ReplicaSet's we keep around to limit
@@ -163,6 +161,7 @@ def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
         ctx,
 
         pay_server_pod(
+            ctx,
             # Example for consuming workers: monster-smsp-workers-radar, maybe with "-canary"
             name = name,
             image = default_pay_server_image,
@@ -174,6 +173,7 @@ def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
         ),
 
         einhorn_service(
+            ctx,
             name = generate_consul_name(formatted_isolation_group, config.monster_service),
             workers = config.einhorn_workers,
             # Ports must be unique per host, it's just easier to give each pod a unique port.
@@ -208,6 +208,10 @@ def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
             # attempt to avoid processing events on a container that is
             # experiencing very high CPU load during boot-up.
             worker_availability_threshold = "0.95", # skycfg doesn't support floats
+
+            hack_kick_interval = config.hack_kick_interval,
+            hack_kick_start_delay = config.hack_kick_start_delay,
+            hack_kick_restart_only = config.hack_kick_restart_only,
         ),
 
         container_env_vars(env_vars),
@@ -240,6 +244,10 @@ def monster_deployment_shared_msp(ctx, config, port, suffix = ""):
 
         use_offload_profiles(),
         autoset_shard(),
+
+        # Wait 5 seconds after service starts before we begin health checks
+        # This configuration catches failures when the service appears healthy briefly but begins crashlooping
+        minReadySeconds = 5,
 
         shared_msp = True,
         strategy = config.strategy,
