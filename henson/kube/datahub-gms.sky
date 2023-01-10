@@ -148,6 +148,7 @@ def _service(ctx, replicas, suffix = ""):
     deploy = deployment(
         ctx,
         stripe_pod(
+            ctx, 
             name = "datahub-gms" + suffix,
             namespace = "datahub",
             command = ["./datahub-gms/scripts/stripe-start.sh"],
@@ -155,6 +156,7 @@ def _service(ctx, replicas, suffix = ""):
             image = container_image,
         ),
         healthchecked_service(
+            ctx, 
             name = "datahub-gms",
             port = service_port,
             path = "/health",
@@ -166,8 +168,8 @@ def _service(ctx, replicas, suffix = ""):
         init_container(
             name = "datahub-gms-initmysql",
             command = ["/datahub/datahub-gms/scripts/stripe-init.sh"],
-            cpu = cores(1),
-            memory = gigabytes(1),
+            cpu = cores(ctx, 1),
+            memory = gigabytes(ctx, 1),
         ),
         container_env_vars(
             vars = {
@@ -182,8 +184,8 @@ def _service(ctx, replicas, suffix = ""):
         init_container(
             name = "copy-jmxfetch-yaml",
             command = ["cp", "/datahub/datahub-gms/resources/stripe-jmxfetch.yaml", PROPS_VOLUME],
-            cpu = cores(1),
-            memory = gigabytes(1),
+            cpu = cores(ctx, 1),
+            memory = gigabytes(ctx, 1),
             plugins = [
                 volume_mount(PROPS_VOLUME, read_only = False),
             ],
@@ -211,6 +213,7 @@ def _service(ctx, replicas, suffix = ""):
         # these numbers allow us to have sufficient number of healthy instances
         # in each of our deployment stages
         strategy = rolling_update_strategy(
+            ctx, 
             # max_unavailable must be less than 1/6th the number of total pods to ensure
             # uptime availability across AZs during deployment events (ir-aqua-factorial)
             max_unavailable = "16%" if replicas > 6 else 1,

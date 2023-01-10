@@ -70,6 +70,7 @@ def _service(ctx, replicas, suffix = ""):
     deploy = deployment(
         ctx,
         stripe_pod(
+            ctx,
             name = "datahub-frontend" + suffix,
             namespace = "datahub",
             command = ["./datahub-frontend/bin/stripe-frontend-start.sh"],
@@ -77,6 +78,7 @@ def _service(ctx, replicas, suffix = ""):
             image = container_image,
         ),
         healthchecked_service(
+            ctx,
             name = "datahub-frontend",
             port = service_port,
             path = "/admin",
@@ -101,7 +103,7 @@ def _service(ctx, replicas, suffix = ""):
         # details on this: https://skycfg.corp.stripe.com/rollouts
         # these numbers allow us to have sufficient number of healthy instances
         # in each of our deployment stages
-        strategy = rolling_update_strategy("50%", "50%"),
+        strategy = rolling_update_strategy(ctx, "50%", "50%"),
         shared_msp = True,
     )
     return [deploy]
