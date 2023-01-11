@@ -78,7 +78,7 @@ public class EntityRunsResolver implements DataFetcher<CompletableFuture<DataPro
       final List<DataProcessInstanceFilterInput> filters = input.getFilters() != null ? input.getFilters()
           : DEFAULT_FILTER;
 
-      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), environment.getOperationDefinition().getName()).time()) {
         // Step 1: Fetch set of task runs associated with the target entity from the Search Index!
         // We use the search index so that we can easily sort by the last updated time.
         final Filter filter = buildTaskRunsEntityFilter(entityUrn, filters, direction);

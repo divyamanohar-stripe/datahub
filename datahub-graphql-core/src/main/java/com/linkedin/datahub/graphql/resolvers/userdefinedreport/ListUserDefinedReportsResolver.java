@@ -51,7 +51,7 @@ public class ListUserDefinedReportsResolver implements DataFetcher<CompletableFu
                 final Integer start = input.getStart() == null ? DEFAULT_START : input.getStart();
                 final Integer count = input.getCount() == null ? DEFAULT_COUNT : input.getCount();
 
-                try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
+                try (Timer.Context ignored = MetricUtils.timer(this.getClass(), environment.getOperationDefinition().getName()).time()) {
                     // First, get all group Urns.
                     final ListResult gmsResult = _entityClient.list(
                             Constants.USER_DEFINED_REPORT_ENTITY_NAME,

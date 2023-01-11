@@ -57,7 +57,7 @@ public class UserDefinedReportEntitiesResolver implements DataFetcher<Completabl
         final int count = input.getCount() != null ? input.getCount() : DEFAULT_COUNT;
 
         return CompletableFuture.supplyAsync(() -> {
-            try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
+            try (Timer.Context ignored = MetricUtils.timer(this.getClass(), environment.getOperationDefinition().getName()).time()) {
 
                 final Criterion filterCriterion = new Criterion()
                         .setField(USER_DEFINED_REPORTS_FIELD_NAME + ".keyword")

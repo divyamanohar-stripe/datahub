@@ -50,7 +50,7 @@ public class SearchAcrossEntitiesResolver implements DataFetcher<CompletableFutu
     final int count = input.getCount() != null ? input.getCount() : DEFAULT_COUNT;
 
     return CompletableFuture.supplyAsync(() -> {
-      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), environment.getOperationDefinition().getName()).time()) {
         log.debug(
             "Executing search for multiple entities: entity types {}, query {}, filters: {}, start: {}, count: {}",
             input.getTypes(), input.getQuery(), input.getFilters(), start, count);

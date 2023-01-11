@@ -63,7 +63,7 @@ public class SearchAcrossLineageResolver
     com.linkedin.metadata.graph.LineageDirection resolvedDirection =
         com.linkedin.metadata.graph.LineageDirection.valueOf(lineageDirection.toString());
     return CompletableFuture.supplyAsync(() -> {
-      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), "mainQuery").time()) {
+      try (Timer.Context ignored = MetricUtils.timer(this.getClass(), environment.getOperationDefinition().getName()).time()) {
         log.debug(
             "Executing search across relationships: source urn {}, direction {}, entity types {}, query {}, filters: {}, start: {}, count: {}",
             urn, resolvedDirection, input.getTypes(), input.getQuery(), input.getFilters(), start, count);
