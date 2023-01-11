@@ -1,4 +1,4 @@
-import { Divider, Switch, Typography } from 'antd';
+import { Button, Divider, Switch, Typography } from 'antd';
 import React, { useContext, useMemo } from 'react';
 import styled from 'styled-components';
 import { ExperimentsContext } from './ExperimentsProvider';
@@ -39,9 +39,9 @@ const Experiment = ({ experiment, setExperiment }: ExperimentProps) => {
 };
 
 export const Experiments = () => {
-    const { experiments, setExperiment } = useContext(ExperimentsContext);
+    const { experiments, setExperiment, resetExperiments } = useContext(ExperimentsContext);
     const experimentsComponents = useMemo(() => {
-        return experiments.map((ex) => <Experiment experiment={ex} setExperiment={setExperiment} />);
+        return experiments.map((ex) => <Experiment key={ex.title} experiment={ex} setExperiment={setExperiment} />);
     }, [experiments, setExperiment]);
     return (
         <ContentContainer>
@@ -49,6 +49,10 @@ export const Experiments = () => {
             <Typography.Paragraph type="secondary">Manage UI Experiments across Data Catalog</Typography.Paragraph>
             <Divider />
             {experimentsComponents}
+            <Divider />
+            <Button key="1" onClick={resetExperiments}>
+                Refresh
+            </Button>
         </ContentContainer>
     );
 };

@@ -5,6 +5,7 @@ import { ACTIVE_EXPERIMENTS, Preference } from './types';
 type ExperimentsContextType = {
     experiments: Preference<boolean>[];
     setExperiment?: (experiment: Preference<boolean>, value: boolean) => void;
+    resetExperiments?: () => void;
 };
 
 export const ExperimentsContext = createContext<ExperimentsContextType>({ experiments: ACTIVE_EXPERIMENTS });
@@ -24,5 +25,10 @@ export const ExperimentsProvider: FC = ({ children }) => {
         });
         setExperiments(newExperiments);
     };
-    return <ExperimentsContext.Provider value={{ experiments, setExperiment }}>{children}</ExperimentsContext.Provider>;
+    const resetExperiments = () => setExperiments(ACTIVE_EXPERIMENTS);
+    return (
+        <ExperimentsContext.Provider value={{ experiments, setExperiment, resetExperiments }}>
+            {children}
+        </ExperimentsContext.Provider>
+    );
 };
