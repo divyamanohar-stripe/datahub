@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import styled from 'styled-components';
+import { Link } from 'react-router-dom';
 import { RecommendationContainer, RecommendationTitle, ThinDivider } from '../recommendations/RecommendationGroup';
 
 const ShowcaseCardContainer = styled.div`
@@ -54,58 +55,56 @@ export const HomePageShowcase = () => {
             <RecommendationTitle level={4}>Feature Showcase</RecommendationTitle>
             <ThinDivider />
             <ShowcaseCardContainer>
-                <Container type="link" href="/search?filter_entity=USER_DEFINED_REPORT&page=1&query=UAR">
-                    <LayoutOutlined style={{ fontSize: 14, color: '#B37FEB' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Pipeline Timeliness</ShowcaseTitle>
-                </Container>
-                <Container
-                    type="link"
-                    href="/search?filter_entity=USER_DEFINED_REPORT&page=1&query=Timeliness%2520tracking"
-                >
-                    <BarChartOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Historical Timeliness</ShowcaseTitle>
-                </Container>
-                <Container
-                    type="link"
-                    href="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),icplus.DailyIcPlusFees)/Timeliness"
-                >
-                    <StockOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Dataset Timeliness</ShowcaseTitle>
-                </Container>
-                <Container type="link" href="/group/urn:li:corpGroup:dscore/metrics">
-                    <TeamOutlined style={{ fontSize: 14 }} />
-                    <ShowcaseTitle $titleSizePx={14}>DS Core Team Page</ShowcaseTitle>
-                </Container>
+                <Link to="/search?filter_entity=USER_DEFINED_REPORT&page=1&query=UAR">
+                    <Container type="link">
+                        <LayoutOutlined style={{ fontSize: 14, color: '#B37FEB' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Pipeline Timeliness</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/search?filter_entity=USER_DEFINED_REPORT&page=1&query=Timeliness%2520tracking">
+                    <Container type="link">
+                        <BarChartOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Historical Timeliness</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),icplus.DailyIcPlusFees)/Timeliness">
+                    <Container type="link">
+                        <StockOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Dataset Timeliness</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/group/urn:li:corpGroup:dscore/metrics">
+                    <Container type="link">
+                        <TeamOutlined style={{ fontSize: 14 }} />
+                        <ShowcaseTitle $titleSizePx={14}>DS Core Team Page</ShowcaseTitle>
+                    </Container>
+                </Link>
             </ShowcaseCardContainer>
             <ShowcaseCardContainer>
-                <Container
-                    type="link"
-                    href="/dataset/urn:li:dataset:(urn:li:dataPlatform:iceberg,regulatory_reporting.reporting_mtltransactions_shadow_raw,PROD)/Validation?"
-                >
-                    <CheckCircleOutlined style={{ fontSize: 14 }} />
-                    <ShowcaseTitle $titleSizePx={14}>Dataset Validation</ShowcaseTitle>
-                </Container>
-                <Container
-                    type="link"
-                    href="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),communia_sales.AggMerchant)/Changelog"
-                >
-                    <DatabaseOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Task Changelog</ShowcaseTitle>
-                </Container>
-                <Container
-                    type="link"
-                    href="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),finfra__alerting.AcquiringReconDownstreamSLA)/Insights"
-                >
-                    <UnorderedListOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Upstream Delays</ShowcaseTitle>
-                </Container>
-                <Container
-                    type="link"
-                    href="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),ops_reporting.RegulatoryPayments)/Lineage"
-                >
-                    <OrderedListOutlined style={{ fontSize: 14, color: '#B37FEB' }} />
-                    <ShowcaseTitle $titleSizePx={14}>Downstream Impacts</ShowcaseTitle>
-                </Container>
+                <Link to="/dataset/urn:li:dataset:(urn:li:dataPlatform:iceberg,regulatory_reporting.reporting_mtltransactions_shadow_raw,PROD)/Validation?">
+                    <Container type="link">
+                        <CheckCircleOutlined style={{ fontSize: 14 }} />
+                        <ShowcaseTitle $titleSizePx={14}>Dataset Validation</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,dailycron,PROD),communia_sales.AggMerchant)/Changelog">
+                    <Container type="link">
+                        <DatabaseOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Task Changelog</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),finfra__alerting.AcquiringReconDownstreamSLA)/Insights">
+                    <Container type="link">
+                        <UnorderedListOutlined style={{ fontSize: 14, color: 'rgb(144 163 236)' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Upstream Delays</ShowcaseTitle>
+                    </Container>
+                </Link>
+                <Link to="/tasks/urn:li:dataJob:(urn:li:dataFlow:(airflow,finfra,PROD),ops_reporting.RegulatoryPayments)/Lineage">
+                    <Container type="link">
+                        <OrderedListOutlined style={{ fontSize: 14, color: '#B37FEB' }} />
+                        <ShowcaseTitle $titleSizePx={14}>Downstream Impacts</ShowcaseTitle>
+                    </Container>
+                </Link>
             </ShowcaseCardContainer>
         </RecommendationContainer>
     );
