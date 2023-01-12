@@ -82,7 +82,7 @@ public class DataHubAuthorizer implements Authorizer {
     _systemAuthentication = systemAuthentication;
     _policyRefreshRunnable = new PolicyRefreshRunnable(systemAuthentication, entityClient, _policyCache);
     // TODO: Remove log entirely
-    log.info(String.format("Interval for policy refresh runnable (delay, refresh): ", delayIntervalSeconds, refreshIntervalSeconds));
+    log.info(String.format("Interval for policy refresh runnable (delay, refresh): %s %s", delayIntervalSeconds, refreshIntervalSeconds));
     _refreshExecutorService.scheduleAtFixedRate(_policyRefreshRunnable, delayIntervalSeconds, refreshIntervalSeconds, TimeUnit.SECONDS);
     _mode = mode;
     _resourceSpecResolver = new ResourceSpecResolver(systemAuthentication, entityClient);
@@ -259,6 +259,8 @@ public class DataHubAuthorizer implements Authorizer {
 
             total = policyUrns.getTotal();
             start = start + count;
+            // TODO: Remove
+            log.info(String.format("Added policies to cache: %s | %s", total, newCache));
           } catch (RemoteInvocationException e) {
             log.error(String.format(
                 "Failed to retrieve policy urns! Skipping updating policy cache until next refresh. start: %s, count: %s", start, count), e);
