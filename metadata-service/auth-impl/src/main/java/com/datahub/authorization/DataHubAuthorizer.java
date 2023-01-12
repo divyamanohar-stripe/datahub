@@ -81,6 +81,8 @@ public class DataHubAuthorizer implements Authorizer {
       final AuthorizationMode mode) {
     _systemAuthentication = systemAuthentication;
     _policyRefreshRunnable = new PolicyRefreshRunnable(systemAuthentication, entityClient, _policyCache);
+    // TODO: Remove log entirely
+    log.info(String.format("Interval for policy refresh runnable (delay, refresh): ", delayIntervalSeconds, refreshIntervalSeconds));
     _refreshExecutorService.scheduleAtFixedRate(_policyRefreshRunnable, delayIntervalSeconds, refreshIntervalSeconds, TimeUnit.SECONDS);
     _mode = mode;
     _resourceSpecResolver = new ResourceSpecResolver(systemAuthentication, entityClient);
@@ -126,7 +128,7 @@ public class DataHubAuthorizer implements Authorizer {
         resolvedResourceSpec);
 
     // TODO: Remove this logging after debugging finishes.
-    log.debug(String.format("Obtained grantedPrivileges: %s with policiesToEvaluate: %s and actorUrn: %s",
+    log.info(String.format("Obtained grantedPrivileges: %s with policiesToEvaluate: %s and actorUrn: %s",
         grantedPrivileges, policiesToEvaluate, actorUrn));
 
     return grantedPrivileges;
@@ -247,7 +249,8 @@ public class DataHubAuthorizer implements Authorizer {
 
         while (start < total) {
           try {
-            log.debug(String.format("Batch fetching policies. start: %s, count: %s ", start, count));
+            // TODO: Lower log level
+            log.info(String.format("Batch fetching policies. start: %s, count: %s ", start, count));
             final ListUrnsResult policyUrns = _entityClient.listUrns(POLICY_ENTITY_NAME, start, count, _systemAuthentication);
             final Map<Urn, EntityResponse> policyEntities = _entityClient.batchGetV2(POLICY_ENTITY_NAME,
                 new HashSet<>(policyUrns.getEntities()), null, _systemAuthentication);
@@ -266,7 +269,8 @@ public class DataHubAuthorizer implements Authorizer {
             _policyCache.putAll(newCache);
           }
         }
-        log.debug(String.format("Successfully fetched %s policies.", total));
+        // TODO: Lower log level
+        log.info(String.format("Successfully fetched %s policies.", total));
       } catch (Exception e) {
         log.error("Caught exception while loading Policy cache. Will retry on next scheduled attempt.", e);
       }
