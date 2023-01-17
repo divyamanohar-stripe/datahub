@@ -249,6 +249,7 @@ public class JavaEntityClient implements EntityClient {
      *
      * @param input search query
      * @param filter search filters
+     * @param sortCriterion sort criterion
      * @param start start offset for search results
      * @param count max number of search results requested
      * @return Snapshot key
@@ -259,11 +260,12 @@ public class JavaEntityClient implements EntityClient {
         @Nonnull String entity,
         @Nonnull String input,
         @Nullable Filter filter,
+        @Nullable SortCriterion sortCriterion,
         int start,
         int count,
         @Nonnull final Authentication authentication)
         throws RemoteInvocationException {
-        return _entitySearchService.search(entity, input, filter, null, start, count);
+        return _entitySearchService.search(entity, input, filter, sortCriterion, start, count);
     }
 
     /**
