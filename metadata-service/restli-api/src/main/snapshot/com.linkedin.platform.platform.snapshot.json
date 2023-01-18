@@ -4712,14 +4712,6 @@
                     "type" : "boolean",
                     "doc" : "Whether the policy should be editable via the UI",
                     "default" : true
-                  }, {
-                    "name" : "lastUpdatedTimestamp",
-                    "type" : "long",
-                    "doc" : "Timestamp when the policy was last updated",
-                    "optional" : true,
-                    "Searchable" : {
-                      "fieldType" : "DATETIME"
-                    }
                   } ],
                   "Aspect" : {
                     "name" : "dataHubPolicyInfo"
@@ -4903,7 +4895,7 @@
     }, {
       "name" : "name",
       "type" : "string",
-      "doc" : "The name of the event, e.g. the type of event. For example, 'notificationRequestEvent', 'entityChangeEvent'"
+      "doc" : "The name of the event, e.g. the type of event. For example, 'notificationRequestEvent'."
     }, {
       "name" : "payload",
       "type" : "GenericPayload",
