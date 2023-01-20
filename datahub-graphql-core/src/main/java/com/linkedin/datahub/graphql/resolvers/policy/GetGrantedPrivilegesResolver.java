@@ -8,6 +8,8 @@ import com.linkedin.datahub.graphql.exception.AuthorizationException;
 import com.linkedin.datahub.graphql.generated.GetGrantedPrivilegesInput;
 import com.linkedin.datahub.graphql.generated.Privileges;
 import com.linkedin.datahub.graphql.resolvers.EntityTypeMapper;
+import com.linkedin.metadata.utils.metrics.MetricUtils;
+
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import java.util.List;
@@ -39,6 +41,9 @@ public class GetGrantedPrivilegesResolver implements DataFetcher<CompletableFutu
     if (context.getAuthorizer() instanceof AuthorizerChain) {
       DataHubAuthorizer dataHubAuthorizer = ((AuthorizerChain) context.getAuthorizer()).getDefaultAuthorizer();
       List<String> privileges = dataHubAuthorizer.getGrantedPrivileges(actor, resourceSpec);
+      if (privileges.size() == 0) {
+        MetricUtils.counter(GetGrantedPrivilegesResolver.class, "NO_PRIVILEGES_FOR_USER").inc();
+      }
       return CompletableFuture.supplyAsync(() -> Privileges.builder()
           .setPrivileges(privileges)
           .build());
