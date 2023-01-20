@@ -6,6 +6,7 @@ import com.linkedin.common.Owner;
 import com.linkedin.common.Ownership;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
+import com.linkedin.common.UrnArray;
 import com.linkedin.entity.EntityResponse;
 import com.linkedin.entity.EnvelopedAspectMap;
 import com.linkedin.entity.client.EntityClient;
@@ -13,7 +14,10 @@ import com.linkedin.metadata.authorization.PoliciesConfig;
 import com.linkedin.metadata.query.ListUrnsResult;
 import com.linkedin.policy.DataHubPolicyInfo;
 import com.linkedin.r2.RemoteInvocationException;
+
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -250,14 +254,36 @@ public class DataHubAuthorizer implements Authorizer {
         while (start < total) {
           try {
             // TODO: Lower log level
-            log.info(String.format("Batch fetching policies. start: %s, count: %s ", start, count));
-            final ListUrnsResult policyUrns = _entityClient.listUrns(POLICY_ENTITY_NAME, start, count, _systemAuthentication);
+            // log.info(String.format("Batch fetching policies. start: %s, count: %s ", start, count));
+            // final ListUrnsResult policyUrns = _entityClient.listUrns(POLICY_ENTITY_NAME, start, count, _systemAuthentication);
+            final List<String> defaultPolicyStrings = Arrays.asList(new String[]{
+              "urn:li:dataHubPolicy:view-entity-page-all", 
+              "urn:li:dataHubPolicy:view-dataset-sensitive", 
+              "urn:li:dataHubPolicy:7", 
+              "urn:li:dataHubPolicy:1",
+              "urn:li:dataHubPolicy:0"
+            });
+            final List<Urn> defaultPolicyUrns = defaultPolicyStrings.stream().map(
+              x -> { try {
+                return Urn.createFromString(x);
+              } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+              } }
+              ).collect(Collectors.toList());
+            final ListUrnsResult policyUrnsHack = new ListUrnsResult();
+            policyUrnsHack.setStart(0);
+            policyUrnsHack.setTotal(5);
+            policyUrnsHack.setCount(5);
+            policyUrnsHack.setEntities(new UrnArray(defaultPolicyUrns));
+
+
+
             final Map<Urn, EntityResponse> policyEntities = _entityClient.batchGetV2(POLICY_ENTITY_NAME,
-                new HashSet<>(policyUrns.getEntities()), null, _systemAuthentication);
+                new HashSet<>(policyUrnsHack.getEntities()), null, _systemAuthentication);
 
             addPoliciesToCache(newCache, policyEntities.values());
 
-            total = policyUrns.getTotal();
+            total = policyUrnsHack.getTotal();
             start = start + count;
             // TODO: Remove
             log.info(String.format("Added policies to cache: %s | %s", total, newCache));
