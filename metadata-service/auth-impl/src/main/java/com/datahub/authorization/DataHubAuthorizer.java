@@ -85,8 +85,6 @@ public class DataHubAuthorizer implements Authorizer {
       final AuthorizationMode mode) {
     _systemAuthentication = systemAuthentication;
     _policyRefreshRunnable = new PolicyRefreshRunnable(systemAuthentication, entityClient, _policyCache);
-    // TODO: Remove log entirely
-    log.info(String.format("Interval for policy refresh runnable (delay, refresh): %s %s", delayIntervalSeconds, refreshIntervalSeconds));
     _refreshExecutorService.scheduleAtFixedRate(_policyRefreshRunnable, delayIntervalSeconds, refreshIntervalSeconds, TimeUnit.SECONDS);
     _mode = mode;
     _resourceSpecResolver = new ResourceSpecResolver(systemAuthentication, entityClient);
@@ -130,10 +128,6 @@ public class DataHubAuthorizer implements Authorizer {
 
     List<String> grantedPrivileges = _policyEngine.getGrantedPrivileges(policiesToEvaluate, UrnUtils.getUrn(actorUrn),
         resolvedResourceSpec);
-
-    // TODO: Remove this logging after debugging finishes.
-    log.info(String.format("Obtained grantedPrivileges: %s with policiesToEvaluate: %s and actorUrn: %s",
-        grantedPrivileges, policiesToEvaluate, actorUrn));
 
     return grantedPrivileges;
   }
@@ -242,9 +236,6 @@ public class DataHubAuthorizer implements Authorizer {
     }
 
     private ListUrnsResult getPolicyUrnsResult() {
-      // TODO: Lower log level
-      // log.info(String.format("Batch fetching policies. start: %s, count: %s ", start, count));
-      // final ListUrnsResult policyUrns = _entityClient.listUrns(POLICY_ENTITY_NAME, start, count, _systemAuthentication);
       final List<String> defaultPolicyStrings = Arrays.asList(new String[]{
         "urn:li:dataHubPolicy:view-entity-page-all", 
         "urn:li:dataHubPolicy:view-dataset-sensitive", 
@@ -288,8 +279,6 @@ public class DataHubAuthorizer implements Authorizer {
 
             total = policyUrns.getTotal();
             start = start + count;
-            // TODO: Remove
-            log.info(String.format("Added policies to cache: %s | %s", total, newCache));
           } catch (RemoteInvocationException e) {
             log.error(String.format(
                 "Failed to retrieve policy urns! Skipping updating policy cache until next refresh. start: %s, count: %s", start, count), e);
@@ -300,8 +289,7 @@ public class DataHubAuthorizer implements Authorizer {
             _policyCache.putAll(newCache);
           }
         }
-        // TODO: Lower log level
-        log.info(String.format("Successfully fetched %s policies.", total));
+        log.debug(String.format("Successfully fetched %s policies.", total));
       } catch (Exception e) {
         log.error("Caught exception while loading Policy cache. Will retry on next scheduled attempt.", e);
       }
